@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>카카오 로그인/회원가입</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { 
+            background: #f7f7f7; 
+            font-family: 'Segoe UI', sans-serif; 
+        }
+        .signin-container {
+            max-width: 350px; 
+            margin: 80px auto; 
+            background: #fff; 
+            padding: 36px 30px; 
+            border-radius: 10px; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        .kakao-btn {
+            width: 100%; 
+            background: #fee500; 
+            color: #3c1e1e;
+            padding: 14px 0; 
+            border: none; 
+            border-radius: 5px;
+            font-size: 17px; 
+            font-weight: 600; 
+            cursor: pointer;
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+        }
+        .kakao-icon {
+            width: 24px; 
+            height: 24px; 
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        h2 {
+            margin-bottom: 28px;
+        }
+    </style>
+    <script>
+    function kakaoLogin() {
+        var REST_API_KEY = 'aa4268b0d218c509562ca2ee74f23d94';
+        var REDIRECT_URI = window.location.href;
+        var kakaoAuthUrl = 
+            'https://kauth.kakao.com/oauth/authorize?' +
+            'response_type=code' +
+            '&client_id=' + REST_API_KEY +
+            '&redirect_uri=' + encodeURIComponent(REDIRECT_URI);
+        window.location.href = kakaoAuthUrl;
+    }
+	function kakaoLogin2() {
+	       var REST_API_KEY = 'aa4268b0d218c509562ca2ee74f23d94';
+	       var REDIRECT_URI = window.location.href;
+	       var kakaoAuthUrl = 
+	           'https://kauth.kakao.com/oauth/authorize?' +
+	           'response_type=code' +
+	           '&client_id=' + REST_API_KEY +
+	           '&redirect_uri=' + encodeURIComponent(REDIRECT_URI)
+			   +'&prompt=login'; //기존 로그인 여부와 상관없이 로그인하기
+	       window.location.href = kakaoAuthUrl;
+	   }
+    </script>
+</head>
+<body>
+    <div class="signin-container">
+        <button class="kakao-btn" onclick="kakaoLogin()">
+            <img src="https://developers.kakao.com/assets/img/about/logos/kakaolink/kakaolink_btn_medium.png" alt="카카오 아이콘" class="kakao-icon">
+            카카오로 시작하기
+        </button>
+		<br>
+		<button class="kakao-btn" onclick="kakaoLogin2()">
+            <img src="https://developers.kakao.com/assets/img/about/logos/kakaolink/kakaolink_btn_medium.png" alt="카카오 아이콘" class="kakao-icon">
+            카카오로 기존 로그인 여부와 상관없이 로그인하기
+        </button>
+    </div>
+</body>
+</html>

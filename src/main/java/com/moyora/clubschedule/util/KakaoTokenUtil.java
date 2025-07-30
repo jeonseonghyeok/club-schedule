@@ -3,6 +3,10 @@ package com.moyora.clubschedule.util;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
+
+import com.moyora.clubschedule.vo.UserCreateVo;
+import com.moyora.clubschedule.vo.UserVo;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -112,6 +116,37 @@ public class KakaoTokenUtil {
 		return null;
 	}
 	
+	public UserCreateVo validateAndGetUserInfo(String accessToken, String referern) {
+		RestTemplate restTemplate = new RestTemplate();
+		HttpHeaders headers = new HttpHeaders();
+		headers.set("Authorization", "Bearer " + accessToken);
+		HttpEntity<String> entity = new HttpEntity<>(headers);
+
+		try {
+			// 카카오 사용자 정보 요청
+			ResponseEntity<Map> response = restTemplate.exchange("https://kapi.kakao.com/v2/user/me", HttpMethod.GET,
+					entity, Map.class);
+
+			if (response.getStatusCode().is2xxSuccessful()) {
+				Map<String, Object> body = response.getBody();
+				if (body == null)
+					return null;
+
+				// id 추출
+				Long id = ((Number) body.get("id")).longValue();
+
+				Map<String, Object> properties = (Map<String, Object>) body.get("properties");
+				String nickname = properties != null ? (String) properties.get("nickname") : null;
+
+				return new UserCreateVo(id, nickname, referern);
+			}
+		} catch (Exception e) {
+			throw new RuntimeException("카카오 사용자 정보 요청 중 예외 발생", e);
+		}
+
+		return null;
+	}
+
 	public List<String> getRedirectWhitelist() {
 		return Arrays.stream(redirectWhitelistRaw.split(",")).map(String::trim).toList();
 	}

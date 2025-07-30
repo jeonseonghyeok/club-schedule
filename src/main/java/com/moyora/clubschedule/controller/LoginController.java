@@ -60,16 +60,11 @@ public class LoginController {
 
         // 4. 회원 자동가입/로그인 처리
         String kakaoAccessToken = (String) kakaoToken.get("access_token");
-        boolean isSignedUp = false;
         try {
-            isSignedUp = memberService.autoSignUpByKakaoApi(kakaoAccessToken);
+            memberService.autoSignUpByKakaoApi(kakaoAccessToken,refererBase);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("회원 자동가입 처리 중 오류: " + e.getMessage());
-        }
-        if (!isSignedUp) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body("회원 자동가입에 실패했습니다.");
         }
 
         // 5. 성공 응답 반환

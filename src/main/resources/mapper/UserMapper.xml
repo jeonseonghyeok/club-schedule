@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.moyora.clubschedule.mapper.UserMapper">
+
+    <select id="selectByKakaoApiId" resultType="com.moyora.clubschedule.vo.UserVo">
+        SELECT * FROM `user`
+        WHERE kakao_api_id = #{kakaoApiId}
+    </select>
+
+    <insert id="insertKakaoUserInfo" parameterType="com.moyora.clubschedule.vo.UserCreateVo">
+        INSERT INTO `user` (kakao_api_id, nickname,referrer_url)
+        VALUES (#{kakaoApiId}, #{nickname}, #{referrerUrl})
+    </insert>
+
+</mapper>

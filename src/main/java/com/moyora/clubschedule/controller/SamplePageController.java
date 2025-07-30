@@ -23,7 +23,7 @@ public class SamplePageController {
      */
     @GetMapping("/sign/login-callback")
     public String signAuto(Model model) {
-        return "sign_callback";
+        return "login_callback";
     }
     
     /**

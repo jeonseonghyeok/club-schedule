@@ -101,8 +101,7 @@ public class KakaoTokenUtil {
 		HttpEntity<String> entity = new HttpEntity<>(headers);
 
 		try {
-			ResponseEntity<Map> response = restTemplate.exchange("https://kapi.kakao.com/v1/user/access_token_info",
-					HttpMethod.GET, entity, Map.class);
+			ResponseEntity<Map> response = restTemplate.exchange("https://kapi.kakao.com/v1/user/access_token_info",HttpMethod.GET, entity, Map.class);
 			if (response.getStatusCode().is2xxSuccessful()) {
 				// 유효하면 user_id 반환
 				Map<String, Object> body = response.getBody();

@@ -7,7 +7,6 @@ import org.springframework.transaction.annotation.Transactional;
 import com.moyora.clubschedule.mapper.UserMapper;
 import com.moyora.clubschedule.util.KakaoTokenUtil;
 import com.moyora.clubschedule.vo.UserCreateVo;
-import com.moyora.clubschedule.vo.UserVo;
 
 @Service
 public class MemberService {

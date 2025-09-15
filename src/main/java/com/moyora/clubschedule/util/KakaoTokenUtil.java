@@ -4,6 +4,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.vo.UserCreateVo;
 import com.moyora.clubschedule.vo.UserVo;
 
@@ -84,14 +85,17 @@ public class KakaoTokenUtil {
 	}
 
 	// Authentication(인증) 객체 반환 - Spring Security 연동용
-	public Authentication getAuthentication(Long userId) {
-		// 스프링 시큐리티의 기본 UserDetails 객체 활용 (username = userId)
-		User user = new User(String.valueOf(userId), // username
-				"", // password 없음 (소셜로그인)
-				Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")));
-		// password와 principal은 null/""로 두고, 권한은 필요에 따라 조정
-		return new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
-	}
+	public Authentication getAuthentication(Long kakaoApiId) {
+        // userKey를 사용하여 CustomUserDetails 객체를 생성
+        CustomUserDetails userDetails = new CustomUserDetails(kakaoApiId);
+
+        // principal로 CustomUserDetails 객체를 사용
+        return new UsernamePasswordAuthenticationToken(
+            userDetails, 
+            null, // credential
+            userDetails.getAuthorities() // 권한
+        );
+    }
 
 	//accessToken을 검증하고 id 정보를 가져온다.
 	public Long validateAndGetUserId(String accessToken) {
@@ -103,7 +107,7 @@ public class KakaoTokenUtil {
 		try {
 			ResponseEntity<Map> response = restTemplate.exchange("https://kapi.kakao.com/v1/user/access_token_info",HttpMethod.GET, entity, Map.class);
 			if (response.getStatusCode().is2xxSuccessful()) {
-				// 유효하면 user_id 반환
+				// 유효하면 kakao_api_에서 id 반환
 				Map<String, Object> body = response.getBody();
 				Number id = (Number) body.get("id");
 				return id != null ? id.longValue() : null;

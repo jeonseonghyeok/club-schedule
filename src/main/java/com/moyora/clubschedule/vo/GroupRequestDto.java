@@ -10,9 +10,6 @@ import lombok.Setter;
 @Setter
 public class GroupRequestDto {
 
-    @NotNull(message = "요청자(userKey)는 필수입니다.")
-    private Long userKey;
-
     @NotBlank(message = "모임 이름은 필수입니다.")
     @Size(max = 100, message = "모임 이름은 최대 100자까지 입력 가능합니다.")
     private String groupName;

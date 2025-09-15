@@ -7,10 +7,18 @@
         SELECT * FROM `user`
         WHERE kakao_api_id = #{kakaoApiId}
     </select>
+    
+    <select id="findUserKeyByKakaoApiId" parameterType="Long" resultType="Long">
+        SELECT
+            user_key
+        FROM
+            user
+        WHERE
+            kakao_api_id = #{kakaoApiId}
+    </select>
 
     <insert id="insertKakaoUserInfo" parameterType="com.moyora.clubschedule.vo.UserCreateVo">
         INSERT INTO `user` (kakao_api_id, nickname,referrer_url)
         VALUES (#{kakaoApiId}, #{nickname}, #{referrerUrl})
     </insert>
-
 </mapper>

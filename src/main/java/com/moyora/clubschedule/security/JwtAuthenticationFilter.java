@@ -9,14 +9,17 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.moyora.clubschedule.service.UserService;
 import com.moyora.clubschedule.util.KakaoTokenUtil;
 
 import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 	private final KakaoTokenUtil kakaoTokenUtil;
+    private final UserService userService; // UserService 의존성 주입
 
-    public JwtAuthenticationFilter(KakaoTokenUtil kakaoTokenUtil) {
+    public JwtAuthenticationFilter(KakaoTokenUtil kakaoTokenUtil, UserService userService) {
         this.kakaoTokenUtil = kakaoTokenUtil;
+        this.userService = userService;
     }
 
 
@@ -39,15 +42,23 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = header.substring(7);
 
-        // 카카오 API로 유효성 검사(이 과정에서 userId도 받아온다)
-        Long userId = kakaoTokenUtil.validateAndGetUserId(token);
-        if (userId == null) {
+        // 1. 토큰 유효성 검사 및 kakaoApiId 획득
+        Long kakaoApiId = kakaoTokenUtil.validateAndGetUserId(token);
+        if (kakaoApiId == null) {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }
 
-        // 인증 객체 생성 (network 사용 X)
-        Authentication authentication = kakaoTokenUtil.getAuthentication(userId);
+        // 2. kakaoApiId로 userKey 조회
+        Long userKey = userService.findUserKeyByKakaoApiId(kakaoApiId);
+        if (userKey == null) {
+            // DB에 없는 사용자라면 (자동 회원가입 로직이 필요)
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return;
+        }
+
+        // 3. userKey 기반 인증 객체 생성 및 SecurityContext 설정
+        Authentication authentication = kakaoTokenUtil.getAuthentication(userKey);
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         chain.doFilter(request, response);

@@ -1,33 +1,33 @@
 package com.moyora.clubschedule.mapper;
 
-import com.moyora.clubschedule.vo.GroupRequestDto;
-import com.moyora.clubschedule.vo.GroupRequestVo;
+import com.moyora.clubschedule.vo.GroupRequest;
+
+import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
-import java.time.LocalDateTime;
-import java.util.List;
-
 @Mapper
 public interface GroupRequestMapper {
 
-    void insertGroupRequest(GroupRequestDto dto);
+    void insertGroupRequest(GroupRequest dto);
 
-//    void deleteRequestByUserKey(@Param("userKey") Long userKey);
-//
-//    int countPendingByUserKey(@Param("userKey") Long userKey);
-//
-//    int countApprovedGroupManagedByUser(@Param("userKey") Long userKey);
-//
-//    GroupRequestVo selectByUserKey(@Param("userKey") Long userKey);
-//
-//    List<GroupRequestVo> selectPendingRequests();
-//
-//    void updateStatus(
-//        @Param("requestId") Long requestId,
-//        @Param("status") String status,
-//        @Param("rejectReason") String rejectReason,
-//        @Param("approvedAt") LocalDateTime approvedAt
-//    );
+    int countPendingByUserKey(@Param("userKey") Long userKey);
+
+	/* 그룹 신청 전체조회(사용자용) */ 
+    List<GroupRequest> selectByUserKey(@Param("userKey") Long userKey);
+    
+	/* 그룹 신청 전체조회(관리자용) */
+    List<GroupRequest> select();
+
+    /* 그룹 신청 승인 (상태 변경) */
+    int updateStatusToAccepted(@Param("requestId") Long requestId, @Param("userKey") Long userKey);
+    
+	/* 그룹 신청 취소 (상태 변경) */
+    int updateStatusToCancelled(@Param("requestId") Long requestId, @Param("userKey") Long userKey);
+
+    
+	/* 그룹 신청 거부 (상태 및 거부 사유 기록) */
+    int updateStatusToRejected(@Param("requestId") Long requestId, @Param("rejectReason") String rejectReason, @Param("userKey") Long userKey);
+ 
 }

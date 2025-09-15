@@ -3,84 +3,62 @@
 
 <mapper namespace="com.moyora.clubschedule.mapper.GroupRequestMapper">
 
-    <!-- 1. 그룹 신청 등록 -->
-	<insert id="insertGroupRequest" parameterType="com.moyora.clubschedule.vo.GroupRequestDto">
+    <!-- 그룹 신청 등록 -->
+	<insert id="insertGroupRequest" parameterType="com.moyora.clubschedule.vo.GroupRequest"
+			useGeneratedKeys="true" keyProperty="requestId">
 	    INSERT INTO group_request (
 	        user_key,
 	        group_name,
-	        description,
-	        created_at
-	    )
+	        description
+	        )
 	    VALUES (
 	        #{userKey},
 	        #{groupName},
-	        #{description},
-	        NOW()
-	    )
+	        #{description}
+	    	)
 	</insert>
-<!-- 
-    2. 특정 유저의 신청 삭제
-    <delete id="deleteRequestByUserKey" parameterType="long">
-        DELETE FROM group_request
-        WHERE user_key = #{userKey}
-    </delete>
 
-    3. 대기중(PENDING) 상태 카운트
-    <select id="countPendingByUserKey" parameterType="long" resultType="int">
-        SELECT COUNT(*)
-        FROM group_request
-        WHERE user_key = #{userKey}
-          AND status = 'PENDING'
+	<!-- 대기중(PENDING) 상태 카운트 -->
+	<select id="countPendingByUserKey" parameterType="long"
+		resultType="int">
+		SELECT COUNT(*)
+		FROM group_request
+		WHERE user_key = #{userKey}
+		AND status = 'PENDING'
+	</select>
+
+	<!-- 그룹 신청 전체조회 -->
+    <select id="selectByUserKey" parameterType="long" resultType="com.moyora.clubschedule.vo.GroupRequest">
+	    SELECT
+	        request_id,
+	        user_key,
+	        group_name,
+	        description,
+	        requested_at,
+	        status,
+	        reject_reason,
+	        updated_by_user_key,
+	        status_updated_at
+	    FROM group_request
+	    WHERE user_key = #{userKey}
     </select>
-
-    4. 승인 상태이고 해당 유저가 관리자인 그룹 수
-    <select id="countApprovedGroupManagedByUser" parameterType="long" resultType="int">
-        SELECT COUNT(*)
-        FROM group_request gr
-        JOIN group_info gi ON gr.group_id = gi.group_id
-        WHERE gr.user_key = #{userKey}
-          AND gr.status = 'APPROVED'
-          AND gi.manager_user_key = #{userKey}
-    </select>
-
-    5. 유저의 신청 단건 조회
-    <select id="selectByUserKey" parameterType="long" resultType="com.example.vo.GroupRequestVo">
-        SELECT
-            request_id,
-            user_key,
-            group_id,
-            status,
-            request_reason,
-            reject_reason,
-            approved_at,
-            created_at
-        FROM group_request
-        WHERE user_key = #{userKey}
-    </select>
-
-    6. 모든 대기중 신청 목록
-    <select id="selectPendingRequests" resultType="com.example.vo.GroupRequestVo">
-        SELECT
-            request_id,
-            user_key,
-            group_id,
-            status,
-            request_reason,
-            reject_reason,
-            approved_at,
-            created_at
-        FROM group_request
-        WHERE status = 'PENDING'
-        ORDER BY created_at ASC
-    </select>
-
-    7. 신청 상태 업데이트
-    <update id="updateStatus">
+    
+    <!-- 그룹 신청 취소 (상태 변경) -->
+	<update id="updateStatusToCancelled">
+		SET @user_key_for_update = #{userKey};
+		UPDATE group_request
+		SET status = 'CANCELLED'
+		WHERE request_id = #{requestId}
+		AND user_key = #{userKey};
+	</update>
+	
+	<!-- 그룹 신청 거부 (상태 변경) -->
+    <update id="updateStatusToRejected">
+    	SET @user_key_for_update = #{userKey};
         UPDATE group_request
-        SET status = #{status},
-            reject_reason = #{rejectReason},
-            approved_at = #{approvedAt}
-        WHERE request_id = #{requestId}
+        SET status = 'REJECTED',
+            reject_reason = #{rejectReason}
+        WHERE request_id = #{requestId};
     </update>
- -->
+    
 </mapper>

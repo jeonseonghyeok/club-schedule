@@ -60,10 +60,10 @@ public class GroupRequestController {
         return ResponseEntity.ok(groupRequestList);
     }
     
-    // 사용자에 의한 신청 취소
-    @DeleteMapping("/{requestId}")
+    // 사용자에 의한 신청 취소 (상태 변경 명시)
+    @PatchMapping("/{requestId}/cancel")
     public ResponseEntity<?> cancelRequest(
-            @PathVariable("requestId") Long requestId,
+            @PathVariable Long requestId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         
         Long userKey = userDetails.getUserKey();
@@ -78,8 +78,10 @@ public class GroupRequestController {
     }
     
     // 관리자에 의한 신청 거부
-    @PostMapping("/reject")
-    public ResponseEntity<?> rejectRequest(@RequestBody GroupRequestRejectDto dto,
+    @PatchMapping("/{requestId}/reject")
+    public ResponseEntity<?> rejectRequest(
+    		@PathVariable Long requestId,
+    		@RequestBody GroupRequestRejectDto dto,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         // 서비스 메서드에 DTO의 ID와 사유를 전달
     	

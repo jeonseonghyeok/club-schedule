@@ -87,7 +87,7 @@ public class GroupRequestController {
     	
     	Long userKey = userDetails.getUserKey();
     	
-        boolean isRejected = groupRequestService.rejectGroupRequest(dto.getRequestId(), dto.getRejectReason(),userKey);
+        boolean isRejected = groupRequestService.rejectGroupRequest(dto.getRequestId(), userKey, dto.getRejectReason());
         
         if (isRejected) {
             return ResponseEntity.ok().build(); // 성공 시 200 OK

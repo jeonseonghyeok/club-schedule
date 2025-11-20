@@ -28,6 +28,6 @@ public interface GroupRequestMapper {
 
     
 	/* 그룹 신청 거부 (상태 및 거부 사유 기록) */
-    int updateStatusToRejected(@Param("requestId") Long requestId, @Param("rejectReason") String rejectReason, @Param("userKey") Long userKey);
+    int updateStatusToRejected(@Param("requestId") Long requestId, @Param("userKey") Long userKey, @Param("rejectReason") String rejectReason);
  
 }

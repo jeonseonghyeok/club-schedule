@@ -1,5 +1,9 @@
 package com.moyora.clubschedule.controller;
 
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.util.List;
 import java.util.Map;
 
@@ -33,7 +37,7 @@ public class LoginController {
         // 1. Referer(직전 페이지), Host, Path 정보 획득
         String referer = request.getHeader("Referer"); // ex. http://localhost:3000/sign/login-callback
 
-        // 2. whitelist와 일치 여부 판별
+        // 2. whitelist와 일치 여부 판별(경로만 등록하여 판별)
         List<String> redirectWhitelist = kakaoTokenUtil.getRedirectWhitelist();
 
         // 완전 일치(equals) 검증: 화이트리스트 값과 Referer 비교
@@ -41,14 +45,27 @@ public class LoginController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body("허용되지 않은 redirect_uri 접근입니다.");
         }
+        //파라미터만 제거된 URL을 refererBase에 담음
+        // ex: http://localhost:3000/sign/login-callback
+        String refererBase = referer.split("\\?")[0];
+        
+        // URL 객체를 사용하여 포트 번호와 쿼리 파라미터를 모두 제거하고 호스트+경로만 추출
+        try {
+        	URI uri = new URI(referer);
+            URL url = uri.toURL();
 
-        String refererBase = referer.split("\\?")[0];  // ? 앞까지만 사용
-
-        if (!redirectWhitelist.contains(refererBase)) {
+        if (!redirectWhitelist.contains(url.getPath())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                 .body("허용되지 않은 redirect_uri 접근입니다.");
         }
         
+        } catch (URISyntaxException e) {
+            // URL 인코딩 등 구문 오류 처리
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("redirect_uri 구문 오류입니다.");
+        } catch (MalformedURLException e) {
+            // 프로토콜 등 URL 형식 오류 처리
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("redirect_uri 형식 오류입니다.");
+        }
         // 3. AccessToken 발급 요청
         Map<String, Object> kakaoToken;
         try {

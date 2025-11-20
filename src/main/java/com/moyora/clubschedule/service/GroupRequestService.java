@@ -56,9 +56,9 @@ public class GroupRequestService {
      * @param rejectReason 거부 사유
      * @return 성공 시 true, 실패 시 false
      */
-    public boolean rejectGroupRequest(Long requestId, String rejectReason, Long userKey) {
+    public boolean rejectGroupRequest(Long requestId, Long userKey, String rejectReason) {
         // 매퍼 호출로 상태를 'REJECTED'로, 거부 사유 기록
-        int updatedRows = groupRequestMapper.updateStatusToRejected(requestId, rejectReason, userKey);
+        int updatedRows = groupRequestMapper.updateStatusToRejected(requestId, userKey, rejectReason);
         
         return updatedRows > 0;
     }

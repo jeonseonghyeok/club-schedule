@@ -52,7 +52,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 2. kakaoApiId로 userKey 조회
         Long userKey = userService.findUserKeyByKakaoApiId(kakaoApiId);
         if (userKey == null) {
-            // DB에 없는 사용자라면 (자동 회원가입 로직이 필요)
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             return;
         }

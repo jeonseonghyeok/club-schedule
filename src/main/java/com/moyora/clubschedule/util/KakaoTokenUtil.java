@@ -17,7 +17,17 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import com.nimbusds.jose.jwk.source.JWKSource;
+import com.nimbusds.jose.jwk.source.RemoteJWKSet;
+import com.nimbusds.jose.proc.JWSVerificationKeySelector;
+import com.nimbusds.jose.proc.SecurityContext;
+import com.nimbusds.jose.JWSAlgorithm;
+import com.nimbusds.jwt.proc.DefaultJWTProcessor;
 
+import jakarta.annotation.PostConstruct;
+
+import com.nimbusds.jwt.JWTClaimsSet;
+import java.net.URL;
 import java.util.*;
 
 @Component
@@ -34,6 +44,20 @@ public class KakaoTokenUtil {
     
     @Value("${kakao.client.secret.key}")
     private String clientSecretKey;
+
+    private DefaultJWTProcessor<SecurityContext> jwtProcessor;
+
+    // 서버 시작 시 한 번만 실행하여 공개키 캐시 구성
+    @PostConstruct
+    public void init() throws Exception {
+        URL jwkSetURL = new URL("https://kauth.kakao.com/.well-known/jwks.json");
+        JWKSource<SecurityContext> keySource = new RemoteJWKSet<>(jwkSetURL);
+        JWSVerificationKeySelector<SecurityContext> keySelector = 
+            new JWSVerificationKeySelector<>(JWSAlgorithm.RS256, keySource);
+        
+        this.jwtProcessor = new DefaultJWTProcessor<>();
+        this.jwtProcessor.setJWSKeySelector(keySelector);
+    }
     
 	public Map<String, Object> getToken(String code,String redirectUri) {
 		RestTemplate restTemplate = new RestTemplate();
@@ -98,25 +122,15 @@ public class KakaoTokenUtil {
     }
 
 	//accessToken을 검증하고 id 정보를 가져온다.
-	public Long validateAndGetUserId(String accessToken) {
-		RestTemplate restTemplate = new RestTemplate();
-		HttpHeaders headers = new HttpHeaders();
-		headers.set("Authorization", "Bearer " + accessToken);
-		HttpEntity<String> entity = new HttpEntity<>(headers);
-
+	public Long validateAndGetUserId(String idToken) {
 		try {
-			ResponseEntity<Map> response = restTemplate.exchange("https://kapi.kakao.com/v1/user/access_token_info",HttpMethod.GET, entity, Map.class);
-			if (response.getStatusCode().is2xxSuccessful()) {
-				// 유효하면 kakao_api_에서 id 반환
-				Map<String, Object> body = response.getBody();
-				Number id = (Number) body.get("id");
-				return id != null ? id.longValue() : null;
-			}
-		} catch (Exception e) {
-			// 401 등 발생시 null 반환
-			return null;
-		}
-		return null;
+            // 카카오 서버 통신 없이 메모리상의 공개키로 서명 검증 및 페이로드 추출
+            JWTClaimsSet claimsSet = jwtProcessor.process(idToken, null);
+            return Long.parseLong(claimsSet.getSubject());
+        } catch (Exception e) {
+            // 서명 불일치, 만료 등 검증 실패 시
+            return null;
+        }
 	}
 	
 	public UserCreateVo validateAndGetUserInfo(String accessToken, String referern) {

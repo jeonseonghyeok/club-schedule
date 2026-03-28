@@ -30,4 +30,7 @@ public interface GroupRequestMapper {
 	/* 그룹 신청 거부 (상태 및 거부 사유 기록) */
     int updateStatusToRejected(@Param("requestId") Long requestId, @Param("userKey") Long userKey, @Param("rejectReason") String rejectReason);
  
+    // 요청자의 user_key 조회
+    Long selectRequesterUserKey(@Param("requestId") Long requestId);
+ 
 }

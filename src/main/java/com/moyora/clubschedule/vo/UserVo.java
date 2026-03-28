@@ -10,4 +10,5 @@ public class UserVo {
     private String nickname;
     private Date createdAt;
     private String referrerUrl;
+    private String systemRole; // DB의 system_role 컬럼 매핑 (USER, ADMIN)
 }

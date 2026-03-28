@@ -111,7 +111,7 @@ public class KakaoTokenUtil {
 	// Authentication(인증) 객체 반환 - Spring Security 연동용
 	public Authentication getAuthentication(Long kakaoApiId) {
         // userKey를 사용하여 CustomUserDetails 객체를 생성
-        CustomUserDetails userDetails = new CustomUserDetails(kakaoApiId);
+        CustomUserDetails userDetails = new CustomUserDetails(kakaoApiId, List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER")));
 
         // principal로 CustomUserDetails 객체를 사용
         return new UsernamePasswordAuthenticationToken(

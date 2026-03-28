@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>그룹 가입 요청 관리</title>
+    <th:block th:replace="fragments :: toastAndCsrf"></th:block>
+    <script>
+        async function approve(requestId) {
+            const resp = await fetch('/groups/joins/' + requestId + '/approve', {method: 'PATCH', headers: addCsrf({})});
+            await handleResponse(resp, '승인되었습니다.');
+        }
+        async function reject(requestId) {
+            const reason = prompt('거부 사유를 입력하세요');
+            if (reason === null) return;
+            const resp = await fetch('/groups/joins/' + requestId + '/reject', {
+                method: 'PATCH',
+                headers: addCsrf({'Content-Type':'application/json'}),
+                body: JSON.stringify({rejectReason: reason})
+            });
+            await handleResponse(resp, '거부되었습니다.');
+        }
+    </script>
+</head>
+<body>
+<h1>그룹 가입 요청 관리</h1>
+<table border="1">
+    <thead>
+        <tr><th>Request ID</th><th>Group ID</th><th>User Key</th><th>Requested At</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+    <tr th:each="r : ${pendingJoins}">
+        <td th:text="${r.requestId}"></td>
+        <td th:text="${r.groupId}"></td>
+        <td th:text="${r.userKey}"></td>
+        <td th:text="${r.requestedAt}"></td>
+        <td>
+            <button type="button" th:onclick="|approve(${r.requestId})|">승인</button>
+            <button type="button" th:onclick="|reject(${r.requestId})|">거부</button>
+        </td>
+    </tr>
+    </tbody>
+</table>
+<a href="/admin">관리자 홈으로</a>
+</body>
+</html>

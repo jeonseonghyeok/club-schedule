@@ -1,12 +1,30 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>테스트 기본화면</title>
+    <title>메인 페이지</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    
 </head>
 <body>
-    
+    <h1>메인 페이지</h1>
+
+    <div th:if="${userKey != null}">
+        <p>로그인된 사용자: <span th:text="${userKey}"></span></p>
+        <p>권한: <span th:text="${roles}"></span></p>
+
+        <!-- 관리자 버튼: 서버에서 계산한 isAdmin 값으로 표시 -->
+        <div th:if="${isAdmin}">
+            <form action="/admin" method="get">
+                <button type="submit">관리자 메뉴로 이동</button>
+            </form>
+        </div>
+
+    </div>
+
+    <div th:if="${userKey == null}">
+        <p>로그인되어 있지 않습니다. 카카오 로그인 버튼을 구현하세요.</p>
+        <a href="/get_code">카카오 로그인</a>
+    </div>
+
 </body>
 </html>

@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.moyora.clubschedule.mapper.GroupJoinRequestMapper">
+
+    <insert id="insert" parameterType="com.moyora.clubschedule.vo.GroupJoinRequestVo" useGeneratedKeys="true" keyProperty="requestId">
+        INSERT INTO group_join_request (
+            group_id, user_key, status, requested_at
+        ) VALUES (
+            #{groupId}, #{userKey}, 'PENDING', NOW()
+        )
+    </insert>
+
+    <select id="selectByUserKey" parameterType="long" resultType="com.moyora.clubschedule.vo.GroupJoinRequestVo">
+        SELECT request_id, group_id, user_key, status, requested_at, approved_at, reject_reason
+        FROM group_join_request
+        WHERE user_key = #{userKey}
+        ORDER BY requested_at DESC
+    </select>
+
+    <select id="selectPendingByGroupId" parameterType="long" resultType="com.moyora.clubschedule.vo.GroupJoinRequestVo">
+        SELECT request_id, group_id, user_key, status, requested_at, approved_at, reject_reason
+        FROM group_join_request
+        WHERE group_id = #{groupId}
+        AND status = 'PENDING'
+        ORDER BY requested_at ASC
+    </select>
+
+    <select id="selectAllPending" resultType="com.moyora.clubschedule.vo.GroupJoinRequestVo">
+        SELECT request_id, group_id, user_key, status, requested_at, approved_at, reject_reason
+        FROM group_join_request
+        WHERE status = 'PENDING'
+        ORDER BY requested_at ASC
+    </select>
+
+    <select id="selectByRequestId" parameterType="long" resultType="com.moyora.clubschedule.vo.GroupJoinRequestVo">
+        SELECT request_id, group_id, user_key, status, requested_at, approved_at, reject_reason
+        FROM group_join_request
+        WHERE request_id = #{requestId}
+    </select>
+
+    <update id="updateStatusToApproved">
+        UPDATE group_join_request
+        SET status='APPROVED', approved_at = NOW()
+        WHERE request_id = #{requestId}
+    </update>
+
+    <update id="updateStatusToRejected">
+        UPDATE group_join_request
+        SET status='REJECTED', reject_reason = #{rejectReason}
+        WHERE request_id = #{requestId}
+    </update>
+
+    <update id="updateStatusToCancelled">
+        UPDATE group_join_request
+        SET status='CANCELLED'
+        WHERE request_id = #{requestId}
+        AND user_key = #{userKey}
+    </update>
+
+    <select id="selectRequesterUserKey" parameterType="long" resultType="long">
+        SELECT user_key FROM group_join_request WHERE request_id = #{requestId}
+    </select>
+
+    <select id="countPendingByGroupAndUser" resultType="int" parameterType="map">
+        SELECT COUNT(*) FROM group_join_request WHERE group_id = #{groupId} AND user_key = #{userKey} AND status = 'PENDING'
+    </select>
+
+</mapper>

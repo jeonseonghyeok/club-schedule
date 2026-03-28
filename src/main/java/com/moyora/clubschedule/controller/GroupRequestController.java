@@ -14,7 +14,6 @@ import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupRequestService;
 import com.moyora.clubschedule.vo.GroupRequest;
 import com.moyora.clubschedule.vo.GroupRequestDto;
-import com.moyora.clubschedule.vo.GroupRequestRejectDto;
 
 @RestController
 @RequestMapping("/group-requests")
@@ -77,23 +76,5 @@ public class GroupRequestController {
         }
     }
     
-    // 관리자에 의한 신청 거부
-    @PatchMapping("/{requestId}/reject")
-    public ResponseEntity<?> rejectRequest(
-    		@PathVariable Long requestId,
-    		@RequestBody GroupRequestRejectDto dto,
-            @AuthenticationPrincipal CustomUserDetails userDetails) {
-        // 서비스 메서드에 DTO의 ID와 사유를 전달
-    	
-    	Long userKey = userDetails.getUserKey();
-    	
-        boolean isRejected = groupRequestService.rejectGroupRequest(dto.getRequestId(), userKey, dto.getRejectReason());
-        
-        if (isRejected) {
-            return ResponseEntity.ok().build(); // 성공 시 200 OK
-        } else {
-            return ResponseEntity.badRequest().build(); // 실패 시 400 Bad Request
-        }
-    }
-    
+    // 관리자 기능(거부/승인)은 별도 Admin 컨트롤러로 이동함
 }

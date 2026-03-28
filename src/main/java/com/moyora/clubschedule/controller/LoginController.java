@@ -4,10 +4,13 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -50,15 +53,20 @@ public class LoginController {
         String refererBase = referer.split("\\?")[0];
         
         // URL 객체를 사용하여 포트 번호와 쿼리 파라미터를 모두 제거하고 호스트+경로만 추출
+        URI uri = null;
+        URL url = null;
+        String returnPath = "/";
         try {
-        	URI uri = new URI(referer);
-            URL url = uri.toURL();
+            uri = new URI(referer);
+            url = uri.toURL();
 
-        if (!redirectWhitelist.contains(url.getPath())) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body("허용되지 않은 redirect_uri 접근입니다.");
-        }
-        
+            if (!redirectWhitelist.contains(url.getPath())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body("허용되지 않은 redirect_uri 접근입니다.");
+            }
+            // 클라이언트로 전달할 원래 리턴 경로(호스트 제외, 쿼리 포함 가능)
+            returnPath = url.getPath() + (uri.getQuery() != null ? "?" + uri.getQuery() : "");
+
         } catch (URISyntaxException e) {
             // URL 인코딩 등 구문 오류 처리
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("redirect_uri 구문 오류입니다.");
@@ -84,8 +92,33 @@ public class LoginController {
                 .body("회원 자동가입 처리 중 오류: " + e.getMessage());
         }
 
-        // 5. 성공 응답 반환
-        return ResponseEntity.ok(kakaoToken);
+        // 5. 쿠키에 id_token을 HttpOnly로 저장하여 브라우저가 자동으로 인증에 사용하도록 함
+        String idToken = (String) kakaoToken.get("id_token");
+        ResponseEntity.BodyBuilder respBuilder = ResponseEntity.ok();
+        if (idToken != null) {
+            try {
+                String encoded = URLEncoder.encode(idToken, StandardCharsets.UTF_8.toString());
+                // Max-Age를 토큰 만료 시간에 맞추려면 kakaoToken의 expires_in 값을 사용해 설정할 수 있음
+                String cookie = "AUTH_TOKEN=" + encoded + "; Path=/; HttpOnly; SameSite=Lax";
+                Object expiresObj = kakaoToken.get("expires_in");
+                if (expiresObj != null) {
+                    try {
+                        int expiresSec = Integer.parseInt(String.valueOf(expiresObj));
+                        cookie += "; Max-Age=" + expiresSec;
+                    } catch (NumberFormatException nfe) {
+                        // 무시
+                    }
+                }
+                 respBuilder.header(HttpHeaders.SET_COOKIE, cookie);
+             } catch (Exception e) {
+                 // 인코딩 에러가 발생해도 인증 흐름 자체는 실패시키지 않음
+             }
+         }
+
+        // 6. 성공 응답 반환 (클라이언트는 쿠키를 수신하고 이후 리다이렉트 경로로 이동)
+        // 안전하게 리다이렉트할 경로를 클라이언트에 전달
+        kakaoToken.put("return_path", returnPath);
+        return respBuilder.body(kakaoToken);
 
     }
     

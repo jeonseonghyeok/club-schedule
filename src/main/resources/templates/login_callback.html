@@ -122,16 +122,17 @@
                 const response = await fetch('/login/kakao', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
                     body: JSON.stringify({ code: code })
                 });
 
                 if (response.ok) {
                     const result = await response.json();
-                    localStorage.setItem('access_token', result.access_token);
-                    localStorage.setItem('id_token', result.id_token);
+                    // 서버가 HttpOnly 쿠키에 토큰을 설정함. 클라이언트 측 저장은 하지 않음.
                     window.history.replaceState({}, document.title, window.location.pathname);
-                    alert('로그인 성공: 토큰이 저장되었습니다!');
-                    displayTokens();
+                    // 리다이렉트: referer 경로(원래 보냈던 페이지)로 돌아가거나 기본은 메인('/')로 이동
+                    const returnTo = window.location.origin + (result.return_path || '/');
+                    window.location.href = returnTo;
                 } else {
                     const error = await response.json();
                     alert(`로그인 처리 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}`);
@@ -145,18 +146,6 @@
     }
 
     window.onload = async function() {
-        const idToken = localStorage.getItem('id_token');
-        
-        if (!isTokenExpired(idToken)) {
-            console.log("유효한 토큰이 존재합니다. 자동 로그인 생략.");
-            displayTokens();
-            return;
-        }
-        
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('id_token');
-        console.log("만료된 토큰을 삭제했습니다.");
-        
         const code = getQueryParam('code');
         if (code) {
             await handleKakaoCallback();

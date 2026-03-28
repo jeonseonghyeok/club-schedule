@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.moyora.clubschedule.mapper.NotificationMapper">
+
+    <insert id="insertNotification" parameterType="com.moyora.clubschedule.vo.Notification" useGeneratedKeys="true" keyProperty="notificationId">
+        INSERT INTO notification (
+            user_key,
+            source_table,
+            source_id,
+            category,
+            title,
+            content,
+            is_read,
+            created_at
+        ) VALUES (
+            #{userKey},
+            #{sourceTable},
+            #{sourceId},
+            #{category},
+            #{title},
+            #{content},
+            #{isRead},
+            NOW()
+        )
+    </insert>
+
+</mapper>

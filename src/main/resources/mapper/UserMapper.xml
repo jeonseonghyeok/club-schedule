@@ -4,8 +4,15 @@
 <mapper namespace="com.moyora.clubschedule.mapper.UserMapper">
 
     <select id="selectByKakaoApiId" resultType="com.moyora.clubschedule.vo.UserVo">
-        SELECT * FROM `user`
+        SELECT user_key, kakao_api_id, nickname, created_at, referrer_url, system_role
+        FROM `user`
         WHERE kakao_api_id = #{kakaoApiId}
+    </select>
+
+    <select id="selectByUserKey" parameterType="Long" resultType="com.moyora.clubschedule.vo.UserVo">
+        SELECT user_key, kakao_api_id, nickname, created_at, referrer_url, system_role
+        FROM `user`
+        WHERE user_key = #{userKey}
     </select>
     
     <select id="findUserKeyByKakaoApiId" parameterType="Long" resultType="Long">

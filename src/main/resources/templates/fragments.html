@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+</head>
+<body>
+<!-- Toast & CSRF fragment -->
+<div th:fragment="toastAndCsrf">
+    <meta name="_csrf" th:content="${_csrf.token}" />
+    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+    <style>
+        #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: rgba(0,0,0,0.8); color: #fff; text-align: center; border-radius: 4px; padding: 12px; position: fixed; z-index: 1000; left: 50%; top: 20px; font-size: 14px; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; transform: translateY(-10px); }
+        #toast.show { visibility: visible; opacity: 1; transform: translateY(0); }
+        #toast.success { background-color: rgba(40,167,69,0.95); }
+        #toast.error { background-color: rgba(220,53,69,0.95); }
+    </style>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <script>
+        // read CSRF token from meta
+        const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+
+        function showToast(message, type) {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.classList.remove('success','error');
+            if (type === 'success') toast.classList.add('success');
+            if (type === 'error') toast.classList.add('error');
+            toast.classList.add('show');
+            clearTimeout(window._toastTimeout);
+            window._toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 4000);
+        }
+
+        async function handleResponse(resp, successMsg) {
+            if (resp.ok) {
+                showToast(successMsg, 'success');
+                setTimeout(() => location.reload(), 600);
+                return;
+            }
+            let json = null;
+            try { json = await resp.json(); } catch(e) {}
+            const msg = json && json.error ? json.error : (json && json.message ? json.message : '서버 오류');
+            showToast(msg, 'error');
+        }
+
+        // helper to include CSRF header in fetch options
+        function addCsrf(headers) {
+            if (!headers) headers = {};
+            if (csrfHeader && csrfToken) headers[csrfHeader] = csrfToken;
+            return headers;
+        }
+    </script>
+</div>
+</body>
+</html>

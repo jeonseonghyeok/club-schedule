@@ -15,7 +15,7 @@
 	        #{userKey},
 	        #{groupName},
 	        #{description}
-	    	)
+	     	)
 	</insert>
 
 	<!-- 대기중(PENDING) 상태 카운트 -->
@@ -27,7 +27,7 @@
 		AND status = 'PENDING'
 	</select>
 
-	<!-- 그룹 신청 전체조회 -->
+	<!-- 그룹 신청 전체조회 (사용자) -->
     <select id="selectByUserKey" parameterType="long" resultType="com.moyora.clubschedule.vo.GroupRequest">
 	    SELECT
 	        request_id,
@@ -38,27 +38,60 @@
 	        status,
 	        reject_reason,
 	        updated_by_user_key,
-	        status_updated_at
+			status_updated_at
 	    FROM group_request
 	    WHERE user_key = #{userKey}
     </select>
     
-    <!-- 그룹 신청 취소 (상태 변경) -->
-	<update id="updateStatusToCancelled">
-		SET @user_key_for_update = #{userKey};
+	<!-- 그룹 신청 전체조회(관리자용) -->
+	<select id="select" resultType="com.moyora.clubschedule.vo.GroupRequest">
+		SELECT
+			request_id,
+			user_key,
+			group_name,
+			description,
+			requested_at,
+			status,
+			reject_reason,
+			updated_by_user_key,
+			status_updated_at
+		FROM group_request
+		WHERE status = 'PENDING'
+		ORDER BY requested_at ASC
+	</select>
+
+	<!-- 그룹 신청 승인 (상태 변경) -->
+	<update id="updateStatusToAccepted">
 		UPDATE group_request
-		SET status = 'CANCELLED'
+		SET status = 'APPROVED',
+		    updated_by_user_key = #{userKey},
+		    status_updated_at = NOW()
 		WHERE request_id = #{requestId}
-		AND user_key = #{userKey};
+	</update>
+
+	<!-- 그룹 신청 취소 (상태 변경) -->
+	<update id="updateStatusToCancelled">
+		UPDATE group_request
+		SET status = 'CANCELLED',
+		    updated_by_user_key = #{userKey},
+		    status_updated_at = NOW()
+		WHERE request_id = #{requestId}
+		AND user_key = #{userKey}
 	</update>
 	
 	<!-- 그룹 신청 거부 (상태 변경) -->
     <update id="updateStatusToRejected">
-    	SET @user_key_for_update = #{userKey};
         UPDATE group_request
         SET status = 'REJECTED',
-            reject_reason = #{rejectReason}
-        WHERE request_id = #{requestId};
+            reject_reason = #{rejectReason},
+            updated_by_user_key = #{userKey},
+            status_updated_at = NOW()
+        WHERE request_id = #{requestId}
     </update>
+
+	<!-- 요청자의 user_key 조회 -->
+	<select id="selectRequesterUserKey" parameterType="long" resultType="long">
+		SELECT user_key FROM group_request WHERE request_id = #{requestId}
+	</select>
     
 </mapper>

@@ -9,30 +9,21 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import com.moyora.clubschedule.service.UserService;
 import com.moyora.clubschedule.util.KakaoTokenUtil;
-import com.moyora.clubschedule.vo.UserVo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.ArrayList;
-
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
 	private final KakaoTokenUtil kakaoTokenUtil;
-    private final UserService userService; // UserService 의존성 주입
 
-    public JwtAuthenticationFilter(KakaoTokenUtil kakaoTokenUtil, UserService userService) {
+    public JwtAuthenticationFilter(KakaoTokenUtil kakaoTokenUtil) {
         this.kakaoTokenUtil = kakaoTokenUtil;
-        this.userService = userService;
     }
 
 
@@ -67,9 +58,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             jakarta.servlet.http.Cookie[] cookies = request.getCookies();
             if (cookies != null) {
                 for (jakarta.servlet.http.Cookie c : cookies) {
-                    if ("AUTH_TOKEN".equals(c.getName())) {
-                        String val = java.net.URLDecoder.decode(c.getValue(), java.nio.charset.StandardCharsets.UTF_8);
-                        header = "Bearer " + val;
+                    if ("AUTH_TOKEN".equals(c.getName()) && c.getValue() != null && !c.getValue().isEmpty()) {
+                        // Prefer the raw value provided by Kakao (do not alter token). Only decode if it appears percent-encoded.
+                        String cookieVal = c.getValue();
+                        String tokenCandidate = cookieVal;
+                        if (cookieVal.indexOf('%') >= 0 || cookieVal.indexOf('+') >= 0) {
+                            try {
+                                tokenCandidate = java.net.URLDecoder.decode(cookieVal, StandardCharsets.UTF_8.name());
+                            } catch (IllegalArgumentException | java.io.UnsupportedEncodingException e) {
+                                logger.warn("Failed to decode AUTH_TOKEN cookie; using raw value for uri={}: {}", uri, e.getMessage());
+                                tokenCandidate = cookieVal; // fallback to raw
+                            }
+                        }
+                        header = "Bearer " + tokenCandidate;
                         break;
                     }
                 }
@@ -86,7 +87,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = header.substring(7);
 
         try {
-            // 1. 토큰 유효성 검사 및 kakaoApiId 획득
+            // 1. 토큰 유효성 검사 및 kakaoApiId 획득 (public-key로 서명 검증 포함)
             Long kakaoApiId = kakaoTokenUtil.validateAndGetUserId(token);
             if (kakaoApiId == null) {
                 logger.warn("Token validation failed or user id missing for uri={}", uri);
@@ -94,51 +95,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // 2. kakaoApiId로 사용자 정보 조회
-            UserVo user = userService.getUserByKakaoApiId(kakaoApiId);
-            if (user == null) {
-                logger.warn("No user found for kakaoApiId={} uri={}", kakaoApiId, uri);
-                sendUnauthorized(response, "User not found");
+            // 2. 토큰 클레임 기반으로 Authentication 생성 (DB 조회 없이)
+            Authentication authentication = kakaoTokenUtil.getAuthentication(kakaoApiId);
+            if (authentication == null || !authentication.isAuthenticated()) {
+                logger.warn("Failed to build Authentication from token for kakaoApiId={} uri={}", kakaoApiId, uri);
+                sendUnauthorized(response, "Invalid authentication");
                 return;
             }
 
-            // 3. UserVo의 systemRole 기반으로 권한 설정
-            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-            String role = user.getSystemRole();
-            if (role != null && role.equalsIgnoreCase("ADMIN")) {
-                authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
-            }
-            authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
-
-            // 4. CustomUserDetails와 Authentication 생성
-            CustomUserDetails userDetails = new CustomUserDetails(user.getUserKey(), authorities);
-            Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, null, authorities);
-
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            logger.debug("Authentication set for userKey={} uri={}", user.getUserKey(), uri);
+            logger.debug("Authentication set for kakaoApiId={} uri={}", kakaoApiId, uri);
 
             chain.doFilter(request, response);
         } catch (Exception ex) {
             // kakaoTokenUtil 내부에서 발생한 예외 등 모든 예외를 잡아 401로 응답
             logger.error("Error during JWT authentication for uri={}: {}", uri, ex.getMessage(), ex);
+            SecurityContextHolder.clearContext();
             sendUnauthorized(response, "Authentication error");
         }
-<<<<<<< HEAD
-=======
-
-        // 2. kakaoApiId로 userKey 조회
-        Long userKey = userService.findUserKeyByKakaoApiId(kakaoApiId);
-        if (userKey == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            return;
-        }
-
-        // 3. userKey 기반 인증 객체 생성 및 SecurityContext 설정
-        Authentication authentication = kakaoTokenUtil.getAuthentication(userKey);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
-
-        chain.doFilter(request, response);
->>>>>>> branch 'master' of https://github.com/jeonseonghyeok/club-schedule.git
     }
 
     private static final String[] AUTH_WHITELIST = WhitelistConfig.AUTH_WHITELIST;

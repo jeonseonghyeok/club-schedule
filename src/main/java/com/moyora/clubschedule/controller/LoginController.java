@@ -36,48 +36,56 @@ public class LoginController {
 	public ResponseEntity<?> kakaoCallback(@RequestBody Map<String, String> body, HttpServletRequest request) {
 
         String code = body.get("code");
+        String redirectUriFromBody = body.get("redirectUri");
+        String returnToFromBody = body.get("returnTo");
 
-        // 1. Referer(직전 페이지), Host, Path 정보 획득
-        String referer = request.getHeader("Referer"); // ex. http://localhost:3000/sign/login-callback
+        // 1. Determine the redirect URI to use when exchanging code for token.
+        // Prefer explicit redirectUri provided by client (browser). Fall back to Referer header when not provided.
+        String effectiveRedirect = null;
+        if (redirectUriFromBody != null && !redirectUriFromBody.isBlank()) {
+            effectiveRedirect = redirectUriFromBody;
+        } else {
+            String referer = request.getHeader("Referer");
+            if (referer != null && !referer.isBlank()) {
+                // remove query portion
+                effectiveRedirect = referer.split("\\?")[0];
+            }
+        }
+
+        if (effectiveRedirect == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body("허용되지 않은 redirect_uri 접근입니다.");
+        }
 
         // 2. whitelist와 일치 여부 판별(경로만 등록하여 판별)
         List<String> redirectWhitelist = kakaoTokenUtil.getRedirectWhitelist();
 
-        // 완전 일치(equals) 검증: 화이트리스트 값과 Referer 비교
-        if (referer == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body("허용되지 않은 redirect_uri 접근입니다.");
-        }
-        //파라미터만 제거된 URL을 refererBase에 담음
-        // ex: http://localhost:3000/sign/login-callback
-        String refererBase = referer.split("\\?")[0];
-        
-        // URL 객체를 사용하여 포트 번호와 쿼리 파라미터를 모두 제거하고 호스트+경로만 추출
         URI uri = null;
         URL url = null;
         String returnPath = "/";
         try {
-            uri = new URI(referer);
+            uri = new URI(effectiveRedirect);
             url = uri.toURL();
 
+            // path만 비교
             if (!redirectWhitelist.contains(url.getPath())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body("허용되지 않은 redirect_uri 접근입니다.");
             }
+
             // 클라이언트로 전달할 원래 리턴 경로(호스트 제외, 쿼리 포함 가능)
             returnPath = url.getPath() + (uri.getQuery() != null ? "?" + uri.getQuery() : "");
 
         } catch (URISyntaxException e) {
-            // URL 인코딩 등 구문 오류 처리
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("redirect_uri 구문 오류입니다.");
         } catch (MalformedURLException e) {
-            // 프로토콜 등 URL 형식 오류 처리
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body("redirect_uri 형식 오류입니다.");
         }
+
         // 3. AccessToken 발급 요청
         Map<String, Object> kakaoToken;
         try {
-            kakaoToken = kakaoTokenUtil.getToken(code, refererBase);
+            kakaoToken = kakaoTokenUtil.getToken(code, effectiveRedirect);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
                 .body("카카오 토큰 발급 실패: " + e.getMessage());
@@ -86,18 +94,18 @@ public class LoginController {
         // 4. 회원 자동가입/로그인 처리
         String kakaoAccessToken = (String) kakaoToken.get("access_token");
         try {
-            memberService.autoSignUpByKakaoApi(kakaoAccessToken,refererBase);
+            memberService.autoSignUpByKakaoApi(kakaoAccessToken,effectiveRedirect);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body("회원 자동가입 처리 중 오류: " + e.getMessage());
         }
 
         // 5. 쿠키에 id_token을 HttpOnly로 저장하여 브라우저가 자동으로 인증에 사용하도록 함
-        String idToken = (String) kakaoToken.get("id_token");
         ResponseEntity.BodyBuilder respBuilder = ResponseEntity.ok();
-        if (idToken != null) {
+        Object idTokenObj = kakaoToken.get("id_token");
+        if (idTokenObj != null) {
             try {
-                String encoded = URLEncoder.encode(idToken, StandardCharsets.UTF_8.toString());
+                String encoded = URLEncoder.encode((String) idTokenObj, StandardCharsets.UTF_8.toString());
                 // Max-Age를 토큰 만료 시간에 맞추려면 kakaoToken의 expires_in 값을 사용해 설정할 수 있음
                 String cookie = "AUTH_TOKEN=" + encoded + "; Path=/; HttpOnly; SameSite=Lax";
                 Object expiresObj = kakaoToken.get("expires_in");
@@ -116,8 +124,21 @@ public class LoginController {
          }
 
         // 6. 성공 응답 반환 (클라이언트는 쿠키를 수신하고 이후 리다이렉트 경로로 이동)
-        // 안전하게 리다이렉트할 경로를 클라이언트에 전달
-        kakaoToken.put("return_path", returnPath);
+        // Prefer explicit returnTo from client; fallback to returnPath derived from redirectUri
+        String finalReturn = (returnToFromBody != null && !returnToFromBody.isBlank()) ? returnToFromBody : returnPath;
+        // Safety: if finalReturn points back to the login callback path itself, this would cause
+        // the client to reload the callback page (no code) and re-trigger the OAuth flow -> loop.
+        try {
+            String callbackPath = new URI(effectiveRedirect).getPath();
+            if (finalReturn == null || finalReturn.isBlank() || finalReturn.equals(callbackPath) || finalReturn.equals(effectiveRedirect)) {
+                finalReturn = "/"; // default safe landing
+            }
+        } catch (Exception e) {
+            if (finalReturn == null || finalReturn.isBlank()) finalReturn = "/";
+        }
+        kakaoToken.put("return_path", finalReturn);
+
+        // return the response with cookie (if set) and return_path
         return respBuilder.body(kakaoToken);
 
     }

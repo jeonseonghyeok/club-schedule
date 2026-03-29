@@ -22,8 +22,44 @@
     </div>
 
     <div th:if="${userKey == null}">
-        <p>로그인되어 있지 않습니다. 카카오 로그인 버튼을 구현하세요.</p>
-        <a href="/get_code">카카오 로그인</a>
+        <p id="status">로그인 상태 확인 중...</p>
+        <div id="user-info" style="display:none;">
+            <p>로그인된 사용자: <span id="clientUserKey"></span></p>
+            <p>권한: <span id="clientRoles"></span></p>
+            <div id="adminBtn" style="display:none;">
+                <form action="/admin" method="get">
+                    <button type="submit">관리자 메뉴로 이동</button>
+                </form>
+            </div>
+        </div>
+
+        <script>
+            (async function(){
+                try {
+                    const res = await fetch('/auth/me', { credentials: 'same-origin' });
+                    if (res.ok) {
+                        const info = await res.json();
+                        document.getElementById('status').textContent = '로그인되어 있습니다.';
+                        document.getElementById('user-info').style.display = 'block';
+                        document.getElementById('clientUserKey').textContent = info.userKey || info.kakaoApiId || '알 수 없음';
+                        document.getElementById('clientRoles').textContent = (info.roles || []).join(', ');
+                        if (info.isAdmin) document.getElementById('adminBtn').style.display = 'block';
+                    } else {
+                        // 인증되지 않음 → 기존 리다이렉트 흐름
+                        window.location.href = '/sample/sign/login_callback?returnTo=' + encodeURIComponent('/');
+                    }
+                } catch (e) {
+                    console.error('auth/me 요청 실패', e);
+                    // 네트워크 문제 등은 안전하게 로그인 페이지로 이동
+                    window.location.href = '/sample/sign/login_callback?returnTo=' + encodeURIComponent('/');
+                }
+            })();
+        </script>
+
+        <noscript>
+            <meta http-equiv="refresh" content="0;url=/sample/sign/login_callback?returnTo=/" />
+            <p>If you are not redirected, <a href="/sample/sign/login_callback?returnTo=/">click here</a>.</p>
+        </noscript>
     </div>
 
 </body>

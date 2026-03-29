@@ -92,21 +92,19 @@ public class KakaoTokenUtil {
 	}
 
 	// 토큰의 유효성 검증
-	public boolean validateToken(String token) {
-		RestTemplate restTemplate = new RestTemplate();
-		HttpHeaders headers = new HttpHeaders();
-		headers.set("Authorization", "Bearer " + token);
-
-		HttpEntity<String> entity = new HttpEntity<>(headers);
-
-		try {
-			ResponseEntity<Map> response = restTemplate.exchange("https://kapi.kakao.com/v1/user/access_token_info",
-					HttpMethod.GET, entity, Map.class);
-			return response.getStatusCode().is2xxSuccessful(); // 유효하면 true
-		} catch (HttpClientErrorException.Unauthorized e) {
-			return false; // 만료/무효
-		}
-	}
+	/*
+	 * public boolean validateToken(String token) { RestTemplate restTemplate = new
+	 * RestTemplate(); HttpHeaders headers = new HttpHeaders();
+	 * headers.set("Authorization", "Bearer " + token);
+	 * 
+	 * HttpEntity<String> entity = new HttpEntity<>(headers);
+	 * 
+	 * try { ResponseEntity<Map> response =
+	 * restTemplate.exchange("https://kapi.kakao.com/v1/user/access_token_info",
+	 * HttpMethod.GET, entity, Map.class); return
+	 * response.getStatusCode().is2xxSuccessful(); // 유효하면 true } catch
+	 * (HttpClientErrorException.Unauthorized e) { return false; // 만료/무효 } }
+	 */
 
 	// Authentication(인증) 객체 반환 - Spring Security 연동용
 	public Authentication getAuthentication(Long kakaoApiId) {

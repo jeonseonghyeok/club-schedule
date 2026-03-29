@@ -1,4 +1,4 @@
-package com.moyora.clubschedule.controller;
+package com.moyora.clubschedule.controller.admin;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,13 +24,13 @@ public class AdminViewController {
     @GetMapping("/group-requests")
     public String viewGroupRequests(Model model) {
         model.addAttribute("pendingRequests", groupRequestService.getPendingRequests());
-        return "admin_group_requests";
+        return "admin/admin_group_requests";
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/group-joins")
     public String viewGroupJoins(Model model) {
         model.addAttribute("pendingJoins", groupJoinRequestService.getAllPending());
-        return "admin_group_joins";
+        return "admin/admin_group_joins";
     }
 }

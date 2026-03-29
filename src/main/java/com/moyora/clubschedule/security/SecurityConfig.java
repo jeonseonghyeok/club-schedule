@@ -11,7 +11,6 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 
-import com.moyora.clubschedule.service.UserService;
 import com.moyora.clubschedule.util.KakaoTokenUtil;
 
 import lombok.AllArgsConstructor;
@@ -23,17 +22,19 @@ import lombok.AllArgsConstructor;
 public class SecurityConfig {
 
 	private final KakaoTokenUtil kakaoTokenUtil;
-	private final UserService userService; 
 	
 	@Bean
 	public JwtAuthenticationFilter jwtAuthenticationFilter() {
-		return new JwtAuthenticationFilter(kakaoTokenUtil,userService);
+		return new JwtAuthenticationFilter(kakaoTokenUtil);
 	}
 
 	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		return http
-				.csrf(csrf -> csrf.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse()))
+				.csrf(csrf -> csrf
+						.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+						.ignoringRequestMatchers("/login/**")
+					)
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.formLogin(form -> form.disable())
 				.httpBasic(httpBasic -> httpBasic.disable())

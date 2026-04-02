@@ -1,16 +1,17 @@
 package com.moyora.clubschedule.service;
 
 import com.moyora.clubschedule.mapper.GroupRequestMapper;
-import com.moyora.clubschedule.security.CustomUserDetails;
+import com.moyora.clubschedule.mapper.GroupMapper;
+import com.moyora.clubschedule.mapper.GroupMemberMapper;
 import com.moyora.clubschedule.vo.GroupRequest;
 import com.moyora.clubschedule.vo.GroupRequestDto;
+import com.moyora.clubschedule.vo.GroupVo;
+import com.moyora.clubschedule.vo.GroupMemberVo;
 import com.moyora.clubschedule.vo.Notification;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,8 @@ public class GroupRequestService {
 
     private final GroupRequestMapper groupRequestMapper;
     private final NotificationService notificationService;
+    private final GroupMapper groupMapper;
+    private final GroupMemberMapper groupMemberMapper;
 
     /**
      * 그룹 신청 요청을 처리
@@ -44,15 +47,44 @@ public class GroupRequestService {
     }
 
     /**
-     * 승인 처리
+     * 승인 처리: 그룹 생성, 리더 멤버 추가, 신청 상태 업데이트, 알림 전달
      */
     @Transactional
     public void approveRequest(Long requestId, Long userKey) {
+        // 1) 신청 정보 조회
+        GroupRequest req = groupRequestMapper.selectByRequestId(requestId);
+        if (req == null) throw new RuntimeException("요청을 찾을 수 없습니다.");
+
+        // 1.5) PENDING -> PROCESSING으로 상태 갱신 시도 (동시 승인 방지)
+        int processingUpdated = groupRequestMapper.updateStatusToProcessing(requestId, userKey);
+        if (processingUpdated <= 0) {
+            // 이미 다른 스레드/관리자가 처리했거나 상태가 PENDING이 아님
+            throw new RuntimeException("해당 요청은 이미 처리 중이거나 처리되었습니다.");
+        }
+
+        // 2) 그룹 테이블에 INSERT
+        GroupVo g = new GroupVo();
+        g.setName(req.getGroupName());
+        g.setDescription(req.getDescription());
+        g.setLeaderUserKey(req.getUserKey());
+        g.setCapacity(50); // 기본 정원
+        g.setAutoApprove(false);
+        g.setGroupRequestId(requestId);
+        groupMapper.insert(g);
+
+        // 3) 그룹 멤버 테이블에 리더로 추가
+        GroupMemberVo gm = new GroupMemberVo();
+        gm.setGroupId(g.getGroupId());
+        gm.setUserKey(req.getUserKey());
+        gm.setRole("LEADER");
+        gm.setStatus("ACTIVE");
+        groupMemberMapper.insertGroupMember(gm);
+
+        // 4) 신청 상태 업데이트 -> APPROVED
         groupRequestMapper.updateStatusToAccepted(requestId, userKey);
-        // 알림 생성: 요청자에게 승인 알림
-        // 먼저 요청자의 userKey를 가져올 수 있는 매퍼 메서드가 없으므로, 매퍼에 조회 메서드를 추가하는 것이 더 좋습니다.
-        // 현재는 간단한 방안으로 groupRequest 테이블의 요청자 ID를 매퍼에서 조회하도록 가정합니다.
-        Long requesterUserKey = groupRequestMapper.selectRequesterUserKey(requestId);
+
+        // 5) 알림 생성: 요청자에게 승인 알림
+        Long requesterUserKey = req.getUserKey();
         if (requesterUserKey != null) {
             Notification notification = Notification.builder()
                     .userKey(requesterUserKey)
@@ -112,7 +144,20 @@ public class GroupRequestService {
      */
     public boolean isRequestAvailable(Long userKey) {
         int pendingCount = groupRequestMapper.countPendingByUserKey(userKey);
-        return pendingCount < 2 ;
+        // 사용자당 하나의 대기 신청만 허용
+        if (pendingCount > 0) return false;
+        // 그리고 이미 리더인 경우 신청 불가
+        int leaderCount = groupMapperCountByLeaderUserKey(userKey);
+        if (leaderCount > 0) return false;
+        return true;
+    }
+
+    private int groupMapperCountByLeaderUserKey(Long userKey) {
+        try {
+            return groupMapper == null ? 0 : groupMapper.countByLeaderUserKey(userKey);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     /**

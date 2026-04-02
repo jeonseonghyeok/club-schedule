@@ -6,7 +6,7 @@
     <!-- 그룹 신청 등록 -->
 	<insert id="insertGroupRequest" parameterType="com.moyora.clubschedule.vo.GroupRequest"
 			useGeneratedKeys="true" keyProperty="requestId">
-	    INSERT INTO group_request (
+	    INSERT INTO group_create_request (
 	        user_key,
 	        group_name,
 	        description
@@ -22,7 +22,7 @@
 	<select id="countPendingByUserKey" parameterType="long"
 		resultType="int">
 		SELECT COUNT(*)
-		FROM group_request
+		FROM group_create_request
 		WHERE user_key = #{userKey}
 		AND status = 'PENDING'
 	</select>
@@ -39,7 +39,7 @@
 	        reject_reason,
 	        updated_by_user_key,
 			status_updated_at
-	    FROM group_request
+	    FROM group_create_request
 	    WHERE user_key = #{userKey}
     </select>
     
@@ -55,23 +55,33 @@
 			reject_reason,
 			updated_by_user_key,
 			status_updated_at
-		FROM group_request
+		FROM group_create_request
 		WHERE status = 'PENDING'
 		ORDER BY requested_at ASC
 	</select>
 
 	<!-- 그룹 신청 승인 (상태 변경) -->
 	<update id="updateStatusToAccepted">
-		UPDATE group_request
+		UPDATE group_create_request
 		SET status = 'APPROVED',
 		    updated_by_user_key = #{userKey},
 		    status_updated_at = NOW()
 		WHERE request_id = #{requestId}
 	</update>
 
-	<!-- 그룹 신청 취소 (상태 변경) -->
+	<!-- 새로 추가: 승인 직전 상태를 PROCESSING으로 변경 (동시 승인 방지) -->
+    <update id="updateStatusToProcessing">
+        UPDATE group_create_request
+        SET status = 'PROCESSING',
+            updated_by_user_key = #{userKey},
+            status_updated_at = NOW()
+        WHERE request_id = #{requestId}
+        AND status = 'PENDING'
+    </update>
+
+    <!-- 그룹 신청 취소 (상태 변경) -->
 	<update id="updateStatusToCancelled">
-		UPDATE group_request
+		UPDATE group_create_request
 		SET status = 'CANCELLED',
 		    updated_by_user_key = #{userKey},
 		    status_updated_at = NOW()
@@ -81,7 +91,7 @@
 	
 	<!-- 그룹 신청 거부 (상태 변경) -->
     <update id="updateStatusToRejected">
-        UPDATE group_request
+        UPDATE group_create_request
         SET status = 'REJECTED',
             reject_reason = #{rejectReason},
             updated_by_user_key = #{userKey},
@@ -91,7 +101,23 @@
 
 	<!-- 요청자의 user_key 조회 -->
 	<select id="selectRequesterUserKey" parameterType="long" resultType="long">
-		SELECT user_key FROM group_request WHERE request_id = #{requestId}
+		SELECT user_key FROM group_create_request WHERE request_id = #{requestId}
 	</select>
+
+	<!-- 새로 추가: requestId로 그룹 요청 조회 -->
+    <select id="selectByRequestId" parameterType="long" resultType="com.moyora.clubschedule.vo.GroupRequest">
+        SELECT
+            request_id,
+            user_key,
+            group_name,
+            description,
+            requested_at,
+            status,
+            reject_reason,
+            updated_by_user_key,
+            status_updated_at
+        FROM group_create_request
+        WHERE request_id = #{requestId}
+    </select>
     
 </mapper>

@@ -24,7 +24,7 @@ public class AdminViewController {
     @GetMapping("/group-requests")
     public String viewGroupRequests(Model model) {
         model.addAttribute("pendingRequests", groupRequestService.getPendingRequests());
-        return "admin/admin_group_requests";
+        return "admin/admin_group_create_requests";
     }
 
     @PreAuthorize("hasRole('ADMIN')")

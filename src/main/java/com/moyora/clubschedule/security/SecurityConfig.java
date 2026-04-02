@@ -31,10 +31,11 @@ public class SecurityConfig {
 	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		return http
-				.csrf(csrf -> csrf
-						.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-						.ignoringRequestMatchers("/login/**")
-					)
+//				.csrf(csrf -> csrf
+//						.csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+//						.ignoringRequestMatchers("/login/**")
+//					)
+				.csrf(csrf -> csrf.disable()) //REST API + JWT 환경이므로 비활성화
 				.sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				.formLogin(form -> form.disable())
 				.httpBasic(httpBasic -> httpBasic.disable())

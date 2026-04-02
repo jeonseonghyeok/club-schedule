@@ -7,6 +7,7 @@ import org.springframework.web.client.RestTemplate;
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.vo.UserCreateVo;
 import com.moyora.clubschedule.vo.UserVo;
+import com.moyora.clubschedule.service.UserService;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
@@ -47,6 +48,12 @@ public class KakaoTokenUtil {
 
     private DefaultJWTProcessor<SecurityContext> jwtProcessor;
 
+    private final UserService userService;
+
+    public KakaoTokenUtil(UserService userService) {
+        this.userService = userService;
+    }
+    
     // 서버 시작 시 한 번만 실행하여 공개키 캐시 구성
     @PostConstruct
     public void init() throws Exception {
@@ -108,14 +115,43 @@ public class KakaoTokenUtil {
 
 	// Authentication(인증) 객체 반환 - Spring Security 연동용
 	public Authentication getAuthentication(Long kakaoApiId) {
-        // userKey를 사용하여 CustomUserDetails 객체를 생성
-        CustomUserDetails userDetails = new CustomUserDetails(kakaoApiId, List.of(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER")));
+        // Look up internal userKey from DB using kakaoApiId
+        Long userKey = null;
+        try {
+            userKey = userService.findUserKeyByKakaoApiId(kakaoApiId);
+        } catch (Exception e) {
+            // If lookup fails, log and return null (no authentication)
+            return null;
+        }
+        if (userKey == null) {
+            // No linked user account found -> authentication should fail (user not signed up yet)
+            return null;
+        }
 
-        // principal로 CustomUserDetails 객체를 사용
+        // Load user details from DB to get system role
+        com.moyora.clubschedule.vo.UserVo userVo = null;
+        try {
+            userVo = userService.getUserByUserKey(userKey);
+        } catch (Exception e) {
+            return null;
+        }
+        if (userVo == null) return null;
+
+        // determine roles
+        java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> auths = new java.util.ArrayList<>();
+        if ("ADMIN".equalsIgnoreCase(userVo.getSystemRole())) {
+            auths.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"));
+        }
+        // default role
+        auths.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"));
+
+        // Create CustomUserDetails with internal userKey and authorities
+        CustomUserDetails userDetails = new CustomUserDetails(userKey, auths);
+
         return new UsernamePasswordAuthenticationToken(
-            userDetails, 
-            null, // credential
-            userDetails.getAuthorities() // 권한
+            userDetails,
+            null,
+            userDetails.getAuthorities()
         );
     }
 

@@ -18,15 +18,6 @@ public class SamplePageController {
     }
     
     /**
-     * 자동로그인 페이지(회원가입 포함)
-     * @return 뷰 이름 "signUp"
-     */
-    @GetMapping("/sign/login_callback")
-    public String signAuto(Model model) {
-        return "login_callback";
-    }
-    
-    /**
      * 메인 페이지
      * @return 뷰 이름 "main"
      */

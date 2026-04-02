@@ -2,15 +2,35 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 
 <mapper namespace="com.moyora.clubschedule.mapper.GroupMapper">
-    <select id="findById" resultType="GroupVo">
+        <select id="findById" resultType="GroupVo">
         SELECT * FROM `group` WHERE group_id = #{groupId}
     </select>
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="groupId">
         INSERT INTO `group` (
-            name, description, leader_user_key, capacity, current_member_count, auto_approve
+            name, description, leader_user_key, capacity, current_member_count, auto_approve, group_create_request_id
         ) VALUES (
-            #{name}, #{description}, #{leaderUserKey}, #{capacity}, #{currentMemberCount}, #{autoApprove}
+            #{name}, #{description}, #{leaderUserKey}, #{capacity}, #{currentMemberCount}, #{autoApprove}, #{groupRequestId}
         )
     </insert>
+
+    <!-- 새로 추가: 그룹 업데이트 -->
+    <update id="update" parameterType="com.moyora.clubschedule.vo.GroupVo">
+        UPDATE `group`
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="capacity != null">capacity = #{capacity},</if>
+            <if test="autoApprove != null">auto_approve = #{autoApprove},</if>
+            <if test="schedulePolicy != null">schedule_policy = #{schedulePolicy},</if>
+            <if test="defSubCanSchedule != null">def_sub_can_schedule = #{defSubCanSchedule},</if>
+            <if test="defSubCanMember != null">def_sub_can_member = #{defSubCanMember},</if>
+            <if test="defSubCanNickname != null">def_sub_can_nickname = #{defSubCanNickname},</if>
+        </set>
+        WHERE group_id = #{groupId}
+    </update>
+
+    <select id="countByLeaderUserKey" resultType="int" parameterType="long">
+        SELECT COUNT(*) FROM `group` WHERE leader_user_key = #{leaderUserKey}
+    </select>
 </mapper>

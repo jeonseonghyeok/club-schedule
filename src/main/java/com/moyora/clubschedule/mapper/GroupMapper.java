@@ -8,4 +8,6 @@ import com.moyora.clubschedule.vo.GroupVo;
 public interface GroupMapper {
     GroupVo findById(Long groupId);
     void insert(GroupVo group);
+    int update(GroupVo group);
+    int countByLeaderUserKey(Long leaderUserKey);
 }

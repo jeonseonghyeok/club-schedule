@@ -23,6 +23,9 @@ public interface GroupRequestMapper {
     /* 그룹 신청 승인 (상태 변경) */
     int updateStatusToAccepted(@Param("requestId") Long requestId, @Param("userKey") Long userKey);
     
+    // 새로 추가: 승인 직전 락(상태를 PROCESSING으로 변경)
+    int updateStatusToProcessing(@Param("requestId") Long requestId, @Param("userKey") Long userKey);
+    
 	/* 그룹 신청 취소 (상태 변경) */
     int updateStatusToCancelled(@Param("requestId") Long requestId, @Param("userKey") Long userKey);
 
@@ -32,5 +35,8 @@ public interface GroupRequestMapper {
  
     // 요청자의 user_key 조회
     Long selectRequesterUserKey(@Param("requestId") Long requestId);
+
+    // 새로 추가: requestId로 그룹 요청 조회
+    GroupRequest selectByRequestId(@Param("requestId") Long requestId);
  
 }

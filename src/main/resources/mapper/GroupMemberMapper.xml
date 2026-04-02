@@ -20,4 +20,29 @@
         SELECT COUNT(*) FROM group_member WHERE group_id = #{groupId} AND user_key = #{userKey} AND status = 'ACTIVE'
     </select>
 
+    <!-- 새로 추가: 사용자가 속한 그룹 목록을 GroupVo로 반환 (조인하여 current member count 포함) -->
+    <select id="selectGroupsByUser" resultType="com.moyora.clubschedule.vo.GroupVo" parameterType="long">
+        SELECT g.group_id as groupId,
+               g.name,
+               g.description,
+               g.leader_user_key as leaderUserKey,
+               g.capacity,
+               (SELECT COUNT(*) FROM group_member gm WHERE gm.group_id = g.group_id AND gm.status = 'ACTIVE') as currentMemberCount,
+               g.auto_approve as autoApprove,
+               g.schedule_policy as schedulePolicy,
+               g.def_sub_can_schedule as defSubCanSchedule,
+               g.def_sub_can_member as defSubCanMember,
+               g.def_sub_can_nickname as defSubCanNickname,
+               g.created_at as createdAt,
+               g.updated_at as updatedAt
+        FROM `group` g
+        JOIN group_member m ON m.group_id = g.group_id
+        WHERE m.user_key = #{userKey} AND m.status = 'ACTIVE'
+    </select>
+
+    <!-- 새로 추가: 특정 그룹에서 사용자의 역할 조회 -->
+    <select id="selectRoleByGroupAndUser" resultType="string" parameterType="map">
+        SELECT role FROM group_member WHERE group_id = #{groupId} AND user_key = #{userKey} AND status = 'ACTIVE' LIMIT 1
+    </select>
+
 </mapper>

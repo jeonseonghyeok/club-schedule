@@ -30,12 +30,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
-        // 화이트리스트 경로는 인증 검사/401 방지: 그대로 chain.doFilter() 호출
+        // 이전: 화이트리스트 경로는 인증 검사/401 방지: 그대로 chain.doFilter() 호출
+        // 변경: 화이트리스트 경로더라도 가능하면 토큰 기반 인증을 시도하되, 토큰이 없으면 인증 없이 통과시킨다.
         String uri = request.getRequestURI();
-        if (isWhiteList(uri)) {
-            chain.doFilter(request, response);
-            return;
-        }
+        boolean isWhite = isWhiteList(uri);
 
         // CORS 프리플라이트는 인증 필요 없음
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
@@ -78,7 +76,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (header == null || !header.startsWith("Bearer ")) {
-            // JWT 없으면 인증 실패(401)
+            // JWT 없으면 인증 실패(401) 또는 화이트리스트일 경우 인증없이 통과
+            if (isWhite) {
+                // 허용 경로이므로 인증 없이 계속 진행
+                chain.doFilter(request, response);
+                return;
+            }
             logger.debug("Missing or invalid Authorization header for uri={}", uri);
             sendUnauthorized(response, "Missing or invalid Authorization header");
             return;
@@ -91,6 +94,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Long kakaoApiId = kakaoTokenUtil.validateAndGetUserId(token);
             if (kakaoApiId == null) {
                 logger.warn("Token validation failed or user id missing for uri={}", uri);
+                // 토큰이 유효하지 않으면, 화이트리스트일 경우에는 인증없이 통과, 아니면 401
+                if (isWhite) {
+                    chain.doFilter(request, response);
+                    return;
+                }
                 sendUnauthorized(response, "Invalid or expired token");
                 return;
             }
@@ -99,6 +107,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             Authentication authentication = kakaoTokenUtil.getAuthentication(kakaoApiId);
             if (authentication == null || !authentication.isAuthenticated()) {
                 logger.warn("Failed to build Authentication from token for kakaoApiId={} uri={}", kakaoApiId, uri);
+                if (isWhite) {
+                    chain.doFilter(request, response);
+                    return;
+                }
                 sendUnauthorized(response, "Invalid authentication");
                 return;
             }
@@ -111,7 +123,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // kakaoTokenUtil 내부에서 발생한 예외 등 모든 예외를 잡아 401로 응답
             logger.error("Error during JWT authentication for uri={}: {}", uri, ex.getMessage(), ex);
             SecurityContextHolder.clearContext();
-            sendUnauthorized(response, "Authentication error");
+            if (isWhite) {
+                // 허용 경로라면 인증 없이 통과
+                chain.doFilter(request, response);
+            } else {
+                sendUnauthorized(response, "Authentication error");
+            }
         }
     }
 

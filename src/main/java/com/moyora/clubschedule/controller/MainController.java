@@ -69,6 +69,10 @@ public class MainController {
                 }
             }
         }
+        else {
+        	// 쿠키가 없는 경우 로그인 콜백 페이지로 리다이렉트하여 클라이언트에서 인증 상태를 확인하도록 유도
+        	return "redirect:/login/kakao/login_callback";
+        }
 
         return "main";
     }

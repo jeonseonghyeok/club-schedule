@@ -63,6 +63,15 @@
         .badge.cancelled { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
         /* Scrollable requests list inside modal */
         #modalRequestsList { max-height:40vh; overflow:auto; display:block; padding-right:8px; }
+
+        /* Request detail pane */
+        .request-list-item { transition: background 0.15s ease, border-color 0.15s ease; }
+        .request-list-item.active { border-color: rgba(14,165,233,0.35); background:#eff6ff; }
+        #requestDetailEmpty { margin-top:12px; color:#64748b; font-size:0.95rem; }
+        #requestDetailPane { margin-top:12px; padding:12px; border-radius:10px; border:1px solid rgba(2,6,23,0.06); background:linear-gradient(180deg,#fff,#fcfeff); }
+        .request-detail-item { margin-top:10px; }
+        .request-detail-label { color:#64748b; font-size:0.85rem; font-weight:700; margin-bottom:4px; }
+        #requestDetailDescription { white-space:pre-wrap; }
     </style>
 </head>
 <body>
@@ -137,14 +146,11 @@
 <div id="requestModalOverlay" class="modal-overlay">
     <div class="modal" role="dialog" aria-modal="true" aria-labelledby="requestModalTitle">
         <div class="modal-header">
-            <h3 id="requestModalTitle">모임 신청</h3>
-            <div>
+            <h3 id="requestModalTitle">신청현황</h3>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <button id="openCreateRequestBtn" class="btn">신청하기</button>
                 <button id="closeRequestModalBtn" class="close-btn" aria-label="Close">✕</button>
             </div>
-        </div>
-        <div class="tabs">
-            <div id="tabStatus" class="tab active">신청 현황</div>
-            <div id="tabCreate" class="tab">신청하기</div>
         </div>
         <div class="modal-body">
             <div id="modalStatusPane">
@@ -152,18 +158,59 @@
                     <li class="muted">로딩 중...</li>
                 </ul>
             </div>
-            <div id="modalCreatePane" style="display:none;">
-                <label for="modalGroupName">모임 이름</label>
-                <input type="text" id="modalGroupName" maxlength="100" />
-                <label for="modalDescription" style="margin-top:8px; display:block;">설명</label>
-                <textarea id="modalDescription" rows="6" maxlength="5000" style="width:100%; padding:8px; border-radius:8px; border:1px solid #e6eef8;"></textarea>
-                <div class="form-actions">
-                    <button id="modalSubmitBtn" class="btn">신청하기</button>
-                    <button id="modalCancelBtn" class="btn secondary">취소</button>
-                </div>
-                <div id="modalCreateResult" style="color:green; display:none; margin-top:8px;"></div>
-                <div id="modalCreateError" style="color:red; display:none; margin-top:8px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Request detail modal (standalone) -->
+<div id="requestDetailOverlay" class="modal-overlay" style="display:none;">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="requestDetailTitle">
+        <div class="modal-header">
+            <h3 id="requestDetailTitle">신청상세</h3>
+            <button id="closeRequestDetailBtn" class="btn secondary">취소</button>
+        </div>
+        <div class="modal-body">
+            <div class="request-detail-item">
+                <div class="request-detail-label">모임명</div>
+                <div id="requestDetailGroupName"></div>
             </div>
+            <div class="request-detail-item">
+                <div class="request-detail-label">모임설명</div>
+                <div id="requestDetailDescription"></div>
+            </div>
+            <div class="request-detail-item">
+                <div class="request-detail-label">신청일자</div>
+                <div id="requestDetailRequestedAt"></div>
+            </div>
+            <div class="request-detail-item">
+                <div class="request-detail-label">상태 변경일자</div>
+                <div id="requestDetailStatusUpdatedAt"></div>
+            </div>
+            <div id="requestDetailRejectReasonRow" class="request-detail-item" style="display:none;">
+                <div class="request-detail-label">반려 사유</div>
+                <div id="requestDetailRejectReason"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Request create modal (standalone) -->
+<div id="requestCreateOverlay" class="modal-overlay" style="display:none;">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="requestCreateTitle">
+        <div class="modal-header">
+            <h3 id="requestCreateTitle">신청하기</h3>
+        </div>
+        <div class="modal-body">
+            <label for="modalGroupName">모임 이름</label>
+            <input type="text" id="modalGroupName" maxlength="100" />
+            <label for="modalDescription" style="margin-top:8px; display:block;">설명</label>
+            <textarea id="modalDescription" rows="6" maxlength="5000" style="width:100%; padding:8px; border-radius:8px; border:1px solid #e6eef8;"></textarea>
+            <div class="form-actions" style="margin-top:12px;">
+                <button id="modalSubmitBtn" class="btn">신청하기</button>
+                <button id="modalCancelBtn" class="btn secondary">취소</button>
+            </div>
+            <div id="modalCreateResult" style="color:green; display:none; margin-top:8px;"></div>
+            <div id="modalCreateError" style="color:red; display:none; margin-top:8px;"></div>
         </div>
     </div>
 </div>
@@ -171,6 +218,8 @@
 <script>
     // Search/filter for groups
     let cachedGroups = [];
+    let cachedModalRequests = [];
+    const currentUserKey = /*[[${userKey}]]*/ null;
     document.addEventListener('DOMContentLoaded', () => {
         const search = document.getElementById('groupSearch');
         if (search) {
@@ -182,10 +231,10 @@
 
         const openBtn = document.getElementById('openRequestModalBtn'); if (openBtn) openBtn.addEventListener('click', openRequestModal);
         const closeBtn = document.getElementById('closeRequestModalBtn'); if (closeBtn) closeBtn.addEventListener('click', closeRequestModal);
-        const tabStatus = document.getElementById('tabStatus'); if (tabStatus) tabStatus.addEventListener('click', ()=>showTab('status'));
-        const tabCreate = document.getElementById('tabCreate'); if (tabCreate) tabCreate.addEventListener('click', ()=>showTab('create'));
+        const openCreateBtn = document.getElementById('openCreateRequestBtn'); if (openCreateBtn) openCreateBtn.addEventListener('click', tryOpenCreateRequestModal);
         const modalSubmit = document.getElementById('modalSubmitBtn'); if (modalSubmit) modalSubmit.addEventListener('click', submitModalRequest);
-        const modalCancel = document.getElementById('modalCancelBtn'); if (modalCancel) modalCancel.addEventListener('click', closeRequestModal);
+        const modalCancel = document.getElementById('modalCancelBtn'); if (modalCancel) modalCancel.addEventListener('click', closeCreateRequestModal);
+        const closeRequestDetailBtn = document.getElementById('closeRequestDetailBtn'); if (closeRequestDetailBtn) closeRequestDetailBtn.addEventListener('click', closeRequestDetailModal);
 
         const refreshGroupsBtn = document.getElementById('refreshMyGroupsBtn'); if (refreshGroupsBtn) refreshGroupsBtn.addEventListener('click', loadMyGroups);
 
@@ -232,9 +281,124 @@
     }
 
     // Modal logic (kept from previous implementation)
-    function openRequestModal() { document.getElementById('requestModalOverlay').style.display = 'flex'; showTab('status'); loadModalRequests(); }
-    function closeRequestModal() { document.getElementById('requestModalOverlay').style.display = 'none'; }
-    function showTab(name) { document.getElementById('tabStatus').classList.toggle('active', name === 'status'); document.getElementById('tabCreate').classList.toggle('active', name === 'create'); document.getElementById('modalStatusPane').style.display = (name === 'status') ? '' : 'none'; document.getElementById('modalCreatePane').style.display = (name === 'create') ? '' : 'none'; }
+    function openRequestModal() {
+        document.getElementById('requestModalOverlay').style.display = 'flex';
+        clearRequestDetail();
+        const createOverlay = document.getElementById('requestCreateOverlay');
+        if (createOverlay) createOverlay.style.display = 'none';
+        loadModalRequests();
+    }
+    function closeRequestModal() {
+        document.getElementById('requestModalOverlay').style.display = 'none';
+        const createOverlay = document.getElementById('requestCreateOverlay');
+        if (createOverlay) createOverlay.style.display = 'none';
+        closeRequestDetailModal();
+    }
+
+    function clearRequestDetail() {
+        closeRequestDetailModal();
+        // visual selection reset
+        document.querySelectorAll('#modalRequestsList .request-list-item').forEach(el => el.classList.remove('active'));
+    }
+
+    function openCreateRequestModal() {
+        closeRequestDetailModal();
+        const statusOverlay = document.getElementById('requestModalOverlay');
+        if (statusOverlay) statusOverlay.style.display = 'none';
+
+        const createOverlay = document.getElementById('requestCreateOverlay');
+        if (createOverlay) createOverlay.style.display = 'flex';
+
+        const resultEl = document.getElementById('modalCreateResult');
+        const errorEl = document.getElementById('modalCreateError');
+        if (resultEl) { resultEl.style.display = 'none'; }
+        if (errorEl) { errorEl.style.display = 'none'; }
+    }
+
+    async function tryOpenCreateRequestModal() {
+        // 0) 최신 신청 현황 재확인(로딩 직후 클릭 방지)
+        const listEl = document.getElementById('modalRequestsList');
+        const isLoading = listEl && String(listEl.textContent || '').includes('로딩');
+        if (isLoading || !Array.isArray(cachedModalRequests)) {
+            try {
+                const res = await fetch('/group-requests', { credentials: 'same-origin' });
+                if (res.ok) {
+                    const data = await res.json();
+                    cachedModalRequests = Array.isArray(data) ? data : [];
+                }
+            } catch (e) {
+                console.error(e);
+                cachedModalRequests = Array.isArray(cachedModalRequests) ? cachedModalRequests : [];
+            }
+        }
+
+        // 1) 승인대기(PENDING) 신청이 있으면 제한
+        const hasPending = Array.isArray(cachedModalRequests)
+            && cachedModalRequests.some(r => r && r.status === 'PENDING');
+        if (hasPending) {
+            alert('승인대기 건이 있어 신청하기를 할 수 없습니다.');
+            return;
+        }
+
+        // 2) 현재 사용자가 모임 리더면 제한
+        try {
+            const res = await fetch('/groups/me', { credentials: 'same-origin' });
+            if (!res.ok) throw new Error('groups/me failed');
+
+            const groups = await res.json();
+            const isLeader = Array.isArray(groups)
+                && groups.some(g => g && g.leaderUserKey && String(g.leaderUserKey) === String(currentUserKey));
+            if (isLeader) {
+                alert('모임의 리더는 신규 모임을 신청 할 수 없습니다.');
+                return;
+            }
+        } catch (e) {
+            console.error(e);
+            alert('신청하기 제한 확인 중 오류가 발생했습니다.');
+            return;
+        }
+
+        openCreateRequestModal();
+    }
+
+    function closeCreateRequestModal() {
+        const createOverlay = document.getElementById('requestCreateOverlay');
+        if (createOverlay) createOverlay.style.display = 'none';
+        const statusOverlay = document.getElementById('requestModalOverlay');
+        if (statusOverlay) statusOverlay.style.display = 'flex';
+        closeRequestDetailModal();
+    }
+
+    function closeRequestDetailModal() {
+        const overlay = document.getElementById('requestDetailOverlay');
+        if (overlay) overlay.style.display = 'none';
+    }
+
+    function showRequestDetail(item) {
+        const overlay = document.getElementById('requestDetailOverlay');
+        if (overlay) overlay.style.display = 'flex';
+
+        const groupNameEl = document.getElementById('requestDetailGroupName');
+        const descEl = document.getElementById('requestDetailDescription');
+        const requestedAtEl = document.getElementById('requestDetailRequestedAt');
+        const statusUpdatedAtEl = document.getElementById('requestDetailStatusUpdatedAt');
+        const rejectRow = document.getElementById('requestDetailRejectReasonRow');
+        const rejectReasonEl = document.getElementById('requestDetailRejectReason');
+
+        if (groupNameEl) groupNameEl.textContent = item.groupName || '무제 모임';
+        if (descEl) descEl.textContent = item.description || '';
+        if (requestedAtEl) requestedAtEl.textContent = item.requestedAt ? new Date(item.requestedAt).toLocaleString() : '-';
+
+        const statusUpdatedAt = item.statusUpdatedAt ? new Date(item.statusUpdatedAt).toLocaleString() : '-';
+        const statusLabel =
+            item.status === 'APPROVED' ? '승인' :
+            item.status === 'CANCELLED' ? '취소' :
+            item.status === 'REJECTED' ? '반려' : '변경';
+        if (statusUpdatedAtEl) statusUpdatedAtEl.textContent = statusLabel + ': ' + statusUpdatedAt;
+
+        if (rejectRow) rejectRow.style.display = (item.status === 'REJECTED') ? '' : 'none';
+        if (rejectReasonEl) rejectReasonEl.textContent = item.rejectReason || '';
+    }
 
     async function loadModalRequests() {
         const listEl = document.getElementById('modalRequestsList');
@@ -243,14 +407,18 @@
             const res = await fetch('/group-requests', { credentials: 'same-origin' });
             if (!res.ok) { listEl.innerHTML = '<li class="muted">신청 현황을 불러오는데 실패했습니다.</li>'; return; }
             let data = await res.json();
-            if (!Array.isArray(data) || data.length === 0) { listEl.innerHTML = '<li class="muted">신청 내역이 없습니다.</li>'; return; }
+            if (!Array.isArray(data) || data.length === 0) { cachedModalRequests = []; listEl.innerHTML = '<li class="muted">신청 내역이 없습니다.</li>'; return; }
 
             // 최신순: requestedAt 내림차순
             data.sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
 
+            cachedModalRequests = data;
+            clearRequestDetail();
             listEl.innerHTML = '';
             data.forEach(item => {
                 const li = document.createElement('li');
+                li.className = 'request-list-item';
+                li.style.cursor = 'pointer';
                 const left = document.createElement('div');
                 left.style.display = 'flex'; left.style.flexDirection='column';
 
@@ -262,6 +430,8 @@
                 let statusText = '';
 				if (item.status === 'PENDING') {
 				        statusText = '승인대기';
+				    } else if (item.status === 'APPROVED') {
+				        statusText = '승인처리';
 				    } else if (item.status === 'REJECTED') {
 				        statusText = '반려처리';
 				    } else if (item.status === 'CANCELLED') {
@@ -286,11 +456,19 @@
 
                 li.appendChild(left);
 
-                // actions
+                // list click -> 상세 표시
+                li.addEventListener('click', () => {
+                    document.querySelectorAll('#modalRequestsList .request-list-item').forEach(el => el.classList.remove('active'));
+                    li.classList.add('active');
+                    showRequestDetail(item);
+                });
+
+                // actions (pending only)
                 const actions = document.createElement('div');
                 if (item.requestId && item.status === 'PENDING') {
                     const btn = document.createElement('button'); btn.textContent='신청 취소'; btn.className='btn secondary'; btn.style.marginLeft='8px';
-                    btn.addEventListener('click', async () => {
+                    btn.addEventListener('click', async (e) => {
+                        e.stopPropagation();
                         if (!confirm('정말 신청을 취소하시겠습니까?')) return;
                         try {
                             const r = await fetch('/group-requests/' + item.requestId + '/cancel', { method: 'PATCH', credentials: 'same-origin' });
@@ -311,7 +489,13 @@
         if (!name) { document.getElementById('modalCreateError').textContent='모임 이름을 입력하세요.'; document.getElementById('modalCreateError').style.display='block'; return; }
         try {
             const res = await fetch('/group-requests',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({groupName:name, description:desc})});
-            if (res.ok) { document.getElementById('modalCreateResult').textContent='신청이 접수되었습니다.'; document.getElementById('modalCreateResult').style.display='block'; document.getElementById('modalGroupName').value=''; document.getElementById('modalDescription').value=''; loadModalRequests(); loadMyGroups(); }
+            if (res.ok) {
+                document.getElementById('modalGroupName').value='';
+                document.getElementById('modalDescription').value='';
+                closeCreateRequestModal();
+                loadModalRequests();
+                loadMyGroups();
+            }
             else if (res.status===409) { document.getElementById('modalCreateError').textContent='신청할 수 없는 상태입니다.'; document.getElementById('modalCreateError').style.display='block'; }
             else { const text = await res.text(); document.getElementById('modalCreateError').textContent='오류: '+text; document.getElementById('modalCreateError').style.display='block'; }
         } catch (e) { console.error(e); document.getElementById('modalCreateError').textContent='네트워크 오류'; document.getElementById('modalCreateError').style.display='block'; }

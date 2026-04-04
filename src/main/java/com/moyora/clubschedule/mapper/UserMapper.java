@@ -3,6 +3,8 @@ package com.moyora.clubschedule.mapper;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+
 import com.moyora.clubschedule.vo.UserCreateVo;
 import com.moyora.clubschedule.vo.UserVo;
 
@@ -13,4 +15,6 @@ public interface UserMapper {
 	int insertKakaoUserInfo(UserCreateVo userCreateVo);
 	// kakaoApiId를 매개변수로 받아 userKey를 반환하는 메서드
     Long findUserKeyByKakaoApiId(@Param("kakaoApiId") Long kakaoApiId);
+
+	List<UserVo> selectAllOrderByUserKeyDesc();
 }

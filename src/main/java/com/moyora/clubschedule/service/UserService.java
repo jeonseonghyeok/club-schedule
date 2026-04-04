@@ -1,5 +1,7 @@
 package com.moyora.clubschedule.service;
 
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 
 import com.moyora.clubschedule.mapper.UserMapper;
@@ -26,5 +28,9 @@ public class UserService {
 
     public UserVo getUserByUserKey(Long userKey) {
         return userMapper.selectByUserKey(userKey);
+    }
+
+    public List<UserVo> listAllUsers() {
+        return userMapper.selectAllOrderByUserKeyDesc();
     }
 }

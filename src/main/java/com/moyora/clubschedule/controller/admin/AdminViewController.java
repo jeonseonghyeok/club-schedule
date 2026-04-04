@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 
 import com.moyora.clubschedule.service.GroupRequestService;
 import com.moyora.clubschedule.service.GroupJoinRequestService;
+import com.moyora.clubschedule.service.UserService;
+import com.moyora.clubschedule.service.GroupService;
 
 @Controller
 @RequestMapping("/admin")
@@ -19,6 +21,26 @@ public class AdminViewController {
 
     @Autowired
     private GroupJoinRequestService groupJoinRequestService;
+
+    @Autowired
+    private UserService userService;
+
+    @Autowired
+    private GroupService groupService;
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/users")
+    public String viewUsers(Model model) {
+        model.addAttribute("users", userService.listAllUsers());
+        return "admin/admin_users";
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/groups")
+    public String viewGroups(Model model) {
+        model.addAttribute("groups", groupService.findAllGroups());
+        return "admin/admin_groups";
+    }
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/group-requests")

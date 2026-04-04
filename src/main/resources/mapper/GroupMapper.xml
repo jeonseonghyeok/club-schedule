@@ -33,4 +33,8 @@
     <select id="countByLeaderUserKey" resultType="int" parameterType="long">
         SELECT COUNT(*) FROM `group` WHERE leader_user_key = #{leaderUserKey}
     </select>
+
+    <select id="findAllOrderByGroupIdDesc" resultType="GroupVo">
+        SELECT * FROM `group` ORDER BY group_id DESC
+    </select>
 </mapper>

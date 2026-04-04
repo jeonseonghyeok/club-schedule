@@ -24,4 +24,8 @@ public class GroupService {
     public List<GroupVo> findGroupsByUser(Long userKey) {
         return groupMemberMapper.selectGroupsByUser(userKey);
     }
+
+    public List<GroupVo> findAllGroups() {
+        return groupMapper.findAllOrderByGroupIdDesc();
+    }
 }

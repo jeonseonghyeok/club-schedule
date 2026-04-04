@@ -3,18 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <title>관리자 대시보드</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 24px; color: #0f172a; max-width: 720px; }
+        h1 { font-size: 1.35rem; }
+        .meta { color: #64748b; font-size: 0.9rem; margin: 12px 0; }
+        ul { padding-left: 1.2rem; line-height: 1.8; }
+        a { color: #2563eb; }
+    </style>
 </head>
 <body>
     <h1>관리자 대시보드</h1>
-    <p>관리자용 기능을 이곳에 추가하세요.</p>
-    <p>로그인된 사용자: <span th:text="${userKey}"></span></p>
-    <p>권한: <span th:text="${roles}"></span></p>
+    <p class="meta">로그인 사용자: <span th:text="${userKey}"></span> · 권한: <span th:text="${roles}"></span></p>
 
     <div th:if="${isAdmin}">
-        <p>관리자 전용 기능들이 표시됩니다.</p>
-        <!-- 관리자 기능 링크 예시 -->
+        <p>우선 구현된 관리 메뉴입니다.</p>
         <ul>
-            <li><a href="/admin/group-requests">그룹 신청 관리</a></li>
+            <li><a href="/admin/users">회원 관리</a> — 전체 회원 목록</li>
+            <li><a href="/admin/groups">그룹 관리</a> — 전체 그룹 목록</li>
+            <li><a href="/admin/group-requests">그룹 신청 관리</a> — 모임 생성 대기 건 승인·거부</li>
         </ul>
     </div>
 
@@ -22,6 +28,6 @@
         <p>관리자 권한이 필요합니다.</p>
     </div>
 
-    <a href="/">메인으로</a>
+    <p><a href="/">메인으로</a></p>
 </body>
 </html>

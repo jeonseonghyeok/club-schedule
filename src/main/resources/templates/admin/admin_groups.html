@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>그룹 관리</title>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 24px; color: #0f172a; }
+        h1 { font-size: 1.25rem; }
+        table { border-collapse: collapse; width: 100%; max-width: 1200px; margin-top: 16px; }
+        th, td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; font-size: 0.9rem; }
+        th { background: #f8fafc; }
+        nav { margin-bottom: 16px; }
+        nav a { margin-right: 12px; color: #2563eb; }
+    </style>
+</head>
+<body>
+<nav>
+    <a href="/admin">관리자 홈</a>
+    <a href="/admin/users">회원</a>
+    <a href="/admin/groups">그룹</a>
+    <a href="/admin/group-requests">그룹 신청</a>
+</nav>
+<h1>그룹 관리</h1>
+<p>전체 그룹 목록입니다.</p>
+<table>
+    <thead>
+    <tr>
+        <th>그룹 ID</th>
+        <th>이름</th>
+        <th>리더 회원 키</th>
+        <th>정원</th>
+        <th>현재 인원</th>
+        <th>자동 승인</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="g : ${groups}">
+        <td th:text="${g.groupId}"></td>
+        <td th:text="${g.name}"></td>
+        <td th:text="${g.leaderUserKey}"></td>
+        <td th:text="${g.capacity}"></td>
+        <td th:text="${g.currentMemberCount}"></td>
+        <td th:text="${g.autoApprove}"></td>
+    </tr>
+    <tr th:if="${groups == null or groups.isEmpty()}">
+        <td colspan="6">등록된 그룹이 없습니다.</td>
+    </tr>
+    </tbody>
+</table>
+</body>
+</html>

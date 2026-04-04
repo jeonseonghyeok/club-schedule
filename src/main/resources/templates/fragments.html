@@ -4,10 +4,14 @@
     <meta charset="UTF-8" />
 </head>
 <body>
-<!-- Toast & CSRF fragment -->
-<div th:fragment="toastAndCsrf">
-    <meta name="_csrf" th:content="${_csrf.token}" />
-    <meta name="_csrf_header" th:content="${_csrf.headerName}" />
+<!-- CSRF meta: <head> 안에만 두세요 (div로 감싸지 않음) -->
+<th:block th:fragment="csrfMeta">
+    <meta th:if="${_csrf != null}" name="_csrf" th:content="${_csrf.token}" />
+    <meta th:if="${_csrf != null}" name="_csrf_header" th:content="${_csrf.headerName}" />
+</th:block>
+
+<!-- 토스트 + CSRF 헤더 유틸 (본문 상단에 배치) -->
+<th:block th:fragment="toastAndScripts">
     <style>
         #toast { visibility: hidden; min-width: 250px; margin-left: -125px; background-color: rgba(0,0,0,0.8); color: #fff; text-align: center; border-radius: 4px; padding: 12px; position: fixed; z-index: 1000; left: 50%; top: 20px; font-size: 14px; opacity: 0; transition: opacity 0.3s ease, transform 0.3s ease; transform: translateY(-10px); }
         #toast.show { visibility: visible; opacity: 1; transform: translateY(0); }
@@ -16,9 +20,29 @@
     </style>
     <div id="toast" role="status" aria-live="polite"></div>
     <script>
-        // read CSRF token from meta
-        const csrfToken = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
-        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+        function readCookie(name) {
+            const enc = encodeURIComponent(name);
+            const prefix = '; ' + enc + '=';
+            const cookie = '; ' + document.cookie;
+            const idx = cookie.indexOf(prefix);
+            if (idx < 0) return null;
+            const start = idx + prefix.length;
+            const end = cookie.indexOf(';', start);
+            const raw = end < 0 ? cookie.substring(start) : cookie.substring(start, end);
+            try { return decodeURIComponent(raw); } catch (e) { return raw; }
+        }
+
+        function getCsrfHeaderName() {
+            const fromMeta = document.querySelector('meta[name="_csrf_header"]')?.getAttribute('content');
+            if (fromMeta) return fromMeta;
+            return 'X-XSRF-TOKEN';
+        }
+
+        function getCsrfTokenValue() {
+            const fromMeta = document.querySelector('meta[name="_csrf"]')?.getAttribute('content');
+            if (fromMeta) return fromMeta;
+            return readCookie('XSRF-TOKEN');
+        }
 
         function showToast(message, type) {
             const toast = document.getElementById('toast');
@@ -44,13 +68,14 @@
             showToast(msg, 'error');
         }
 
-        // helper to include CSRF header in fetch options
         function addCsrf(headers) {
             if (!headers) headers = {};
-            if (csrfHeader && csrfToken) headers[csrfHeader] = csrfToken;
+            const h = getCsrfHeaderName();
+            const t = getCsrfTokenValue();
+            if (h && t) headers[h] = t;
             return headers;
         }
     </script>
-</div>
+</th:block>
 </body>
 </html>

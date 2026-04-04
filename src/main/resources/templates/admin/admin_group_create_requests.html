@@ -3,26 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <title>그룹 생성 요청 관리</title>
-    <th:block th:replace="fragments :: toastAndCsrf"></th:block>
-    <script>
-        async function approve(requestId) {
-            const resp = await fetch('/group-requests/' + requestId + '/approve', {method: 'POST', headers: addCsrf({})});
-            await handleResponse(resp, '승인되었습니다.');
-        }
-        async function reject(requestId) {
-            const reason = prompt('거부 사유를 입력하세요');
-            if (reason === null) return;
-            const resp = await fetch('/group-requests/' + requestId + '/reject', {
-                method: 'POST',
-                headers: addCsrf({'Content-Type':'application/json'}),
-                body: JSON.stringify({requestId: requestId, rejectReason: reason})
-            });
-            await handleResponse(resp, '거부되었습니다.');
-        }
-    </script>
+    <th:block th:replace="fragments :: csrfMeta"></th:block>
 </head>
 <body>
-<!-- toast fragment inserted above -->
+<th:block th:replace="fragments :: toastAndScripts"></th:block>
 <nav style="margin-bottom:12px;">
     <a href="/admin">관리자 홈</a> ·
     <a href="/admin/users">회원</a> ·
@@ -48,5 +32,26 @@
     </tbody>
 </table>
 <a href="/admin">관리자 홈으로</a>
+<script>
+    async function approve(requestId) {
+        const resp = await fetch('/group-requests/' + requestId + '/approve', {
+            method: 'POST',
+            headers: addCsrf({}),
+            credentials: 'same-origin'
+        });
+        await handleResponse(resp, '승인되었습니다.');
+    }
+    async function reject(requestId) {
+        const reason = prompt('거부 사유를 입력하세요');
+        if (reason === null) return;
+        const resp = await fetch('/group-requests/' + requestId + '/reject', {
+            method: 'POST',
+            headers: addCsrf({'Content-Type':'application/json'}),
+            credentials: 'same-origin',
+            body: JSON.stringify({requestId: requestId, rejectReason: reason})
+        });
+        await handleResponse(resp, '거부되었습니다.');
+    }
+</script>
 </body>
 </html>

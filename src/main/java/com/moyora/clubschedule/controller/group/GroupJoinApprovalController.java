@@ -19,13 +19,13 @@ public class GroupJoinApprovalController {
     private GroupJoinRequestService service;
 
     @GetMapping("/pending/{groupId}")
-    public ResponseEntity<?> pendingForGroup(@PathVariable Long groupId) {
+    public ResponseEntity<?> pendingForGroup(@PathVariable("groupId") Long groupId) {
         return ResponseEntity.ok(service.getPendingByGroup(groupId));
     }
 
     @PreAuthorize("@groupJoinRequestService.isLeaderForRequest(#requestId, principal.userKey)")
     @PatchMapping("/{requestId}/approve")
-    public ResponseEntity<?> approve(@PathVariable Long requestId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> approve(@PathVariable("requestId") Long requestId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operatorKey = userDetails.getUserKey();
         try {
             boolean ok = service.approveJoin(requestId, operatorKey);
@@ -37,7 +37,7 @@ public class GroupJoinApprovalController {
 
     @PreAuthorize("@groupJoinRequestService.isLeaderForRequest(#requestId, principal.userKey)")
     @PatchMapping("/{requestId}/reject")
-    public ResponseEntity<?> reject(@PathVariable Long requestId, @RequestBody java.util.Map<String,String> body, @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> reject(@PathVariable("requestId") Long requestId, @RequestBody java.util.Map<String,String> body, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operatorKey = userDetails.getUserKey();
         String reason = body.get("rejectReason");
         try {

@@ -8,9 +8,9 @@
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="groupId">
         INSERT INTO `group` (
-            name, description, leader_user_key, capacity, current_member_count, auto_approve, group_create_request_id
+            name, leader_user_key, group_create_request_id
         ) VALUES (
-            #{name}, #{description}, #{leaderUserKey}, #{capacity}, #{currentMemberCount}, #{autoApprove}, #{groupRequestId}
+            #{name}, #{leaderUserKey}, #{groupRequestId}
         )
     </insert>
 

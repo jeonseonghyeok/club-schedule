@@ -215,7 +215,7 @@
     </div>
 </div>
 
-<script>
+<script th:inline="javascript">
     // Search/filter for groups
     let cachedGroups = [];
     let cachedModalRequests = [];
@@ -254,15 +254,28 @@
             const li = document.createElement('li');
             const left = document.createElement('div'); left.className='group-left';
             const name = document.createElement('div'); name.className = 'group-name'; name.textContent = item.name || '무제 모임';
+            // make name clickable and keyboard accessible
+            name.style.cursor = 'pointer';
+            name.setAttribute('role', 'link');
+            name.tabIndex = 0;
+            name.addEventListener('click', () => {
+                if (item && item.groupId) {
+                    window.location.href = '/groups/' + item.groupId;
+                }
+            });
+            name.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    if (item && item.groupId) {
+                        window.location.href = '/groups/' + item.groupId;
+                    }
+                }
+            });
             const sub = document.createElement('div'); sub.className='group-sub'; sub.textContent = (item.currentMemberCount? item.currentMemberCount + '명':'') + (item.capacity? ' / '+item.capacity:'');
             left.appendChild(name); left.appendChild(sub);
             li.appendChild(left);
 
             const right = document.createElement('div');
-            if (item.leaderUserKey && item.leaderUserKey === /*[[${userKey}]]*/ null) {
-                const edit = document.createElement('button'); edit.className='btn secondary'; edit.textContent='그룹 편집'; edit.addEventListener('click', ()=>{ window.location.href = '/groups/'+item.groupId+'/manage'; });
-                right.appendChild(edit);
-            }
             li.appendChild(right);
             listEl.appendChild(li);
         });

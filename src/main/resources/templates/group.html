@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>그룹 관리</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        /* Basic layout matching main.html style */
+        * { box-sizing: border-box; }
+        body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; color:#0f172a; background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+        .container { max-width:980px; margin:24px auto; padding:0 16px; }
+        .card { background:#fff; border-radius:12px; padding:18px; box-shadow:0 8px 24px rgba(15,23,42,0.06); border:1px solid rgba(2,6,23,0.04); }
+        .section-title { font-weight:700; margin:0 0 12px 0; font-size:1rem; color:#0b1220; display:flex; align-items:center; justify-content:space-between; }
+        .tabs { display:flex; gap:8px; margin-bottom:12px; }
+        .tab { padding:8px 12px; border-radius:8px; background:#f1f5f9; cursor:pointer; font-weight:700; }
+        .tab.active { background:#0f172a; color:#fff; }
+        .grid { display:grid; grid-template-columns: 1fr; gap:12px; }
+        @media (min-width:900px) { .grid { grid-template-columns: 2fr 1fr; } }
+
+        /* Description truncation to ~7 lines */
+        .description { overflow:hidden; display:-webkit-box; -webkit-line-clamp:7; -webkit-box-orient:vertical; white-space:pre-wrap; }
+        .more-link { color:#2563eb; cursor:pointer; text-decoration:underline; margin-top:8px; display:inline-block; }
+
+        /* Calendar placeholder */
+        .calendar { border-radius:10px; border:1px solid rgba(2,6,23,0.06); padding:12px; min-height:300px; display:flex; align-items:center; justify-content:center; color:#64748b; }
+
+        /* Management tab styles */
+        .members-list, .schedules-list, .permissions-list { border-radius:10px; border:1px solid rgba(2,6,23,0.06); padding:12px; max-height:400px; overflow:auto; }
+        .member-item { display:flex; justify-content:space-between; align-items:center; padding:8px; border-radius:8px; background:linear-gradient(180deg,#fff,#fcfeff); margin-bottom:8px; }
+        .member-meta { color:#64748b; font-size:0.9rem; }
+        .danger { background:#fff1f2; color:#981b1b; border:1px solid #fecaca; }
+
+        /* Modal */
+        .modal-overlay { position:fixed; inset:0; background:rgba(2,6,23,0.5); display:none; align-items:center; justify-content:center; z-index:1000; }
+        .modal { background:#fff; width:720px; max-width:95%; border-radius:10px; padding:18px; box-shadow:0 10px 30px rgba(2,6,23,0.28); }
+        .modal .modal-header { display:flex; align-items:center; justify-content:space-between; }
+    </style>
+</head>
+<body>
+<header style="padding:20px 0;">
+    <div style="max-width:980px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:16px;">
+        <div style="font-weight:700;font-size:1.125rem;">Club Schedule</div>
+        <div style="margin-left:auto;"></div>
+    </div>
+</header>
+
+<div class="container">
+    <div class="card">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+            <div>
+                <div style="font-weight:800; font-size:1.25rem;" th:text="${group.name}">그룹명</div>
+                <div style="color:#64748b; margin-top:6px;" class="member-meta">그룹 ID: <span th:text="${group.groupId}">1</span></div>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+                <a th:href="@{/}" class="tab">목록으로</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top:12px;">
+        <div class="tabs">
+            <div id="tabHome" class="tab active">홈</div>
+            <div id="tabSchedule" class="tab">일정</div>
+            <div id="tabManage" class="tab" th:if="${isLeaderOrCoLeader}">관리</div>
+        </div>
+
+        <div th:if="${!isMember}">
+            <div class="card" style="margin-bottom:12px;background:#fffbeb;border-color:#fef3c7;">
+                <div class="section-title">이 모임은 멤버 전용입니다</div>
+                <div style="color:#92400e;">비회원은 일부 정보만 볼 수 있습니다. 참여하려면 가입 또는 신청이 필요합니다.</div>
+            </div>
+        </div>
+
+        <div id="contentHome" class="grid">
+            <div>
+                <div class="card">
+                    <div class="section-title">모임 설명</div>
+                    <div id="groupDescription" class="description" th:text="${group.description}">모임 설명 영역</div>
+                    <div><span id="moreBtn" class="more-link" style="display:none;">더보기</span></div>
+                </div>
+
+                <div class="card" style="margin-top:12px;">
+                    <div class="section-title">스케쥴</div>
+                    <div class="calendar" id="calendarPlaceholder">달력 영역 (캘린더 컴포넌트로 교체 예정)</div>
+                </div>
+            </div>
+            <div>
+                <div class="card">
+                    <div class="section-title">빠른 정보</div>
+                    <div style="color:#64748b;">
+                        <!--<div>리더: <strong th:text="${group.leaderName}">리더명</strong></div>-->
+                        <div style="margin-top:6px;">멤버수: <strong th:text="${group.currentMemberCount}">0</strong></div>
+                        <!--<div style="margin-top:6px;">용량: <strong th:text="${group.capacity}">N/A</strong></div>-->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="contentSchedule" style="display:none;" th:if="${isMember}">
+            <div class="card">
+                <div class="section-title">달력 보기</div>
+                <div class="calendar" id="calendarFull">달력 컴포넌트 자리</div>
+            </div>
+        </div>
+
+        <div id="contentManage" style="display:none;" th:if="${isLeaderOrCoLeader}">
+            <div class="card">
+                <div class="section-title">회원 관리</div>
+                <div class="members-list" id="membersList">
+                    <!-- Member items will be rendered here -->
+                    <div class="muted">로딩 중...</div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:12px;">
+                <div class="section-title">일정 관리</div>
+                <div class="schedules-list" id="schedulesList">
+                    <div class="muted">로딩 중...</div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-top:12px;" th:if="${isLeader}">
+                <div class="section-title">권한 관리 (리더 전용)</div>
+                <div class="permissions-list" id="permissionsList">
+                    <div class="muted">로딩 중...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Full description modal -->
+<div id="descriptionModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header"><h3>모임 설명</h3><button id="closeDescription" class="tab">닫기</button></div>
+        <div style="margin-top:8px; white-space:pre-wrap;" id="fullDescription"></div>
+    </div>
+</div>
+
+<script th:inline="javascript">
+    // Tab switching
+    document.addEventListener('DOMContentLoaded', () => {
+        const tabHome = document.getElementById('tabHome');
+        const tabSchedule = document.getElementById('tabSchedule');
+        const tabManage = document.getElementById('tabManage');
+        const cHome = document.getElementById('contentHome');
+        const cSchedule = document.getElementById('contentSchedule');
+        const cManage = document.getElementById('contentManage');
+
+        // helper: get groupId from template model
+        const groupId = /*[[${group.groupId}]]*/ 0;
+
+        function activateTab(tab) {
+            [tabHome, tabSchedule, tabManage].forEach(t => { if (t) t.classList.remove('active'); });
+            [cHome, cSchedule, cManage].forEach(c => { if (c) c.style.display = 'none'; });
+            tab.classList.add('active');
+            if (tab === tabHome) cHome.style.display = 'grid';
+            if (tab === tabSchedule) cSchedule.style.display = 'block';
+            if (tab === tabManage) cManage.style.display = 'block';
+        }
+
+        if (tabHome) tabHome.addEventListener('click', () => activateTab(tabHome));
+        if (tabSchedule) tabSchedule.addEventListener('click', () => { activateTab(tabSchedule); loadSchedules(); });
+        if (tabManage) tabManage.addEventListener('click', () => { activateTab(tabManage); loadMembers(); loadSchedulesForManage(); });
+
+        // Description modal logic
+        const descEl = document.getElementById('groupDescription');
+        const moreBtn = document.getElementById('moreBtn');
+        const openFull = document.getElementById('openFullDescription');
+        const modal = document.getElementById('descriptionModal');
+        const fullDesc = document.getElementById('fullDescription');
+        const closeDesc = document.getElementById('closeDescription');
+
+        function needsMore(el) {
+            // create clone to measure
+            const clone = el.cloneNode(true);
+            clone.style.position = 'absolute'; clone.style.visibility='hidden'; clone.style.display='block'; clone.style.webkitLineClamp='none'; clone.style.maxHeight='none';
+            document.body.appendChild(clone);
+            const fullHeight = clone.scrollHeight;
+            const visibleHeight = el.clientHeight;
+            document.body.removeChild(clone);
+            return fullHeight > visibleHeight + 2; // small tolerance
+        }
+
+        function showModalWithText(text) {
+            fullDesc.textContent = text || '';
+            modal.style.display = 'flex';
+        }
+
+        if (descEl) {
+            // decide if more link should be shown
+            if (needsMore(descEl)) {
+                moreBtn.style.display = 'inline-block';
+                moreBtn.addEventListener('click', () => showModalWithText(descEl.textContent));
+            }
+        }
+        if (openFull) openFull.addEventListener('click', () => showModalWithText(descEl ? descEl.textContent : ''));
+        if (closeDesc) closeDesc.addEventListener('click', () => { modal.style.display = 'none'; });
+
+        // API integration
+        const membersList = document.getElementById('membersList');
+        const schedulesList = document.getElementById('schedulesList');
+        const permissionsList = document.getElementById('permissionsList');
+
+        async function loadMembers() {
+            if (!membersList) return;
+            membersList.innerHTML = '<div class="muted">멤버 목록을 불러오는 중...</div>';
+            try {
+                const res = await fetch('/api/groups/'+groupId+'/members');
+                if (!res.ok) throw new Error('Failed to load members');
+                const data = await res.json();
+                membersList.innerHTML = '';
+                if (!Array.isArray(data) || data.length === 0) {
+                    membersList.innerHTML = '<div class="muted">멤버가 없습니다.</div>';
+                    return;
+                }
+                data.forEach(m => membersList.appendChild(renderMember(m)));
+            } catch (e) {
+                membersList.innerHTML = '<div class="muted">멤버를 불러오지 못했습니다.</div>';
+            }
+        }
+
+        async function loadSchedules() {
+            const cal = document.getElementById('calendarFull');
+            if (!cal) return;
+            cal.textContent = '일정을 불러오는 중...';
+            try {
+                const res = await fetch('/api/groups/'+groupId+'/schedules');
+                if (!res.ok) throw new Error('Failed to load schedules');
+                const data = await res.json();
+                cal.textContent = '';
+                // For now, render simple list of titles
+                if (!Array.isArray(data) || data.length === 0) {
+                    cal.textContent = '등록된 일정이 없습니다.';
+                    return;
+                }
+                const ul = document.createElement('ul');
+                data.forEach(ev => { const li = document.createElement('li'); li.textContent = (ev.title || '일정') + ' (' + (new Date(ev.start || ev.date)).toLocaleString() + ')'; ul.appendChild(li); });
+                cal.appendChild(ul);
+            } catch (e) {
+                cal.textContent = '일정을 불러오지 못했습니다.';
+            }
+        }
+
+        async function loadSchedulesForManage() {
+            const el = document.getElementById('schedulesList');
+            if (!el) return;
+            el.innerHTML = '<div class="muted">일정 목록을 불러오는 중...</div>';
+            try {
+                const res = await fetch('/api/groups/'+groupId+'/schedules');
+                if (!res.ok) throw new Error('Failed to load schedules');
+                const data = await res.json();
+                el.innerHTML = '';
+                if (!Array.isArray(data) || data.length === 0) { el.innerHTML = '<div class="muted">일정이 없습니다.</div>'; return; }
+                data.forEach(ev => { const d = document.createElement('div'); d.textContent = (ev.title||'일정') + ' - ' + new Date(ev.start||ev.date).toLocaleString(); el.appendChild(d); });
+            } catch (e) {
+                el.innerHTML = '<div class="muted">일정을 불러오지 못했습니다.</div>';
+            }
+        }
+
+        function renderMember(m) {
+            const div = document.createElement('div'); div.className='member-item';
+            const left = document.createElement('div'); left.innerHTML = '<div style="font-weight:700">'+(m.displayName||m.userKey)+'</div><div class="member-meta">'+(m.status||'ACTIVE')+' • '+(m.joinedAt?new Date(m.joinedAt).toLocaleString():'-')+'</div>';
+            const actions = document.createElement('div');
+            const banBtn = document.createElement('button'); banBtn.textContent='차단(Ban)'; banBtn.className='btn secondary'; banBtn.style.marginLeft='8px';
+            banBtn.addEventListener('click', async () => {
+                if (!confirm('정말 차단하시겠습니까?')) return;
+                try {
+                    const r = await fetch('/api/groups/'+groupId+'/members/'+m.userKey+'/ban', { method:'PATCH' });
+                    if (!r.ok) throw new Error('ban failed');
+                    alert('차단되었습니다.');
+                    loadMembers();
+                } catch (ex) {
+                    alert('차단 요청 실패');
+                }
+            });
+            actions.appendChild(banBtn);
+            div.appendChild(left); div.appendChild(actions);
+            return div;
+        }
+
+        // initial load: nothing until a tab is clicked; but we can pre-check description more link
+
+    });
+</script>
+</body>
+</html>

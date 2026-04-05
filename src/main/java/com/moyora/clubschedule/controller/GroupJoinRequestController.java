@@ -19,14 +19,14 @@ public class GroupJoinRequestController {
     private GroupJoinRequestService service;
 
     @PostMapping
-    public ResponseEntity<?> requestJoin(@PathVariable Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> requestJoin(@PathVariable("groupId") Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userDetails.getUserKey();
         Long requestId = service.requestJoin(groupId, userKey);
         return ResponseEntity.ok().body(java.util.Collections.singletonMap("requestId", requestId));
     }
 
     @DeleteMapping("/{requestId}")
-    public ResponseEntity<?> cancelJoin(@PathVariable Long groupId, @PathVariable Long requestId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> cancelJoin(@PathVariable("groupId") Long groupId, @PathVariable("requestId") Long requestId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userDetails.getUserKey();
         boolean ok = service.cancelJoin(requestId, userKey);
         if (ok) return ResponseEntity.ok().build();
@@ -34,7 +34,7 @@ public class GroupJoinRequestController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<?> myRequests(@PathVariable Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> myRequests(@PathVariable("groupId") Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userDetails.getUserKey();
         List<GroupJoinRequestVo> list = service.getMyRequests(userKey);
         return ResponseEntity.ok(list);

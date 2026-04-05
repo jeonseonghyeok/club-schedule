@@ -45,4 +45,17 @@
         SELECT role FROM group_member WHERE group_id = #{groupId} AND user_key = #{userKey} AND status = 'ACTIVE' LIMIT 1
     </select>
 
+    <!-- 새로 추가: 특정 그룹의 모든 멤버 조회 (상태 포함) -->
+    <select id="selectMembersByGroup" resultType="com.moyora.clubschedule.vo.GroupMemberVo" parameterType="map">
+        SELECT group_id as groupId, user_key as userKey, role, status, joined_at as joinedAt, left_at as leftAt
+        FROM group_member
+        WHERE group_id = #{groupId}
+        ORDER BY joined_at DESC
+    </select>
+
+    <!-- 새로 추가: 특정 멤버의 상태 업데이트 (예: KICKED, WITHDRAWN) -->
+    <update id="updateMemberStatus" parameterType="map">
+        UPDATE group_member SET status = #{status}, left_at = NOW() WHERE group_id = #{groupId} AND user_key = #{userKey}
+    </update>
+
 </mapper>

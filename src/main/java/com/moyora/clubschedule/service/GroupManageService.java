@@ -41,4 +41,30 @@ public class GroupManageService {
         if (role == null) return false;
         return "SUB_LEADER".equalsIgnoreCase(role) || "LEADER".equalsIgnoreCase(role);
     }
+
+    /**
+     * userKey가 해당 그룹의 멤버(ACTIVE)인지 확인
+     */
+    public boolean isMember(Long groupId, Long userKey) {
+        if (userKey == null) return false;
+        int cnt = groupMemberMapper.countByGroupAndUser(groupId, userKey);
+        return cnt > 0;
+    }
+
+    /**
+     * 특정 그룹의 모든 멤버 조회
+     */
+    public java.util.List<com.moyora.clubschedule.vo.GroupMemberVo> listMembers(Long groupId) {
+        return groupMemberMapper.selectMembersByGroup(groupId);
+    }
+
+    /**
+     * 특정 멤버를 차단(KICKED) 처리 (리더/부방장 권한 필요)
+     */
+    public boolean banMember(Long groupId, Long targetUserKey, Long operatorUserKey) {
+        if (operatorUserKey == null) return false;
+        if (!isLeaderOrSubLeader(groupId, operatorUserKey)) return false;
+        int updated = groupMemberMapper.updateMemberStatus(groupId, targetUserKey, "KICKED");
+        return updated > 0;
+    }
 }

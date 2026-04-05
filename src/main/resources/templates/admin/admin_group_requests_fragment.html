@@ -1,0 +1,51 @@
+<!-- groupRequestsPanel fragment (clean copy) -->
+<div th:fragment="groupRequestsPanel">
+    <h1>그룹 생성 요청 관리</h1>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap;">
+        <label for="gr-status">상태:</label>
+        <select id="gr-status">
+            <option value="" th:selected="${selectedStatus == null}">전체</option>
+            <option value="PENDING" th:selected="${selectedStatus == 'PENDING'}">대기(PENDING)</option>
+            <option value="APPROVED" th:selected="${selectedStatus == 'APPROVED'}">승인(APPROVED)</option>
+            <option value="REJECTED" th:selected="${selectedStatus == 'REJECTED'}">거부(REJECTED)</option>
+            <option value="CANCELLED" th:selected="${selectedStatus == 'CANCELLED'}">취소(CANCELLED)</option>
+        </select>
+
+        <label for="gr-groupName">그룹명:</label>
+        <input id="gr-groupName" type="search" placeholder="그룹명으로 검색" th:value="${selectedGroupName}" />
+
+        <button type="button" id="gr-search">조회</button>
+    </div>
+
+    <table border="1" class="admin-table">  
+        <thead>
+            <tr><th>Request ID</th><th>User Key</th><th>Group Name</th><th>Requested At</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+            <tr th:each="r : ${pendingRequests}">
+                <td th:text="${r.requestId}"></td>
+                <td th:text="${r.userKey}"></td>
+                <td th:text="${r.groupName}"></td>
+                <td th:text="${#dates.format(r.requestedAt, 'yyyy년MM월dd일 HH:mm')}"></td>
+                <td th:text="${r.status}"></td>
+                <td>
+                    <button type="button" th:if="${r.status == 'PENDING'}" th:onclick="|adminApprove('/group-requests/' + ${r.requestId} + '/approve', 'POST', '승인되었습니다.')|">승인</button>
+                    <button type="button" th:if="${r.status == 'PENDING'}" th:onclick="|adminReject('/group-requests/' + ${r.requestId} + '/reject', 'POST', ${r.requestId}, '거부되었습니다.')|">거부</button>
+                </td>
+            </tr>
+            <tr th:if="${pendingRequests == null or #lists.isEmpty(pendingRequests)}">
+                <td colspan="6">조회된 결과가 없습니다.</td>
+            </tr>
+            </tbody>
+    </table>
+
+    <div style="margin-top:12px; display:flex; align-items:center; gap:8px;">
+        <div class="muted">총 <span th:text="${totalCount}">0</span>건</div>
+        <div style="margin-left:auto; display:flex; gap:6px; align-items:center;">
+            <button type="button" id="gr-prev">이전</button>
+            <span>페이지 <span id="gr-current-page" th:text="${currentPage}">1</span> / <span id="gr-total-pages" th:text="${totalPages}">1</span></span>
+            <button type="button" id="gr-next">다음</button>
+        </div>
+    </div>
+
+</div>

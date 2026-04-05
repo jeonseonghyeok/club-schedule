@@ -43,7 +43,7 @@
 	    WHERE user_key = #{userKey}
     </select>
     
-	<!-- 그룹 신청 전체조회(관리자용) -->
+	<!-- 그룹 신청 전체조회(관리자용) - 기존: PENDING만 -->
 	<select id="select" resultType="com.moyora.clubschedule.vo.GroupRequest">
 		SELECT
 			request_id,
@@ -58,6 +58,84 @@
 		FROM group_create_request
 		WHERE status = 'PENDING'
 		ORDER BY requested_at ASC
+	</select>
+
+	<!-- 관리자: 전체 조회 (상태 무관) -->
+	<select id="selectAll" resultType="com.moyora.clubschedule.vo.GroupRequest">
+		SELECT
+			request_id,
+			user_key,
+			group_name,
+			description,
+			requested_at,
+			status,
+			reject_reason,
+			updated_by_user_key,
+			status_updated_at
+		FROM group_create_request
+		ORDER BY requested_at ASC
+	</select>
+
+	<!-- 관리자: 상태별 조회 -->
+	<select id="selectByStatus" parameterType="string" resultType="com.moyora.clubschedule.vo.GroupRequest">
+		SELECT
+			request_id,
+			user_key,
+			group_name,
+			description,
+			requested_at,
+			status,
+			reject_reason,
+			updated_by_user_key,
+			status_updated_at
+		FROM group_create_request
+		WHERE status = #{status}
+		ORDER BY requested_at ASC
+	</select>
+
+	<!-- 관리자: 필터(상태, 그룹명) + 페이징 -->
+	<select id="selectByFilters" parameterType="map" resultType="com.moyora.clubschedule.vo.GroupRequest">
+		SELECT
+			request_id,
+			user_key,
+			group_name,
+			description,
+			requested_at,
+			status,
+			reject_reason,
+			updated_by_user_key,
+			status_updated_at
+		FROM group_create_request
+		<where>
+			<if test="status != null and status != ''">
+				status = #{status}
+			</if>
+			<!-- when status is not provided, exclude PROCESSING -->
+			<if test="status == null or status == ''">
+				AND status != 'PROCESSING'
+			</if>
+			<if test="groupName != null and groupName != ''">
+				AND group_name LIKE CONCAT('%', #{groupName}, '%')
+			</if>
+		</where>
+		ORDER BY requested_at DESC
+		LIMIT #{limit} OFFSET #{offset}
+	</select>
+	
+	<!-- 관리자: 필터된 결과 총갯수 (페이징 계산용) -->
+	<select id="countByFilters" parameterType="map" resultType="int">
+		SELECT COUNT(*) FROM group_create_request
+		<where>
+			<if test="status != null and status != ''">
+				status = #{status}
+			</if>
+			<if test="status == null or status == ''">
+				AND status != 'PROCESSING'
+			</if>
+			<if test="groupName != null and groupName != ''">
+				AND group_name LIKE CONCAT('%', #{groupName}, '%')
+			</if>
+		</where>
 	</select>
 
 	<!-- 그룹 신청 승인 (상태 변경) -->
@@ -77,9 +155,8 @@
             status_updated_at = NOW()
         WHERE request_id = #{requestId}
         AND status = 'PENDING'
-    </update>
-
-    <!-- 그룹 신청 취소 (상태 변경) -->
+    </update>    
+	<!-- 그룹 신청 취소 (상태 변경) -->
 	<update id="updateStatusToCancelled">
 		UPDATE group_create_request
 		SET status = 'CANCELLED',
@@ -87,8 +164,7 @@
 		    status_updated_at = NOW()
 		WHERE request_id = #{requestId}
 		AND user_key = #{userKey}
-	</update>
-	
+	</update>	
 	<!-- 그룹 신청 거부 (상태 변경) -->
     <update id="updateStatusToRejected">
         UPDATE group_create_request
@@ -97,14 +173,12 @@
             updated_by_user_key = #{userKey},
             status_updated_at = NOW()
         WHERE request_id = #{requestId}
-    </update>
-
+    </update> 
 	<!-- 요청자의 user_key 조회 -->
 	<select id="selectRequesterUserKey" parameterType="long" resultType="long">
 		SELECT user_key FROM group_create_request WHERE request_id = #{requestId}
 	</select>
-
-	<!-- 새로 추가: requestId로 그룹 요청 조회 -->
+	<!-- 새로 추가: requestId로 그룹 요청 조회 -->
     <select id="selectByRequestId" parameterType="long" resultType="com.moyora.clubschedule.vo.GroupRequest">
         SELECT
             request_id,
@@ -118,6 +192,4 @@
             status_updated_at
         FROM group_create_request
         WHERE request_id = #{requestId}
-    </select>
-    
-</mapper>
+    </select>    </mapper>

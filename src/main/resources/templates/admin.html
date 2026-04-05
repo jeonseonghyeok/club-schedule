@@ -3,31 +3,172 @@
 <head>
     <meta charset="UTF-8">
     <title>관리자 대시보드</title>
+    <th:block th:replace="fragments :: csrfMeta"></th:block>
     <style>
-        body { font-family: system-ui, sans-serif; margin: 24px; color: #0f172a; max-width: 720px; }
-        h1 { font-size: 1.35rem; }
+        /* Base and layout (from main.html) */
+        * { box-sizing: border-box; }
+        body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; color:#0f172a; background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
+        a { color: #2563eb; text-decoration:none }
+        header { background:transparent; padding:20px 0; }
+        .site-header { max-width:980px; margin:0 auto; display:flex; align-items:center; gap:16px; padding:0 16px; }
+        .brand { font-weight:700; font-size:1.125rem; color:#0f172a; }
+        .subtitle { color:#475569; font-size:0.95rem; }
+        .container { max-width:980px; margin:24px auto; padding:0 16px; }
+        .card { background:#fff; border-radius:12px; padding:18px; box-shadow:0 8px 24px rgba(15,23,42,0.06); border:1px solid rgba(2,6,23,0.04); }
+        .btn { display:inline-flex; align-items:center; gap:8px; background:#0f172a; color:#fff; padding:8px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:700; }
+        .btn.secondary { background:#f1f5f9; color:#0b1220; border:1px solid #e2e8f0; }
         .meta { color: #64748b; font-size: 0.9rem; margin: 12px 0; }
-        ul { padding-left: 1.2rem; line-height: 1.8; }
-        a { color: #2563eb; }
+        h1 { font-size: 1.35rem; }
+        /* Tab styles (kept) */
+        .tabs { display: flex; gap: 8px; border-bottom: 1px solid #e2e8f0; margin-bottom: 12px; }
+        .tab { padding: 8px 12px; cursor: pointer; background: #f8fafc; border-radius: 6px 6px 0 0; border: 1px solid #e2e8f0; border-bottom: none; }
+        .tab.active { background: white; font-weight: 600; box-shadow: 0 -2px 0 rgba(37,99,235,0.08) inset; }
+        .tab:not(.active):hover { background: #f1f5f9; }
+        .panel { display: none; padding: 16px; border: 1px solid #e2e8f0; background: white; border-radius: 0 6px 6px 6px; }
+        .panel.active { display: block; }
+        .admin-table { border-collapse: collapse; width: 100%; max-width: 1200px; margin-top: 8px; }
+        .admin-table th, .admin-table td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; font-size: 0.95rem; }
+        .admin-table th { background: #f8fafc; }
+        /* Small helpers (badges, muted) */
+        .muted { color:#64748b; }
+        .badge { display:inline-block; padding:4px 8px; border-radius:999px; font-weight:700; font-size:0.85rem; }
+        .badge.pending { background:#fff7ed; color:#b45309; border:1px solid #ffedd5; }
+        .badge.approved { background:#ecfdf5; color:#166534; border:1px solid #bbf7d0; }
+        .badge.rejected { background:#fff1f2; color:#981b1b; border:1px solid #fecaca; }
+        .badge.cancelled { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
+
+        /* Page buttons (gr-page-btn) - improved active/hover/focus styles */
+        .gr-page-btn {
+            appearance: none;
+            -webkit-appearance: none;
+            border: 1px solid #e2e8f0;
+            background: #fff;
+            color: #0b1220;
+            padding: 6px 10px;
+            min-width: 36px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.95rem;
+            line-height: 1;
+            text-align: center;
+            transition: background 120ms ease, color 120ms ease, transform 120ms ease, box-shadow 120ms ease;
+        }
+        .gr-page-btn:not(.active):hover {
+            background: #f1f5f9;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(2,6,23,0.04);
+        }
+        .gr-page-btn:focus {
+            outline: 3px solid rgba(37,99,235,0.12);
+            outline-offset: 2px;
+        }
+        .gr-page-btn[disabled] {
+            opacity: 0.65;
+            cursor: default;
+            transform: none;
+            box-shadow: none;
+        }
+        .gr-page-btn.active {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+            box-shadow: 0 6px 18px rgba(37,99,235,0.12);
+            cursor: default;
+        }
+        @media (max-width:640px) {
+            .gr-page-btn { padding: 4px 8px; font-size: 0.9rem; min-width: 30px; }
+        }
+
+        @media (max-width:640px) { .site-header { padding:0 12px; } .container { padding:0 12px; } }
     </style>
 </head>
 <body>
-    <h1>관리자 대시보드</h1>
-    <p class="meta">로그인 사용자: <span th:text="${userKey}"></span> · 권한: <span th:text="${roles}"></span></p>
+    <th:block th:replace="fragments :: toastAndScripts"></th:block>
+    <script th:src="@{/js/admin.js}"></script>
+    <script th:src="@{/js/admin-fragments.js}"></script>
 
-    <div th:if="${isAdmin}">
-        <p>우선 구현된 관리 메뉴입니다.</p>
-        <ul>
-            <li><a href="/admin/users">회원 관리</a> — 전체 회원 목록</li>
-            <li><a href="/admin/groups">그룹 관리</a> — 전체 그룹 목록</li>
-            <li><a href="/admin/group-requests">그룹 신청 관리</a> — 모임 생성 대기 건 승인·거부</li>
-        </ul>
+    <header>
+        <div class="site-header">
+            <div class="brand">Club Schedule</div>
+            <div class="subtitle">관리자 대시보드</div>
+            <div style="margin-left:auto;">
+                <a href="/" class="btn secondary">메인으로</a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h1 style="margin:0;">관리자 대시보드</h1>
+            <p class="meta">로그인 사용자: <span th:text="${userKey}"></span> · 권한: <span th:text="${roles}"></span></p>
+
+            <div th:if="${isAdmin}">
+                <div class="tabs" role="tablist" aria-label="관리자 메뉴" th:attr="data-initial-panel=${initialPanel}">
+                    <div class="tab" role="tab" id="tab-usersPanel" tabindex="0" aria-controls="usersPanel" data-panel-id="usersPanel" data-src="/admin/fragment/users">회원</div>
+                    <div class="tab" role="tab" id="tab-groupsPanel" tabindex="-1" aria-controls="groupsPanel" data-panel-id="groupsPanel" data-src="/admin/fragment/groups">그룹</div>
+                    <div class="tab" role="tab" id="tab-groupRequestsPanel" tabindex="-1" aria-controls="groupRequestsPanel" data-panel-id="groupRequestsPanel" data-api="/admin/api/group-requests">그룹 신청</div>
+                    <div class="tab" role="tab" id="tab-groupJoinsPanel" tabindex="-1" aria-controls="groupJoinsPanel" data-panel-id="groupJoinsPanel" data-src="/admin/fragment/group-joins">가입 요청</div>
+                </div>
+
+                <!-- Global search for Group Requests: sets panel filter and triggers JSON fetch -->
+                <div id="global-gr-controls" style="display:flex;align-items:center;gap:8px;margin:12px 0;">
+                    <input id="global-gr-groupName" type="search" placeholder="그룹명으로 검색 (전체)" style="padding:8px 10px;border-radius:8px;border:1px solid #e6eef8;width:260px;" />
+                    <button id="global-gr-search" class="btn secondary" type="button">검색</button>
+                </div>
+
+                <div id="panels">
+                    <!-- Panels start empty; content will be lazy-loaded from data-src on first activation -->
+                    <div id="usersPanel" class="panel" role="tabpanel" aria-labelledby="tab-usersPanel" data-loaded="false"></div>
+                    <div id="groupsPanel" class="panel" role="tabpanel" aria-labelledby="tab-groupsPanel" data-loaded="false"></div>
+                    <div id="groupRequestsPanel" class="panel" role="tabpanel" aria-labelledby="tab-groupRequestsPanel" data-loaded="false"></div>
+                    <div id="groupJoinsPanel" class="panel" role="tabpanel" aria-labelledby="tab-groupJoinsPanel" data-loaded="false"></div>
+                </div>
+                <script>
+                    (function(){
+                        const input = document.getElementById('global-gr-groupName');
+                        const btn = document.getElementById('global-gr-search');
+                        if (!btn) return;
+                        btn.addEventListener('click', async () => {
+                            const name = input ? (input.value || '').trim() : '';
+                            const panel = document.getElementById('groupRequestsPanel');
+                            if (panel){
+                                // If the panel has an internal input, copy value so controls stay in sync
+                                const panelInput = panel.querySelector('#gr-groupName');
+                                if (panelInput) panelInput.value = name;
+                                // Ensure panel is loaded then trigger its fetch
+                                try{
+                                    // If panel isn't loaded yet, admin.js lazy loader will fetch on activation; we trigger the renderer anyway
+                                    await window.fetchGroupRequests('groupRequestsPanel', 1);
+                                    return;
+                                }catch(e){
+                                    console.error('fetchGroupRequests failed', e);
+                                }
+                            }
+                            // Fallback: call API directly and render JSON into panel
+                            try{
+                                const qs = name ? ('?groupName=' + encodeURIComponent(name) + '&page=1') : '?page=1';
+                                const url = '/admin/api/group-requests' + qs;
+                                const resp = await fetch(url, { credentials: 'same-origin' });
+                                if (!resp.ok) { console.error('API fetch failed', resp.status); return; }
+                                const json = await resp.json();
+                                if (panel && window.renderGroupRequestsJson){
+                                    window.renderGroupRequestsJson(panel, json);
+                                    if (window.initFragment) window.initFragment('groupRequestsPanel');
+                                }
+                            }catch(e){ console.error(e); }
+                        });
+                        // support Enter key on input
+                        if (input){ input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter'){ ev.preventDefault(); btn.click(); } }); }
+                    })();
+                </script>
+            </div>
+
+            <div th:if="${!isAdmin}">
+                <p>관리자 권한이 필요합니다.</p>
+            </div>
+        </div>
     </div>
 
-    <div th:if="${!isAdmin}">
-        <p>관리자 권한이 필요합니다.</p>
-    </div>
-
-    <p><a href="/">메인으로</a></p>
 </body>
 </html>

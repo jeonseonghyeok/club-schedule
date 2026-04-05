@@ -10,7 +10,9 @@ import com.moyora.clubschedule.vo.GroupMemberVo;
 import com.moyora.clubschedule.vo.Notification;
 import lombok.RequiredArgsConstructor;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +26,8 @@ public class GroupRequestService {
     private final NotificationService notificationService;
     private final GroupMapper groupMapper;
     private final GroupMemberMapper groupMemberMapper;
+
+    private static final int DEFAULT_PAGE_SIZE = 10;
 
     /**
      * 그룹 신청 요청을 처리
@@ -65,10 +69,7 @@ public class GroupRequestService {
         // 2) 그룹 테이블에 INSERT
         GroupVo g = new GroupVo();
         g.setName(req.getGroupName());
-        g.setDescription(req.getDescription());
         g.setLeaderUserKey(req.getUserKey());
-        g.setCapacity(50); // 기본 정원
-        g.setAutoApprove(false);
         g.setGroupRequestId(requestId);
         groupMapper.insert(g);
 
@@ -165,6 +166,48 @@ public class GroupRequestService {
      */
     public List<GroupRequest> getMyRequest(Long userKey) {
         return groupRequestMapper.selectByUserKey(userKey);
+    }
+
+    /**
+     * 관리자: 필터(상태, 그룹명) + 페이징 반환
+     * @param status optional status filter (null or empty = all)
+     * @param groupName optional group name substring
+     * @param page 1-based page index
+     * @param size page size (default 10)
+     * @return Map with keys: "items" -> List<GroupRequest>, "total" -> Integer total count, "page" -> Integer current page, "size" -> Integer page size
+     */
+    public Map<String,Object> getRequestsByFilters(String status, String groupName, Integer page, Integer size){
+        int p = (page == null || page < 1) ? 1 : page;
+        int s = (size == null || size < 1) ? DEFAULT_PAGE_SIZE : size;
+        int offset = (p - 1) * s;
+        Map<String,Object> params = new HashMap<>();
+        params.put("status", (status != null && !status.isBlank()) ? status : null);
+        params.put("groupName", (groupName != null && !groupName.isBlank()) ? groupName : null);
+        params.put("limit", s);
+        params.put("offset", offset);
+        List<GroupRequest> items = groupRequestMapper.selectByFilters(params);
+        int total = groupRequestMapper.countByFilters(params);
+        Map<String,Object> result = new HashMap<>();
+        result.put("items", items);
+        result.put("total", total);
+        result.put("page", p);
+        result.put("size", s);
+        return result;
+    }
+
+    /**
+     * 관리자: 전체 요청 조회 (상태 무관)
+     */
+    public List<GroupRequest> getAllRequests() {
+        return groupRequestMapper.selectAll();
+    }
+
+    /**
+     * 관리자: 상태별 요청 조회
+     */
+    public List<GroupRequest> getRequestsByStatus(String status) {
+        if (status == null || status.isBlank()) return getAllRequests();
+        return groupRequestMapper.selectByStatus(status);
     }
 
     // ========== 관리자 기능 ==========

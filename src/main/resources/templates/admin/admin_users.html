@@ -1,49 +1,28 @@
-<!DOCTYPE html>
-<html lang="ko" xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>회원 관리</title>
-    <style>
-        body { font-family: system-ui, sans-serif; margin: 24px; color: #0f172a; }
-        h1 { font-size: 1.25rem; }
-        table { border-collapse: collapse; width: 100%; max-width: 1100px; margin-top: 16px; }
-        th, td { border: 1px solid #e2e8f0; padding: 8px 10px; text-align: left; font-size: 0.9rem; }
-        th { background: #f8fafc; }
-        nav { margin-bottom: 16px; }
-        nav a { margin-right: 12px; color: #2563eb; }
-    </style>
-</head>
-<body>
-<nav>
-    <a href="/admin">관리자 홈</a>
-    <a href="/admin/users">회원</a>
-    <a href="/admin/groups">그룹</a>
-    <a href="/admin/group-requests">그룹 신청</a>
-</nav>
-<h1>회원 관리</h1>
-<p>전체 회원 목록입니다. (최신 가입 순)</p>
-<table>
-    <thead>
-    <tr>
-        <th>회원 키</th>
-        <th>카카오 ID</th>
-        <th>닉네임</th>
-        <th>시스템 역할</th>
-        <th>가입일</th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr th:each="u : ${users}">
-        <td th:text="${u.userKey}"></td>
-        <td th:text="${u.kakaoApiId}"></td>
-        <td th:text="${u.nickname}"></td>
-        <td th:text="${u.systemRole}"></td>
-        <td th:text="${u.createdAt}"></td>
-    </tr>
-    <tr th:if="${users == null or users.isEmpty()}">
-        <td colspan="5">등록된 회원이 없습니다.</td>
-    </tr>
-    </tbody>
-</table>
-</body>
-</html>
+<!-- usersPanel fragment -->
+<div th:fragment="usersPanel">
+    <h1>회원 관리</h1>
+    <p>전체 회원 목록입니다. (최신 가입 순)</p>
+    <table class="admin-table">
+        <thead>
+        <tr>
+            <th>회원 키</th>
+            <th>카카오 ID</th>
+            <th>닉네임</th>
+            <th>시스템 역할</th>
+            <th>가입일</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="u : ${users}">
+            <td th:text="${u.userKey}"></td>
+            <td th:text="${u.kakaoApiId}"></td>
+            <td th:text="${u.nickname}"></td>
+            <td th:text="${u.systemRole}"></td>
+            <td th:text="${u.createdAt}"></td>
+        </tr>
+        <tr th:if="${users == null or users.isEmpty()}">
+            <td colspan="5">등록된 회원이 없습니다.</td>
+        </tr>
+        </tbody>
+    </table>
+</div>

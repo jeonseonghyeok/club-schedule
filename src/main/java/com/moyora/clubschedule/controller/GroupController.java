@@ -34,7 +34,7 @@ public class GroupController {
 
     @PatchMapping("/{groupId}")
     @PreAuthorize("@groupManageService.isLeaderOrSubLeader(#groupId, principal.userKey)")
-    public ResponseEntity<?> updateGroup(@PathVariable Long groupId, @Valid @RequestBody com.moyora.clubschedule.vo.GroupUpdateDto dto) {
+    public ResponseEntity<?> updateGroup(@PathVariable("groupId") Long groupId, @Valid @RequestBody com.moyora.clubschedule.vo.GroupUpdateDto dto) {
         com.moyora.clubschedule.vo.GroupVo toUpdate = new com.moyora.clubschedule.vo.GroupVo();
         toUpdate.setName(dto.getName());
         toUpdate.setDescription(dto.getDescription());

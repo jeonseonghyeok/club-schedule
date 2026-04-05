@@ -9,7 +9,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
 import com.moyora.clubschedule.util.KakaoTokenUtil;
@@ -32,10 +31,9 @@ public class SecurityConfig {
 	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
 		// AUTH_TOKEN은 httpOnly 유지. CSRF는 별도 쿠키 XSRF-TOKEN(httpOnly=false) + 헤더 X-XSRF-TOKEN 조합.
-		// Spring Security 6 기본 XOR 핸들러는 쿠키 값을 그대로 헤더에 넣는 방식과 맞지 않아, raw 토큰 핸들러 사용.
-		CookieCsrfTokenRepository tokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
-		tokenRepository.setCookiePath("/");
-
+		// Use HeaderOrCookieCsrfTokenRepository to accept header-provided token or fallback to cookie.
+		HeaderOrCookieCsrfTokenRepository tokenRepository = new HeaderOrCookieCsrfTokenRepository();
+		
 		CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
 		requestHandler.setCsrfRequestAttributeName("_csrf");
 

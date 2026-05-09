@@ -34,7 +34,6 @@ public class MainController {
             return "main";
         }
 
-        // Fallback: try to read AUTH_TOKEN cookie and validate it so server-side rendering can show account info
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie c : cookies) {
@@ -70,23 +69,11 @@ public class MainController {
             }
         }
         else {
-        	// 쿠키가 없는 경우 로그인 콜백 페이지로 리다이렉트하여 클라이언트에서 인증 상태를 확인하도록 유도
-        	return "redirect:/login/kakao/login_callback";
+            // 쿠키가 없는 경우 로그인 콜백 페이지로 리다이렉트하여 클라이언트에서 인증 상태를 확인하도록 유도
+            return "redirect:/login/kakao/login_callback";
         }
 
         return "main";
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
-    @GetMapping("/admin")
-    public String admin(@AuthenticationPrincipal CustomUserDetails userDetails, Model model) {
-        if (userDetails != null) {
-            model.addAttribute("userKey", userDetails.getUserKey());
-            model.addAttribute("roles", userDetails.getAuthorities());
-            boolean isAdmin = userDetails.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
-            model.addAttribute("isAdmin", isAdmin);
-        }
-        return "admin";
-    }
 }

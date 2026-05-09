@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <th:block th:replace="~{admin/common_layout :: baseHead}">
+        <script src="../../static/js/admin.js"></script>
+    </th:block>
+</head>
+<body>
+    <header style="padding:20px 0;">
+        <div style="max-width:980px;margin:0 auto;display:flex;align-items:center;padding:0 16px;">
+            <div style="font-weight:700;font-size:1.125rem;color:#0f172a;">Club Schedule</div>
+            <div style="margin-left:auto;"><a href="/" class="btn secondary">메인으로</a></div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="card">
+            <h1 style="margin:0;">관리자 대시보드</h1>
+            <p style="color:#64748b;margin:12px 0;">로그인 사용자: <span th:text="${userKey}"></span> · 권한: <span th:text="${roles}"></span></p>
+
+                <div class="tabs" role="tablist" aria-label="관리자 메뉴">
+                    <div class="tab" role="tab" id="tab-usersPanel" tabindex="0" aria-controls="usersPanel" data-panel-id="usersPanel" data-fragment="users" data-src="/admin/fragment/users" data-local="fragments/users.html">회원</div>
+                    <div class="tab" role="tab" id="tab-groupsPanel" tabindex="-1" aria-controls="groupsPanel" data-panel-id="groupsPanel" data-fragment="groups" data-src="/admin/fragment/groups" data-local="fragments/groups.html">그룹</div>
+                    <div class="tab" role="tab" id="tab-groupRequestsPanel" tabindex="-1" aria-controls="groupRequestsPanel" data-panel-id="groupRequestsPanel" data-fragment="group-requests" data-src="/admin/fragment/group-requests" data-local="fragments/group_requests.html">그룹 신청</div>
+                    <div class="tab" role="tab" id="tab-groupJoinsPanel" tabindex="-1" aria-controls="groupJoinsPanel" data-panel-id="groupJoinsPanel" data-fragment="group-joins" data-src="/admin/fragment/group-joins" data-local="fragments/group_joins.html">가입 요청 모니터링</div>
+                </div>
+
+                <div id="panels">
+
+                    <!-- Each panel includes a server-side fragment replacement for runtime rendering,
+                         but contains local fallback markup so the page works when opened via file:// -->
+
+                    <div id="usersPanel" class="panel" role="tabpanel" aria-labelledby="tab-usersPanel" data-loaded="true"
+                         th:replace="admin/fragments :: usersPanel">
+                        <!-- Fallback content: shown when templates are not processed (e.g., file:// local testing) -->
+                        <div class="panel-inner">
+                            <h2>회원 관리 (로컬 모드)</h2>
+                            <p class="muted">서버가 없을 때 표시되는 예시 사용자 목록입니다.</p>
+                            <table style="width:100%;border-collapse:collapse;">
+                                <thead>
+                                    <tr><th>아이디</th><th>이름</th><th>역할</th><th>상태</th></tr>
+                                </thead>
+                                <tbody>
+                                    <tr><td>user01</td><td>홍길동</td><td>USER</td><td>활성</td></tr>
+                                    <tr><td>admin</td><td>관리자</td><td>ADMIN</td><td>활성</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="groupsPanel" class="panel" role="tabpanel" aria-labelledby="tab-groupsPanel" data-loaded="true"
+                         th:replace="admin/fragments :: groupsPanel">
+                        <!-- Fallback content: group list -->
+                        <div class="panel-inner">
+                            <h2>그룹 관리 (로컬 모드)</h2>
+                            <p class="muted">샘플 그룹 목록입니다.</p>
+                            <ul>
+                                <li><strong>스터디 A</strong> — 주최: user01</li>
+                                <li><strong>헬스 클럽</strong> — 주최: user02</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div id="groupRequestsPanel" class="panel" role="tabpanel" aria-labelledby="tab-groupRequestsPanel" data-loaded="true"
+                         th:replace="admin/fragments :: groupRequestsPanel">
+                        <!-- Fallback content: group requests -->
+                        <div class="panel-inner">
+                            <h2>그룹 신청 (로컬 모드)</h2>
+                            <p class="muted">서버 연결이 없을 때 보이는 예시 신청 목록입니다.</p>
+                            <ul>
+                                <li>user03 → 스터디 A (대기)</li>
+                                <li>user04 → 헬스 클럽 (대기)</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div id="groupJoinsPanel" class="panel" role="tabpanel" aria-labelledby="tab-groupJoinsPanel" data-loaded="true"
+                         th:replace="admin/fragments :: groupJoinsPanel">
+                        <!-- Fallback content: group joins monitoring -->
+                        <div class="panel-inner">
+                            <h2>가입 요청 모니터링 (로컬 모드)</h2>
+                            <p class="muted">가입 요청 모니터링의 예시 뷰입니다.</p>
+                            <ul>
+                                <li>요청 123 — user05 → 스터디 B</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                </div>
+        </div>
+    </div>
+
+</body>
+</html>

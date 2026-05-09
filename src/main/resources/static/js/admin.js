@@ -1,170 +1,214 @@
 (function(){
-    // Centralized admin actions for approve/reject across panels
-    async function adminApprove(url, method='POST', successMsg='승인되었습니다.'){
-        try{
-            const resp = await fetch(url, {
-                method: method,
-                headers: addCsrf({}),
-                credentials: 'same-origin'
-            });
-            await handleResponse(resp, successMsg);
-        }catch(e){
-            console.error('adminApprove error', e);
-            showToast('오류 발생: ' + (e.message||e), 'error');
-        }
-    }
+    function selectPanelById(panelId, pushState=true){
+        const tabs = Array.from(document.querySelectorAll('.tabs .tab'));
+        const panels = Array.from(document.querySelectorAll('.panel'));
+        tabs.forEach(t => t.classList.remove('active'));
+        panels.forEach(p => { p.style.display = 'none'; p.classList.remove('active'); });
 
-    async function adminReject(url, method='POST', requestId=null, successMsg='거부되었습니다.'){
-        try{
-            const reason = prompt('거부 사유를 입력하세요');
-            if (reason === null) return;
-            const bodyObj = requestId ? { requestId: requestId, rejectReason: reason } : { rejectReason: reason };
-            const resp = await fetch(url, {
-                method: method,
-                headers: addCsrf({'Content-Type':'application/json'}),
-                credentials: 'same-origin',
-                body: JSON.stringify(bodyObj)
-            });
-            await handleResponse(resp, successMsg);
-        }catch(e){
-            console.error('adminReject error', e);
-            showToast('오류 발생: ' + (e.message||e), 'error');
-        }
-    }
+        const tab = document.querySelector(`[data-panel-id="${panelId}"]`);
+        const panel = document.getElementById(panelId);
+        if (tab) tab.classList.add('active');
+        if (panel){
+            panel.style.display = 'block';
+            panel.classList.add('active');
 
-    // Utility to insert HTML and execute inline scripts inside it
-    function insertHtmlWithScripts(container, html){
-        container.innerHTML = html;
-        // Execute scripts (inline) found in the inserted HTML
-        const scripts = Array.from(container.querySelectorAll('script'));
-        scripts.forEach(oldScript => {
-            const script = document.createElement('script');
-            if (oldScript.src) {
-                script.src = oldScript.src;
-            } else {
-                script.textContent = oldScript.textContent;
+            // on first show, load data for the panel if configured
+            if (!panel.dataset.loaded || panel.dataset.loaded === 'false'){
+                if (panelConfigs[panelId]){
+                    const cfg = panelConfigs[panelId];
+                    loadPanelPage(panelId, {updateState: false});
+                    panel.dataset.loaded = 'true';
+                }
             }
-            // copy type if present
-            if (oldScript.type) script.type = oldScript.type;
-            // replace old with new to execute
-            oldScript.parentNode.replaceChild(script, oldScript);
-        });
+        }
+
     }
 
-    // Tab switching logic: accessible, keyboard support, hash + localStorage persistence, lazy-load panels
-    function initAdminTabs(){
+    function handleTabClick(e){
+        e.preventDefault();
+        const tab = e.currentTarget;
+        const panelId = tab.getAttribute('data-panel-id');
+        if (panelId) selectPanelById(panelId);
+    }
+
+    // --- New: common search logic (paging removed) ---
+    const panelConfigs = {
+        usersPanel: {
+            formSelector: '#users-search-form',
+            pagingSelector: '.paging[data-panel-id="usersPanel"]',
+            endpoint: '/admin/api/users'
+        },
+        groupsPanel: {
+            formSelector: '#groups-search-form',
+            pagingSelector: '.paging[data-panel-id="groupsPanel"]',
+            endpoint: '/admin/api/groups'
+        },
+        groupRequestsPanel: {
+            formSelector: '#gr-search-form',
+            pagingSelector: '.paging[data-panel-id="groupRequestsPanel"]',
+            endpoint: '/admin/api/group-requests'
+        },
+        groupJoinsPanel: {
+            formSelector: '#gj-search-form',
+            pagingSelector: '.paging[data-panel-id="groupJoinsPanel"]',
+            endpoint: '/admin/api/group-joins'
+        }
+    };
+
+    function buildParamsFromForm(form){
+        const params = new URLSearchParams();
+
+        // cond1: single select determines which field to search by
+        const cond1Field = (form.querySelector('[name="cond1Field"]') || {}).value || '';
+        if (cond1Field){
+            if (cond1Field === 'role'){
+                const roleEl = form.querySelector('[name="cond1Role"]');
+                if (roleEl && roleEl.value) params.set('role', roleEl.value);
+            } else {
+                const valEl = form.querySelector('[name="cond1Value"]');
+                if (valEl && valEl.value) params.set(cond1Field, valEl.value);
+            }
+        }
+
+        // include date ranges and other named fields excluding cond1 helpers
+        Array.from(form.elements).forEach(el => {
+            if (!el.name) return;
+            if (['cond1Field','cond1Value','cond1Role'].includes(el.name)) return;
+            if ((el.type === 'date' || el.type === 'number' || el.type === 'search' || el.type === 'text' || el.tagName.toLowerCase() === 'select') && el.value !== ''){
+                params.set(el.name, el.value);
+            }
+        });
+
+        return params;
+    }
+
+    // Dispatch results for external renderer
+    function dispatchResults(panelId, data){
+        const perId = 'admin-common-results-' + panelId;
+        let common = document.getElementById(perId);
+        if (!common) common = document.getElementById('admin-common-results');
+        if (common){
+            common.dataset.panel = panelId;
+            // clear previous content — renderer can refill
+            common.innerHTML = '';
+        }
+        const ev = new CustomEvent('admin:search:results', { detail: { panelId: panelId, data: data } });
+        window.dispatchEvent(ev);
+    }
+
+    async function loadPanelPage(panelId, options = {}){
+        const cfg = panelConfigs[panelId];
+        if (!cfg) return;
+        const form = document.querySelector(cfg.formSelector);
+        if (!form) return;
+        const params = buildParamsFromForm(form);
+        // honor explicit page/size passed via options
+        if (options.page) params.set('page', String(options.page));
+        if (options.size) params.set('size', String(options.size));
+        const url = cfg.endpoint + (params.toString() ? ('?' + params.toString()) : '');
+        try{
+            const res = await fetch(url, { headers: { 'Accept': 'application/json' }});
+            if (!res.ok) throw new Error('서버 응답 오류: ' + res.status);
+            const data = await res.json();
+            dispatchResults(panelId, data);
+            if (options.updateState){
+                const state = { panel: panelId };
+                const qs = new URLSearchParams();
+                qs.set('panel', panelId);
+                history.pushState(state, '', location.pathname + '?' + qs.toString());
+            }
+        }catch(err){
+            const perId = 'admin-common-results-' + panelId;
+            let common = document.getElementById(perId);
+            if (!common) common = document.getElementById('admin-common-results');
+            if (common) common.innerHTML = '<div class="error">오류: ' + (err.message || err) + '</div>';
+            console.error(err);
+        }
+    }
+
+    // paging handlers removed
+
+    function attachFormHandlers(cfg, panelId){
+        const form = document.querySelector(cfg.formSelector);
+        if (!form) return;
+        const searchBtn = form.querySelector('button[type="button"]');
+        if (searchBtn) searchBtn.addEventListener('click', () => {
+            loadPanelPage(panelId, {updateState:false});
+        });
+        form.addEventListener('submit', (e) => { e.preventDefault(); if (searchBtn) searchBtn.click(); });
+
+        // attach cond1 toggle and placeholder updates if exists
+        const fieldSel = form.querySelector('[name="cond1Field"]');
+        if (fieldSel){
+            const valueInput = form.querySelector('[name="cond1Value"]');
+            const roleSelect = form.querySelector('[name="cond1Role"]');
+            const toggle = () => {
+                const v = fieldSel.value;
+                // role -> show role select
+                if (v === 'role'){
+                    if (valueInput) valueInput.style.display = 'none';
+                    if (roleSelect) roleSelect.style.display = '';
+                } else {
+                    if (valueInput) valueInput.style.display = '';
+                    if (roleSelect) roleSelect.style.display = 'none';
+                }
+                // update placeholder for combined fields
+                if (v === 'requester'){
+                    if (valueInput) valueInput.placeholder = 'ID 또는 이름 입력하세요';
+                } else if (v === 'group'){
+                    if (valueInput) valueInput.placeholder = '그룹번호 또는 그룹명 입력하세요';
+                } else if (v === 'groupNo'){
+                    if (valueInput) valueInput.placeholder = '그룹번호 입력하세요';
+                } else if (v === 'name'){
+                    if (valueInput) valueInput.placeholder = '이름 입력하세요';
+                } else {
+                    if (valueInput) valueInput.placeholder = '값을 입력하세요';
+                }
+            };
+            fieldSel.addEventListener('change', toggle);
+            toggle();
+        }
+    }
+
+    function init(){
         const tabList = document.querySelector('.tabs');
         if (!tabList) return;
         const tabs = Array.from(tabList.querySelectorAll('.tab'));
-        const panels = Array.from(document.querySelectorAll('.panel'));
-
-        async function lazyLoadPanelIfNeeded(panelEl, tabEl){
-            if (!panelEl || !tabEl) return;
-            try{
-                if (panelEl.getAttribute('data-loaded') === 'true') return;
-                const api = tabEl.getAttribute('data-api');
-                const src = tabEl.getAttribute('data-src');
-                // show a small loading state
-                panelEl.innerHTML = '<div class="muted">로딩 중...</div>';
-                if (api && window.renderGroupRequestsJson){
-                    // fetch JSON API and render via client renderer
-                    const url = api; // api should accept same query params when provided by client-side controls
-                    const resp = await fetch(url, { credentials: 'same-origin' });
-                    if (!resp.ok) { panelEl.innerHTML = '<div class="muted">내용을 불러오는데 실패했습니다.</div>'; return; }
-                    const json = await resp.json();
-                    try{ 
-                        window.renderGroupRequestsJson(panelEl, json); 
-                    }catch(e){ 
-                        console.error('renderGroupRequestsJson error', e); 
-                        panelEl.innerHTML = '<div class="muted">렌더러 오류</div>'; 
-                    }
-                    // ensure fragment behaviors (event handlers) are initialized after renderer writes HTML
-                    try{ if (window.initFragment) window.initFragment(panelEl.id); }catch(e){ console.error('initFragment error', e); }
-                    panelEl.setAttribute('data-loaded', 'true');
-                    return;
-                }
-                if (src){
-                    const resp = await fetch(src, { credentials: 'same-origin' });
-                    if (!resp.ok) { panelEl.innerHTML = '<div class="muted">내용을 불러오는데 실패했습니다.</div>'; return; }
-                    const text = await resp.text();
-                    insertHtmlWithScripts(panelEl, text);
-                    panelEl.setAttribute('data-loaded', 'true');
-                    // call fragment initializer if exists (shared JS handles behavior)
-                    try{ if (window.initFragment) window.initFragment(panelEl.id); }catch(e){ console.error('initFragment error', e); }
-                    return;
-                }
-                // nothing to load
-                panelEl.innerHTML = '';
-             }catch(e){
-                 console.error('lazyLoadPanel error', e);
-                 if (panelEl) panelEl.innerHTML = '<div class="muted">오류가 발생했습니다.</div>';
-             }
-         }
-
-        async function setActive(panelId, pushState=true){
-            panels.forEach(p => p.classList.toggle('active', p.id === panelId));
-            tabs.forEach((t,i) => {
-                const isActive = t.getAttribute('data-panel-id') === panelId;
-                t.classList.toggle('active', isActive);
-                t.setAttribute('tabindex', isActive ? '0' : '-1');
-                t.setAttribute('aria-selected', isActive ? 'true' : 'false');
-            });
-            // lazy load the active panel's content if necessary
-            const activeTab = tabs.find(t => t.getAttribute('data-panel-id') === panelId);
-            const activePanel = document.getElementById(panelId);
-            if (activePanel && activeTab) await lazyLoadPanelIfNeeded(activePanel, activeTab);
-            // sync hash and localStorage
-            if (panelId && pushState){
-                try{ location.hash = panelId; }catch(e){}
-                try{ localStorage.setItem('adminActivePanel', panelId); }catch(e){}
-            }
-        }
-
-        // click handlers
         tabs.forEach(t => {
-            t.addEventListener('click', () => setActive(t.getAttribute('data-panel-id')));
-            t.addEventListener('keydown', (ev) => {
-                const idx = tabs.indexOf(t);
-                if (ev.key === 'ArrowRight'){
-                    const next = tabs[(idx+1)%tabs.length]; next.focus();
-                }else if (ev.key === 'ArrowLeft'){
-                    const prev = tabs[(idx-1+tabs.length)%tabs.length]; prev.focus();
-                }else if (ev.key === 'Home'){
-                    tabs[0].focus();
-                }else if (ev.key === 'End'){
-                    tabs[tabs.length-1].focus();
-                }else if (ev.key === 'Enter' || ev.key === ' '){
-                    ev.preventDefault(); setActive(t.getAttribute('data-panel-id'));
-                }
-            });
+            t.addEventListener('click', handleTabClick);
+            t.addEventListener('keyup', function(e){ if (e.key === 'Enter' || e.key === ' ') { t.click(); } });
         });
 
-        // initial selection: priority hash -> server initial -> stored -> first tab
-        const hash = location.hash ? location.hash.substring(1) : null;
-        const serverInitial = tabList.getAttribute('data-initial-panel') || null;
-        let chosen = null;
-        if (hash && document.getElementById(hash)) chosen = hash;
-        else if (serverInitial && document.getElementById(serverInitial)) chosen = serverInitial;
-        else {
-            try{ const stored = localStorage.getItem('adminActivePanel'); if (stored && document.getElementById(stored)) chosen = stored; }catch(e){}
-        }
-        if (!chosen && tabs[0]) chosen = tabs[0].getAttribute('data-panel-id');
-        if (chosen) setActive(chosen, true);
+        // wire form handlers for configured panels
+        Object.keys(panelConfigs).forEach(pid => {
+            attachFormHandlers(panelConfigs[pid], pid);
+        });
 
-        window.addEventListener('hashchange', () => {
-            const h = location.hash ? location.hash.substring(1) : null;
-            if (h && document.getElementById(h)) setActive(h, false);
+        // Determine initial panel from querystring (?panel=...) or default to the first tab
+        const qs = new URLSearchParams(location.search);
+        const panelFromQs = qs.get('panel');
+        const initial = panelFromQs || (tabs[0] && tabs[0].getAttribute('data-panel-id'));
+        if (initial) selectPanelById(initial);
+
+        // handle back/forward
+        window.addEventListener('popstate', function(evt){
+            const panelId = evt.state?.panel || new URLSearchParams(location.search).get('panel');
+            if (panelId) selectPanelById(panelId);
+        });
+
+        // pagination click events
+        window.addEventListener('admin:pagination:click', function(ev){
+            const d = ev.detail || {};
+            const p = d.page || 1;
+            const panelId = d.panelId;
+            if (panelId) loadPanelPage(panelId, { page: p, updateState: false });
+        });
+
+        // Ensure panels have a default display style when server-side rendering applies
+        document.querySelectorAll('.panel').forEach(p => {
+            if (!p.style.display) p.style.display = 'none';
         });
     }
 
-    // Initialize after DOMContentLoaded so panels inserted by Thymeleaf are present
-    if (document.readyState === 'loading'){
-        document.addEventListener('DOMContentLoaded', initAdminTabs);
-    }else{
-        initAdminTabs();
-    }
-
-    // Export to global scope so templates can call these directly
-    window.adminApprove = adminApprove;
-    window.adminReject = adminReject;
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
 })();

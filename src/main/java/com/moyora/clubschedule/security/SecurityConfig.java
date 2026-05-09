@@ -50,6 +50,7 @@ public class SecurityConfig {
 						.requestMatchers(WhitelistConfig.AUTH_WHITELIST).permitAll()
 						.anyRequest().authenticated()
 				)
-				.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class).build();
+				.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+				.build();
 	}
 }

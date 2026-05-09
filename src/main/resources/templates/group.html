@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>그룹 관리</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+	<script src="https://cdn.tailwindcss.com"></script>
     <style>
         /* Basic layout matching main.html style */
         * { box-sizing: border-box; }
@@ -21,8 +22,6 @@
         .description { overflow:hidden; display:-webkit-box; -webkit-line-clamp:7; -webkit-box-orient:vertical; white-space:pre-wrap; }
         .more-link { color:#2563eb; cursor:pointer; text-decoration:underline; margin-top:8px; display:inline-block; }
 
-        /* Calendar placeholder */
-        .calendar { border-radius:10px; border:1px solid rgba(2,6,23,0.06); padding:12px; min-height:300px; display:flex; align-items:center; justify-content:center; color:#64748b; }
 
         /* Management tab styles */
         .members-list, .schedules-list, .permissions-list { border-radius:10px; border:1px solid rgba(2,6,23,0.06); padding:12px; max-height:400px; overflow:auto; }
@@ -34,6 +33,9 @@
         .modal-overlay { position:fixed; inset:0; background:rgba(2,6,23,0.5); display:none; align-items:center; justify-content:center; z-index:1000; }
         .modal { background:#fff; width:720px; max-width:95%; border-radius:10px; padding:18px; box-shadow:0 10px 30px rgba(2,6,23,0.28); }
         .modal .modal-header { display:flex; align-items:center; justify-content:space-between; }
+
+        /* Calendar specific styles */
+        #calendarFull { cursor: pointer; }
     </style>
 </head>
 <body>
@@ -44,7 +46,7 @@
     </div>
 </header>
 
-<div class="container">
+<div class="container" th:attr="data-group-id=${group.groupId}, data-is-member=${isMember}">
     <div class="card">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
             <div>
@@ -80,25 +82,32 @@
                 </div>
 
                 <div class="card" style="margin-top:12px;">
-                    <div class="section-title">스케쥴</div>
-                    <div class="calendar" id="calendarPlaceholder">달력 영역 (캘린더 컴포넌트로 교체 예정)</div>
+                    <div class="section-title">스케줄</div>
+                    <!-- 최근 일정(간단히 표시) -->
+                    <div id="recentSchedules" style="color:#64748b;">
+                        <div class="muted">로딩 중...</div>
+                    </div>
                 </div>
             </div>
+
             <div>
                 <div class="card">
                     <div class="section-title">빠른 정보</div>
                     <div style="color:#64748b;">
-                        <!--<div>리더: <strong th:text="${group.leaderName}">리더명</strong></div>-->
+                        <!-- 리더, 용량 등은 상황에 따라 표시 -->
                         <div style="margin-top:6px;">멤버수: <strong th:text="${group.currentMemberCount}">0</strong></div>
-                        <!--<div style="margin-top:6px;">용량: <strong th:text="${group.capacity}">N/A</strong></div>-->
                     </div>
                 </div>
             </div>
         </div>
 
-        <div id="contentSchedule" style="display:none;" th:if="${isMember}">
+        <div id="contentSchedule" style="display:none;">
             <div class="card">
-                <div class="section-title">달력 보기</div>
+				
+				<!--
+					API에서 일정을 불러와서 달력에 표시
+					일정 추가 버튼을 클릭하거나 날짜를 클릭하면 일정 추가 모달이 열립니다.
+				-->	
                 <div class="calendar" id="calendarFull">달력 컴포넌트 자리</div>
             </div>
         </div>
@@ -147,8 +156,21 @@
         const cSchedule = document.getElementById('contentSchedule');
         const cManage = document.getElementById('contentManage');
 
-        // helper: get groupId from template model
-        const groupId = /*[[${group.groupId}]]*/ 0;
+        // helper: get groupId and membership flag from template model or data attributes
+        let groupId = /*[[${group.groupId}]]*/ 0;
+        let isMember = /*[[${isMember}]]*/ false;
+        try {
+            const container = document.querySelector('.container');
+            if (container && container.dataset) {
+                // dataset values are strings when rendered; prefer dataset when available
+                if (container.dataset.groupId) groupId = Number(container.dataset.groupId) || groupId;
+                if (typeof container.dataset.isMember !== 'undefined') {
+                    const v = container.dataset.isMember;
+                    if (v === 'true' || v === 'false') isMember = (v === 'true');
+                    else isMember = Boolean(v);
+                }
+            }
+        } catch(e) { /* ignore, keep inlined values */ }
 
         function activateTab(tab) {
             [tabHome, tabSchedule, tabManage].forEach(t => { if (t) t.classList.remove('active'); });
@@ -162,6 +184,17 @@
         if (tabHome) tabHome.addEventListener('click', () => activateTab(tabHome));
         if (tabSchedule) tabSchedule.addEventListener('click', () => { activateTab(tabSchedule); loadSchedules(); });
         if (tabManage) tabManage.addEventListener('click', () => { activateTab(tabManage); loadMembers(); loadSchedulesForManage(); });
+
+        // 기본 탭 활성화: 모든 사용자에게 일정 탭을 기본으로 보여주고 일정 로드
+        try {
+            if (tabSchedule) { activateTab(tabSchedule); loadSchedules(); }
+            else { activateTab(tabHome); }
+        } catch (e) {
+            // 안전장치: 실패 시 홈 탭으로
+            activateTab(tabHome);
+            console.warn('초기 탭 활성화 중 오류:', e);
+        }
+
 
         // Description modal logic
         const descEl = document.getElementById('groupDescription');
@@ -202,6 +235,197 @@
         const schedulesList = document.getElementById('schedulesList');
         const permissionsList = document.getElementById('permissionsList');
 
+        // calendar state
+        let calendarEvents = [];
+        let calendarMonthStart = (new Date()).setDate(1);
+
+        async function fetchSchedulesRaw() {
+            try {
+                const res = await fetch('/api/groups/' + groupId + '/schedules');
+                if (!res.ok) throw new Error('Failed to load schedules');
+                const data = await res.json();
+                // normalize: ensure start is number (epoch ms)
+                return (Array.isArray(data) ? data.map(ev => ({
+                    id: ev.id,
+                    title: ev.title || '일정',
+                    start: (typeof ev.start === 'number') ? ev.start : (ev.start ? Number(ev.start) : null),
+                    createdBy: ev.createdBy || null
+                })) : []);
+            } catch (e) {
+                console.warn(e);
+                return [];
+            }
+        }
+
+        function startOfMonth(date) {
+            const d = new Date(date);
+            d.setHours(0,0,0,0);
+            d.setDate(1);
+            return d;
+        }
+        function addDays(date, days){ const d = new Date(date); d.setDate(d.getDate()+days); return d; }
+        function sameDate(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
+
+        function renderCalendar() {
+		    const cal = document.getElementById('calendarFull');
+		    if (!cal) return;
+		    cal.innerHTML = '';
+		
+		    const monthStart = startOfMonth(calendarMonthStart);
+		    const month = monthStart.getMonth();
+		    const year = monthStart.getFullYear();
+		
+		    // 1. 헤더 영역 (년/월 표시 및 네비게이션)
+		    const header = document.createElement('div');
+		    header.className = 'flex justify-center items-center mb-6 px-2';
+		    header.innerHTML = `
+					<button id="prevBtn" class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">◀</button>
+					<h2 class="text-xl font-bold text-slate-800">${year}년 ${month + 1}월</h2>
+		            <button id="nextBtn" class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">▶</button>
+		    `;
+		    cal.appendChild(header);
+		
+		    // 이벤트 리스너 연결
+		    header.querySelector('#prevBtn').onclick = () => {
+		        calendarMonthStart = new Date(year, month - 1, 1);
+		        renderCalendar();
+		    };
+		    header.querySelector('#nextBtn').onclick = () => {
+		        calendarMonthStart = new Date(year, month + 1, 1);
+		        renderCalendar();
+		    };
+		
+		    // 2. 달력 그리드 생성
+		    const grid = document.createElement('div');
+		    grid.className = 'grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden shadow-sm';
+		
+		    // 요일 라벨
+		    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
+		    weekdays.forEach((w, i) => {
+		        const wEl = document.createElement('div');
+		        wEl.className = `bg-slate-50 py-3 text-center text-xs font-bold uppercase tracking-wider ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-slate-500'}`;
+		        wEl.textContent = w;
+		        grid.appendChild(wEl);
+		    });
+		
+		    // 3. 날짜 계산 및 렌더링
+		    const firstDayWeek = monthStart.getDay();
+		    const startDate = new Date(monthStart);
+		    startDate.setDate(startDate.getDate() - firstDayWeek); // 화면에 표시될 첫 칸의 날짜
+		
+		    // 이벤트 데이터 맵핑 (ISO 8601 기반: YYYY-MM-DD)
+		    const eventsByDate = {};
+		    calendarEvents.forEach(ev => {
+		        if (!ev.start) return;
+		        const d = new Date(ev.start);
+		        const key = d.toISOString().split('T')[0];
+		        if (!eventsByDate[key]) eventsByDate[key] = [];
+		        eventsByDate[key].push(ev);
+		    });
+		
+		    const todayStr = new Date().toISOString().split('T')[0];
+		
+		    // 6주(42칸) 고정 출력으로 높이 유지
+		    for (let i = 0; i < 42; i++) {
+		        const cellDate = new Date(startDate);
+		        cellDate.setDate(cellDate.getDate() + i);
+		        
+		        const dateKey = cellDate.toISOString().split('T')[0];
+		        const isCurrentMonth = cellDate.getMonth() === month;
+		        const isToday = dateKey === todayStr;
+		
+		        const cell = document.createElement('div');
+		        cell.className = `min-height-[110px] p-2 bg-white flex flex-col gap-1 transition-colors hover:bg-slate-50 cursor-pointer ${!isCurrentMonth ? 'bg-slate-50/50 text-slate-300' : 'text-slate-700'}`;
+		        
+		        // 날짜 숫자 및 추가 버튼 영역
+		        const cellHeader = document.createElement('div');
+		        cellHeader.className = 'flex justify-between items-start';
+		        
+		        const dayNum = document.createElement('span');
+		        dayNum.className = `inline-flex items-center justify-center w-7 h-7 text-sm font-semibold rounded-full ${isToday ? 'bg-blue-600 text-white' : ''}`;
+		        dayNum.textContent = cellDate.getDate();
+		        
+		
+		        cellHeader.appendChild(dayNum);
+		        cell.appendChild(cellHeader);
+		
+		        // 이벤트 목록
+		        const evs = eventsByDate[dateKey] || [];
+		        const evContainer = document.createElement('div');
+		        evContainer.className = 'flex flex-col gap-1 mt-1 overflow-hidden';
+		
+		        evs.slice(0, 3).forEach(it => {
+		            const itEl = document.createElement('div');
+		            itEl.className = 'text-[10px] sm:text-xs p-1 px-1.5 bg-blue-50 text-blue-700 rounded border border-blue-100 truncate font-medium';
+		            itEl.textContent = it.title;
+		            itEl.onclick = (e) => {
+		                e.stopPropagation();
+		                // 첫 번째 참고 코드의 openModal과 유사한 기능 연결 가능
+		                alert(`${it.title}\n일시: ${new Date(it.start).toLocaleString()}`);
+		            };
+		            evContainer.appendChild(itEl);
+		        });
+		
+		        if (evs.length > 3) {
+		            const more = document.createElement('div');
+		            more.className = 'text-[10px] text-slate-400 pl-1 font-medium';
+		            more.textContent = `+ ${evs.length - 3}개 더보기`;
+		            evContainer.appendChild(more);
+		        }
+		
+		        cell.appendChild(evContainer);
+		        cell.onclick = () => openDayView(cellDate, evs);
+		        grid.appendChild(cell);
+		    }
+		
+		    cal.appendChild(grid);
+		}
+
+        function openDayView(date, evs){
+            const dayList = document.getElementById('calendarDayList');
+            if (!dayList) return;
+            dayList.innerHTML = '';
+            const h = document.createElement('div'); h.textContent = date.getFullYear()+'-'+(date.getMonth()+1)+'-'+date.getDate(); h.style.fontWeight='700'; h.style.marginBottom='8px'; dayList.appendChild(h);
+            if (!evs || evs.length===0) { const p = document.createElement('div'); p.textContent='해당일의 일정이 없습니다.'; dayList.appendChild(p); return; }
+            evs.forEach(it => { const row = document.createElement('div'); row.style.padding='8px'; row.style.border='1px solid #eee'; row.style.borderRadius='8px'; row.style.marginBottom='6px'; row.textContent = (new Date(it.start)).toLocaleString() + ' — ' + it.title; dayList.appendChild(row); });
+        }
+
+        function openCreateEventModal(date){
+            if (!isMember) { alert('일정 추가는 그룹 멤버만 가능합니다. 가입 후 이용해주세요.'); return; }
+             const modal = document.getElementById('createEventModal');
+             const whenEl = document.getElementById('createEventWhen');
+             const titleEl = document.getElementById('createEventTitle');
+            if (!modal) return;
+            const d = new Date(date); d.setHours(12,0,0,0);
+            whenEl.value = new Date(d).toISOString().substring(0,16); // yyyy-mm-ddThh:mm
+            titleEl.value = '';
+            modal.style.display = 'flex';
+        }
+
+        function closeCreateEventModal(){
+            const modal = document.getElementById('createEventModal'); if (modal) modal.style.display='none';
+        }
+
+        async function submitCreateEvent(){
+            if (!isMember) { alert('일정 추가는 그룹 멤버만 가능합니다.'); return; }
+             const title = document.getElementById('createEventTitle').value.trim();
+             const whenVal = document.getElementById('createEventWhen').value; // format yyyy-MM-ddTHH:mm
+             if (!title || !whenVal) { alert('제목과 일시를 입력하세요'); return; }
+             const start = Date.parse(whenVal);
+            try{
+                const res = await fetch('/api/groups/' + groupId + '/schedules', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title: title, start: start }) });
+                if (!res.ok){ if (res.status===401) { alert('로그인이 필요합니다.'); closeCreateEventModal(); return; } throw new Error('생성 실패'); }
+                const ev = await res.json();
+                // reload events and calendar
+                calendarEvents = await fetchSchedulesRaw();
+                renderCalendar();
+                closeCreateEventModal();
+                alert('일정이 추가되었습니다.');
+            }catch(err){ console.error(err); alert('일정 추가에 실패했습니다.'); }
+        }
+        // expose for other inline scripts that run outside this closure
+        window.submitCreateEvent = submitCreateEvent;
+
         async function loadMembers() {
             if (!membersList) return;
             membersList.innerHTML = '<div class="muted">멤버 목록을 불러오는 중...</div>';
@@ -224,22 +448,8 @@
             const cal = document.getElementById('calendarFull');
             if (!cal) return;
             cal.textContent = '일정을 불러오는 중...';
-            try {
-                const res = await fetch('/api/groups/'+groupId+'/schedules');
-                if (!res.ok) throw new Error('Failed to load schedules');
-                const data = await res.json();
-                cal.textContent = '';
-                // For now, render simple list of titles
-                if (!Array.isArray(data) || data.length === 0) {
-                    cal.textContent = '등록된 일정이 없습니다.';
-                    return;
-                }
-                const ul = document.createElement('ul');
-                data.forEach(ev => { const li = document.createElement('li'); li.textContent = (ev.title || '일정') + ' (' + (new Date(ev.start || ev.date)).toLocaleString() + ')'; ul.appendChild(li); });
-                cal.appendChild(ul);
-            } catch (e) {
-                cal.textContent = '일정을 불러오지 못했습니다.';
-            }
+            calendarEvents = await fetchSchedulesRaw();
+            renderCalendar();
         }
 
         async function loadSchedulesForManage() {
@@ -247,9 +457,7 @@
             if (!el) return;
             el.innerHTML = '<div class="muted">일정 목록을 불러오는 중...</div>';
             try {
-                const res = await fetch('/api/groups/'+groupId+'/schedules');
-                if (!res.ok) throw new Error('Failed to load schedules');
-                const data = await res.json();
+                const data = await fetchSchedulesRaw();
                 el.innerHTML = '';
                 if (!Array.isArray(data) || data.length === 0) { el.innerHTML = '<div class="muted">일정이 없습니다.</div>'; return; }
                 data.forEach(ev => { const d = document.createElement('div'); d.textContent = (ev.title||'일정') + ' - ' + new Date(ev.start||ev.date).toLocaleString(); el.appendChild(d); });
@@ -283,5 +491,37 @@
 
     });
 </script>
+
+<!-- Create event modal -->
+<div id="createEventModal" class="modal-overlay">
+    <div class="modal">
+        <div class="modal-header"><h3>일정 추가</h3><button id="closeCreateEvent" class="tab">닫기</button></div>
+        <div style="margin-top:8px; display:flex;flex-direction:column;gap:8px;">
+            <label>제목: <input id="createEventTitle" type="text" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"/></label>
+            <label>일시: <input id="createEventWhen" type="datetime-local" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"/></label>
+            <div style="display:flex;justify-content:flex-end;gap:8px;">
+                <button id="createEventSubmit" class="btn">저장</button>
+                <button id="createEventCancel" class="tab">취소</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // wire modal buttons
+    document.addEventListener('DOMContentLoaded', function(){
+        const closeBtn = document.getElementById('closeCreateEvent');
+        const cancelBtn = document.getElementById('createEventCancel');
+        const submitBtn = document.getElementById('createEventSubmit');
+        if (closeBtn) closeBtn.addEventListener('click', ()=>{ document.getElementById('createEventModal').style.display='none'; });
+        if (cancelBtn) cancelBtn.addEventListener('click', ()=>{ document.getElementById('createEventModal').style.display='none'; });
+        if (submitBtn) submitBtn.addEventListener('click', submitCreateEvent);
+
+        // ensure clicking modal overlay closes it
+        const modal = document.getElementById('createEventModal');
+        if (modal) modal.addEventListener('click', (ev)=>{ if (ev.target === modal) modal.style.display='none'; });
+    });
+</script>
+
 </body>
 </html>

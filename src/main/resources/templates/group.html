@@ -58,7 +58,7 @@
             </div>
         </div>
     </div>
-
+	
     <div class="card" style="margin-top:12px;">
         <div class="tabs">
             <div id="tabHome" class="tab active">홈</div>
@@ -72,46 +72,36 @@
                 <div style="color:#92400e;">비회원은 일부 정보만 볼 수 있습니다. 참여하려면 가입 또는 신청이 필요합니다.</div>
             </div>
         </div>
-
+		<!--홈탭-->
         <div id="contentHome" class="grid">
             <div>
+				<!--모임설명--> 																																		
                 <div class="card">
-                    <div class="section-title">모임 설명</div>
                     <div id="groupDescription" class="description" th:text="${group.description}">모임 설명 영역</div>
-                    <div><span id="moreBtn" class="more-link" style="display:none;">더보기</span></div>
+					<div><span id="moreBtn" class="more-link" style="display:none;">더보기</span></div>
                 </div>
-
-                <div class="card" style="margin-top:12px;">
+				<!--임박일정 3개만 표시-->
+				<div class="card" style="margin-top:12px;">
                     <div class="section-title">스케줄</div>
-                    <!-- 최근 일정(간단히 표시) -->
                     <div id="recentSchedules" style="color:#64748b;">
                         <div class="muted">로딩 중...</div>
                     </div>
                 </div>
             </div>
 
-            <div>
-                <div class="card">
-                    <div class="section-title">빠른 정보</div>
-                    <div style="color:#64748b;">
-                        <!-- 리더, 용량 등은 상황에 따라 표시 -->
-                        <div style="margin-top:6px;">멤버수: <strong th:text="${group.currentMemberCount}">0</strong></div>
-                    </div>
-                </div>
-            </div>
         </div>
-
+		
+		<!--일정탭-->
         <div id="contentSchedule" style="display:none;">
             <div class="card">
+				<!-- 우측 상단에 일정 등록 버튼 (멤버에게만 표시) -->
+                <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
+                    <button id="globalAddEventBtn" th:if="${isMember}" class="px-3 py-1 bg-blue-600 text-white text-sm rounded">일정등록</button>
+                </div>
 				
-				<!--
-					API에서 일정을 불러와서 달력에 표시
-					일정 추가 버튼을 클릭하거나 날짜를 클릭하면 일정 추가 모달이 열립니다.
-				-->	
-                <div class="calendar" id="calendarFull">달력 컴포넌트 자리</div>
-            </div>
-        </div>
-
+			<!-- Calendar will be rendered here; add button handled in renderCalendar() -->                <div class="calendar" id="calendarFull">달력 컴포넌트 자리</div>            </div>        </div>
+		
+		<!--관리탭-->
         <div id="contentManage" style="display:none;" th:if="${isLeaderOrCoLeader}">
             <div class="card">
                 <div class="section-title">회원 관리</div>
@@ -138,390 +128,26 @@
     </div>
 </div>
 
-<!-- Full description modal -->
-<div id="descriptionModal" class="modal-overlay">
-    <div class="modal">
-        <div class="modal-header"><h3>모임 설명</h3><button id="closeDescription" class="tab">닫기</button></div>
-        <div style="margin-top:8px; white-space:pre-wrap;" id="fullDescription"></div>
-    </div>
-</div>
-
-<script th:inline="javascript">
-    // Tab switching
-    document.addEventListener('DOMContentLoaded', () => {
-        const tabHome = document.getElementById('tabHome');
-        const tabSchedule = document.getElementById('tabSchedule');
-        const tabManage = document.getElementById('tabManage');
-        const cHome = document.getElementById('contentHome');
-        const cSchedule = document.getElementById('contentSchedule');
-        const cManage = document.getElementById('contentManage');
-
-        // helper: get groupId and membership flag from template model or data attributes
-        let groupId = /*[[${group.groupId}]]*/ 0;
-        let isMember = /*[[${isMember}]]*/ false;
-        try {
-            const container = document.querySelector('.container');
-            if (container && container.dataset) {
-                // dataset values are strings when rendered; prefer dataset when available
-                if (container.dataset.groupId) groupId = Number(container.dataset.groupId) || groupId;
-                if (typeof container.dataset.isMember !== 'undefined') {
-                    const v = container.dataset.isMember;
-                    if (v === 'true' || v === 'false') isMember = (v === 'true');
-                    else isMember = Boolean(v);
-                }
-            }
-        } catch(e) { /* ignore, keep inlined values */ }
-
-        function activateTab(tab) {
-            [tabHome, tabSchedule, tabManage].forEach(t => { if (t) t.classList.remove('active'); });
-            [cHome, cSchedule, cManage].forEach(c => { if (c) c.style.display = 'none'; });
-            tab.classList.add('active');
-            if (tab === tabHome) cHome.style.display = 'grid';
-            if (tab === tabSchedule) cSchedule.style.display = 'block';
-            if (tab === tabManage) cManage.style.display = 'block';
-        }
-
-        if (tabHome) tabHome.addEventListener('click', () => activateTab(tabHome));
-        if (tabSchedule) tabSchedule.addEventListener('click', () => { activateTab(tabSchedule); loadSchedules(); });
-        if (tabManage) tabManage.addEventListener('click', () => { activateTab(tabManage); loadMembers(); loadSchedulesForManage(); });
-
-        // 기본 탭 활성화: 모든 사용자에게 일정 탭을 기본으로 보여주고 일정 로드
-        try {
-            if (tabSchedule) { activateTab(tabSchedule); loadSchedules(); }
-            else { activateTab(tabHome); }
-        } catch (e) {
-            // 안전장치: 실패 시 홈 탭으로
-            activateTab(tabHome);
-            console.warn('초기 탭 활성화 중 오류:', e);
-        }
-
-
-        // Description modal logic
-        const descEl = document.getElementById('groupDescription');
-        const moreBtn = document.getElementById('moreBtn');
-        const openFull = document.getElementById('openFullDescription');
-        const modal = document.getElementById('descriptionModal');
-        const fullDesc = document.getElementById('fullDescription');
-        const closeDesc = document.getElementById('closeDescription');
-
-        function needsMore(el) {
-            // create clone to measure
-            const clone = el.cloneNode(true);
-            clone.style.position = 'absolute'; clone.style.visibility='hidden'; clone.style.display='block'; clone.style.webkitLineClamp='none'; clone.style.maxHeight='none';
-            document.body.appendChild(clone);
-            const fullHeight = clone.scrollHeight;
-            const visibleHeight = el.clientHeight;
-            document.body.removeChild(clone);
-            return fullHeight > visibleHeight + 2; // small tolerance
-        }
-
-        function showModalWithText(text) {
-            fullDesc.textContent = text || '';
-            modal.style.display = 'flex';
-        }
-
-        if (descEl) {
-            // decide if more link should be shown
-            if (needsMore(descEl)) {
-                moreBtn.style.display = 'inline-block';
-                moreBtn.addEventListener('click', () => showModalWithText(descEl.textContent));
-            }
-        }
-        if (openFull) openFull.addEventListener('click', () => showModalWithText(descEl ? descEl.textContent : ''));
-        if (closeDesc) closeDesc.addEventListener('click', () => { modal.style.display = 'none'; });
-
-        // API integration
-        const membersList = document.getElementById('membersList');
-        const schedulesList = document.getElementById('schedulesList');
-        const permissionsList = document.getElementById('permissionsList');
-
-        // calendar state
-        let calendarEvents = [];
-        let calendarMonthStart = (new Date()).setDate(1);
-
-        async function fetchSchedulesRaw() {
-            try {
-                const res = await fetch('/api/groups/' + groupId + '/schedules');
-                if (!res.ok) throw new Error('Failed to load schedules');
-                const data = await res.json();
-                // normalize: ensure start is number (epoch ms)
-                return (Array.isArray(data) ? data.map(ev => ({
-                    id: ev.id,
-                    title: ev.title || '일정',
-                    start: (typeof ev.start === 'number') ? ev.start : (ev.start ? Number(ev.start) : null),
-                    createdBy: ev.createdBy || null
-                })) : []);
-            } catch (e) {
-                console.warn(e);
-                return [];
-            }
-        }
-
-        function startOfMonth(date) {
-            const d = new Date(date);
-            d.setHours(0,0,0,0);
-            d.setDate(1);
-            return d;
-        }
-        function addDays(date, days){ const d = new Date(date); d.setDate(d.getDate()+days); return d; }
-        function sameDate(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
-
-        function renderCalendar() {
-		    const cal = document.getElementById('calendarFull');
-		    if (!cal) return;
-		    cal.innerHTML = '';
-		
-		    const monthStart = startOfMonth(calendarMonthStart);
-		    const month = monthStart.getMonth();
-		    const year = monthStart.getFullYear();
-		
-		    // 1. 헤더 영역 (년/월 표시 및 네비게이션)
-		    const header = document.createElement('div');
-		    header.className = 'flex justify-center items-center mb-6 px-2';
-		    header.innerHTML = `
-					<button id="prevBtn" class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">◀</button>
-					<h2 class="text-xl font-bold text-slate-800">${year}년 ${month + 1}월</h2>
-		            <button id="nextBtn" class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">▶</button>
-		    `;
-		    cal.appendChild(header);
-		
-		    // 이벤트 리스너 연결
-		    header.querySelector('#prevBtn').onclick = () => {
-		        calendarMonthStart = new Date(year, month - 1, 1);
-		        renderCalendar();
-		    };
-		    header.querySelector('#nextBtn').onclick = () => {
-		        calendarMonthStart = new Date(year, month + 1, 1);
-		        renderCalendar();
-		    };
-		
-		    // 2. 달력 그리드 생성
-		    const grid = document.createElement('div');
-		    grid.className = 'grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden shadow-sm';
-		
-		    // 요일 라벨
-		    const weekdays = ['일', '월', '화', '수', '목', '금', '토'];
-		    weekdays.forEach((w, i) => {
-		        const wEl = document.createElement('div');
-		        wEl.className = `bg-slate-50 py-3 text-center text-xs font-bold uppercase tracking-wider ${i === 0 ? 'text-red-500' : i === 6 ? 'text-blue-500' : 'text-slate-500'}`;
-		        wEl.textContent = w;
-		        grid.appendChild(wEl);
-		    });
-		
-		    // 3. 날짜 계산 및 렌더링
-		    const firstDayWeek = monthStart.getDay();
-		    const startDate = new Date(monthStart);
-		    startDate.setDate(startDate.getDate() - firstDayWeek); // 화면에 표시될 첫 칸의 날짜
-		
-		    // 이벤트 데이터 맵핑 (ISO 8601 기반: YYYY-MM-DD)
-		    const eventsByDate = {};
-		    calendarEvents.forEach(ev => {
-		        if (!ev.start) return;
-		        const d = new Date(ev.start);
-		        const key = d.toISOString().split('T')[0];
-		        if (!eventsByDate[key]) eventsByDate[key] = [];
-		        eventsByDate[key].push(ev);
-		    });
-		
-		    const todayStr = new Date().toISOString().split('T')[0];
-		
-		    // 6주(42칸) 고정 출력으로 높이 유지
-		    for (let i = 0; i < 42; i++) {
-		        const cellDate = new Date(startDate);
-		        cellDate.setDate(cellDate.getDate() + i);
-		        
-		        const dateKey = cellDate.toISOString().split('T')[0];
-		        const isCurrentMonth = cellDate.getMonth() === month;
-		        const isToday = dateKey === todayStr;
-		
-		        const cell = document.createElement('div');
-		        cell.className = `min-height-[110px] p-2 bg-white flex flex-col gap-1 transition-colors hover:bg-slate-50 cursor-pointer ${!isCurrentMonth ? 'bg-slate-50/50 text-slate-300' : 'text-slate-700'}`;
-		        
-		        // 날짜 숫자 및 추가 버튼 영역
-		        const cellHeader = document.createElement('div');
-		        cellHeader.className = 'flex justify-between items-start';
-		        
-		        const dayNum = document.createElement('span');
-		        dayNum.className = `inline-flex items-center justify-center w-7 h-7 text-sm font-semibold rounded-full ${isToday ? 'bg-blue-600 text-white' : ''}`;
-		        dayNum.textContent = cellDate.getDate();
-		        
-		
-		        cellHeader.appendChild(dayNum);
-		        cell.appendChild(cellHeader);
-		
-		        // 이벤트 목록
-		        const evs = eventsByDate[dateKey] || [];
-		        const evContainer = document.createElement('div');
-		        evContainer.className = 'flex flex-col gap-1 mt-1 overflow-hidden';
-		
-		        evs.slice(0, 3).forEach(it => {
-		            const itEl = document.createElement('div');
-		            itEl.className = 'text-[10px] sm:text-xs p-1 px-1.5 bg-blue-50 text-blue-700 rounded border border-blue-100 truncate font-medium';
-		            itEl.textContent = it.title;
-		            itEl.onclick = (e) => {
-		                e.stopPropagation();
-		                // 첫 번째 참고 코드의 openModal과 유사한 기능 연결 가능
-		                alert(`${it.title}\n일시: ${new Date(it.start).toLocaleString()}`);
-		            };
-		            evContainer.appendChild(itEl);
-		        });
-		
-		        if (evs.length > 3) {
-		            const more = document.createElement('div');
-		            more.className = 'text-[10px] text-slate-400 pl-1 font-medium';
-		            more.textContent = `+ ${evs.length - 3}개 더보기`;
-		            evContainer.appendChild(more);
-		        }
-		
-		        cell.appendChild(evContainer);
-		        cell.onclick = () => openDayView(cellDate, evs);
-		        grid.appendChild(cell);
-		    }
-		
-		    cal.appendChild(grid);
-		}
-
-        function openDayView(date, evs){
-            const dayList = document.getElementById('calendarDayList');
-            if (!dayList) return;
-            dayList.innerHTML = '';
-            const h = document.createElement('div'); h.textContent = date.getFullYear()+'-'+(date.getMonth()+1)+'-'+date.getDate(); h.style.fontWeight='700'; h.style.marginBottom='8px'; dayList.appendChild(h);
-            if (!evs || evs.length===0) { const p = document.createElement('div'); p.textContent='해당일의 일정이 없습니다.'; dayList.appendChild(p); return; }
-            evs.forEach(it => { const row = document.createElement('div'); row.style.padding='8px'; row.style.border='1px solid #eee'; row.style.borderRadius='8px'; row.style.marginBottom='6px'; row.textContent = (new Date(it.start)).toLocaleString() + ' — ' + it.title; dayList.appendChild(row); });
-        }
-
-        function openCreateEventModal(date){
-            if (!isMember) { alert('일정 추가는 그룹 멤버만 가능합니다. 가입 후 이용해주세요.'); return; }
-             const modal = document.getElementById('createEventModal');
-             const whenEl = document.getElementById('createEventWhen');
-             const titleEl = document.getElementById('createEventTitle');
-            if (!modal) return;
-            const d = new Date(date); d.setHours(12,0,0,0);
-            whenEl.value = new Date(d).toISOString().substring(0,16); // yyyy-mm-ddThh:mm
-            titleEl.value = '';
-            modal.style.display = 'flex';
-        }
-
-        function closeCreateEventModal(){
-            const modal = document.getElementById('createEventModal'); if (modal) modal.style.display='none';
-        }
-
-        async function submitCreateEvent(){
-            if (!isMember) { alert('일정 추가는 그룹 멤버만 가능합니다.'); return; }
-             const title = document.getElementById('createEventTitle').value.trim();
-             const whenVal = document.getElementById('createEventWhen').value; // format yyyy-MM-ddTHH:mm
-             if (!title || !whenVal) { alert('제목과 일시를 입력하세요'); return; }
-             const start = Date.parse(whenVal);
-            try{
-                const res = await fetch('/api/groups/' + groupId + '/schedules', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ title: title, start: start }) });
-                if (!res.ok){ if (res.status===401) { alert('로그인이 필요합니다.'); closeCreateEventModal(); return; } throw new Error('생성 실패'); }
-                const ev = await res.json();
-                // reload events and calendar
-                calendarEvents = await fetchSchedulesRaw();
-                renderCalendar();
-                closeCreateEventModal();
-                alert('일정이 추가되었습니다.');
-            }catch(err){ console.error(err); alert('일정 추가에 실패했습니다.'); }
-        }
-        // expose for other inline scripts that run outside this closure
-        window.submitCreateEvent = submitCreateEvent;
-
-        async function loadMembers() {
-            if (!membersList) return;
-            membersList.innerHTML = '<div class="muted">멤버 목록을 불러오는 중...</div>';
-            try {
-                const res = await fetch('/api/groups/'+groupId+'/members');
-                if (!res.ok) throw new Error('Failed to load members');
-                const data = await res.json();
-                membersList.innerHTML = '';
-                if (!Array.isArray(data) || data.length === 0) {
-                    membersList.innerHTML = '<div class="muted">멤버가 없습니다.</div>';
-                    return;
-                }
-                data.forEach(m => membersList.appendChild(renderMember(m)));
-            } catch (e) {
-                membersList.innerHTML = '<div class="muted">멤버를 불러오지 못했습니다.</div>';
-            }
-        }
-
-        async function loadSchedules() {
-            const cal = document.getElementById('calendarFull');
-            if (!cal) return;
-            cal.textContent = '일정을 불러오는 중...';
-            calendarEvents = await fetchSchedulesRaw();
-            renderCalendar();
-        }
-
-        async function loadSchedulesForManage() {
-            const el = document.getElementById('schedulesList');
-            if (!el) return;
-            el.innerHTML = '<div class="muted">일정 목록을 불러오는 중...</div>';
-            try {
-                const data = await fetchSchedulesRaw();
-                el.innerHTML = '';
-                if (!Array.isArray(data) || data.length === 0) { el.innerHTML = '<div class="muted">일정이 없습니다.</div>'; return; }
-                data.forEach(ev => { const d = document.createElement('div'); d.textContent = (ev.title||'일정') + ' - ' + new Date(ev.start||ev.date).toLocaleString(); el.appendChild(d); });
-            } catch (e) {
-                el.innerHTML = '<div class="muted">일정을 불러오지 못했습니다.</div>';
-            }
-        }
-
-        function renderMember(m) {
-            const div = document.createElement('div'); div.className='member-item';
-            const left = document.createElement('div'); left.innerHTML = '<div style="font-weight:700">'+(m.displayName||m.userKey)+'</div><div class="member-meta">'+(m.status||'ACTIVE')+' • '+(m.joinedAt?new Date(m.joinedAt).toLocaleString():'-')+'</div>';
-            const actions = document.createElement('div');
-            const banBtn = document.createElement('button'); banBtn.textContent='차단(Ban)'; banBtn.className='btn secondary'; banBtn.style.marginLeft='8px';
-            banBtn.addEventListener('click', async () => {
-                if (!confirm('정말 차단하시겠습니까?')) return;
-                try {
-                    const r = await fetch('/api/groups/'+groupId+'/members/'+m.userKey+'/ban', { method:'PATCH' });
-                    if (!r.ok) throw new Error('ban failed');
-                    alert('차단되었습니다.');
-                    loadMembers();
-                } catch (ex) {
-                    alert('차단 요청 실패');
-                }
-            });
-            actions.appendChild(banBtn);
-            div.appendChild(left); div.appendChild(actions);
-            return div;
-        }
-
-        // initial load: nothing until a tab is clicked; but we can pre-check description more link
-
-    });
-</script>
-
-<!-- Create event modal -->
-<div id="createEventModal" class="modal-overlay">
-    <div class="modal">
-        <div class="modal-header"><h3>일정 추가</h3><button id="closeCreateEvent" class="tab">닫기</button></div>
-        <div style="margin-top:8px; display:flex;flex-direction:column;gap:8px;">
-            <label>제목: <input id="createEventTitle" type="text" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"/></label>
-            <label>일시: <input id="createEventWhen" type="datetime-local" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;"/></label>
-            <div style="display:flex;justify-content:flex-end;gap:8px;">
-                <button id="createEventSubmit" class="btn">저장</button>
-                <button id="createEventCancel" class="tab">취소</button>
-            </div>
+<!-- 공통 모달 (기존 설명/생성 모달을 대체) -->
+<div id="commonModal" class="modal-overlay" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" data-size="md">
+        <div class="modal-header">
+            <h3 id="commonModalTitle">제목</h3>
+            <button id="commonModalClose" class="tab" aria-label="닫기">닫기</button>
         </div>
+        <div id="commonModalBody" style="margin-top:8px;"></div>
     </div>
 </div>
 
 <script>
-    // wire modal buttons
-    document.addEventListener('DOMContentLoaded', function(){
-        const closeBtn = document.getElementById('closeCreateEvent');
-        const cancelBtn = document.getElementById('createEventCancel');
-        const submitBtn = document.getElementById('createEventSubmit');
-        if (closeBtn) closeBtn.addEventListener('click', ()=>{ document.getElementById('createEventModal').style.display='none'; });
-        if (cancelBtn) cancelBtn.addEventListener('click', ()=>{ document.getElementById('createEventModal').style.display='none'; });
-        if (submitBtn) submitBtn.addEventListener('click', submitCreateEvent);
+    // 공통 모달 헬퍼 API (본문 스크롤 잠금 포함)
+    (function(){        const overlay = document.getElementById('commonModal');        const modalEl = overlay.querySelector('.modal');        const titleEl = document.getElementById('commonModalTitle');        const bodyEl = document.getElementById('commonModalBody');        const closeBtn = document.getElementById('commonModalClose');        let currentOnClose = null;        let backdropHandler = null;        let prevBodyOverflow = null;        function setSize(size) {            const map = { sm: '420px', md: '720px', lg: '920px', auto: 'auto' };            modalEl.style.width = map[size] || map.md;        }        function lockBody() {            try { prevBodyOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden'; } catch(e) { /* 무시 */ }        }        function unlockBody() {            try { document.body.style.overflow = prevBodyOverflow || ''; prevBodyOverflow = null; } catch(e) { /* 무시 */ }        }        function openCommonModal(options) {            if (!overlay) return;            titleEl.textContent = options.title || '';            bodyEl.innerHTML = '';            if (options.content instanceof Node) bodyEl.appendChild(options.content);            else bodyEl.innerHTML = options.content || '';            setSize(options.size || 'md');            overlay.style.display = 'flex';            overlay.setAttribute('aria-hidden','false');            lockBody();            currentOnClose = typeof options.onClose === 'function' ? options.onClose : null;            if (backdropHandler) overlay.removeEventListener('click', backdropHandler);            if (options.backdropClose === false) {                backdropHandler = null;            } else {                backdropHandler = function(ev){ if (ev.target === overlay) closeCommonModal(); };                overlay.addEventListener('click', backdropHandler);            }        }        function closeCommonModal() {            if (!overlay) return;            overlay.style.display = 'none';            overlay.setAttribute('aria-hidden','true');            bodyEl.innerHTML = '';            if (backdropHandler) { overlay.removeEventListener('click', backdropHandler); backdropHandler = null; }            if (typeof currentOnClose === 'function') { try { currentOnClose(); } catch(e){ console.warn('modal onClose error', e); } }            currentOnClose = null;            unlockBody();        }        // 닫기 버튼에 동작 연결
+        if (closeBtn) closeBtn.addEventListener('click', closeCommonModal);        window.openCommonModal = openCommonModal;        window.closeCommonModal = closeCommonModal;        // 단순 설명용 헬퍼
+        window.showDescriptionModal = function(text){            openCommonModal({ title: '모임 설명', content: '<div style="white-space:pre-wrap;">'+(text||'')+'</div>', size: 'lg' });        };    })();</script>
 
-        // ensure clicking modal overlay closes it
-        const modal = document.getElementById('createEventModal');
-        if (modal) modal.addEventListener('click', (ev)=>{ if (ev.target === modal) modal.style.display='none'; });
-    });
-</script>
+<script th:inline="javascript">
+    // 메인 페이지 JS (탭, 달력, API) - 일정 생성 모달은 공통 모달을 사용함
+    document.addEventListener('DOMContentLoaded', () => {        const tabHome = document.getElementById('tabHome');        const tabSchedule = document.getElementById('tabSchedule');        const tabManage = document.getElementById('tabManage');        const cHome = document.getElementById('contentHome');        const cSchedule = document.getElementById('contentSchedule');        const cManage = document.getElementById('contentManage');        let groupId = /*[[${group.groupId}]]*/ 0;        let isMember = /*[[${isMember}]]*/ false;        try {            const container = document.querySelector('.container');            if (container && container.dataset) {                if (container.dataset.groupId) groupId = Number(container.dataset.groupId) || groupId;                if (typeof container.dataset.isMember !== 'undefined') {                    const v = container.dataset.isMember;                    if (v === 'true' || v === 'false') isMember = (v === 'true');                    else isMember = Boolean(v);                }            }        } catch(e) {}        function activateTab(tab) {            [tabHome, tabSchedule, tabManage].forEach(t => { if (t) t.classList.remove('active'); });            [cHome, cSchedule, cManage].forEach(c => { if (c) c.style.display = 'none'; });            tab.classList.add('active');            if (tab === tabHome) cHome.style.display = 'grid';            if (tab === tabSchedule) cSchedule.style.display = 'block';            if (tab === tabManage) cManage.style.display = 'block';        }        if (tabHome) tabHome.addEventListener('click', () => activateTab(tabHome));        if (tabSchedule) tabSchedule.addEventListener('click', () => { activateTab(tabSchedule); loadSchedules(); });        if (tabManage) tabManage.addEventListener('click', () => { activateTab(tabManage); loadMembers(); loadSchedulesForManage(); });        try { if (tabSchedule) { activateTab(tabSchedule); loadSchedules(); } else { activateTab(tabHome); } } catch(e) { activateTab(tabHome); }        // 설명 '더보기' 처리        (function(){            const descEl = document.getElementById('groupDescription');            const moreBtn = document.getElementById('moreBtn');            if (!descEl || !moreBtn) return;            function needsMore(el){                const clone = el.cloneNode(true);                clone.style.position = 'absolute'; clone.style.visibility='hidden'; clone.style.display='block'; clone.style.webkitLineClamp='none'; clone.style.maxHeight='none';                document.body.appendChild(clone);                const fullHeight = clone.scrollHeight; const visibleHeight = el.clientHeight; document.body.removeChild(clone);                return fullHeight > visibleHeight + 2;            }            try { if (needsMore(descEl)) { moreBtn.style.display='inline-block'; moreBtn.addEventListener('click', ()=> window.showDescriptionModal(descEl.textContent)); } } catch(e) {}        })();        // 우측 상단 '일정등록' 버튼 클릭 연결(템플릿에서 isMember 조건으로 렌더링됨)        const globalAddBtn = document.getElementById('globalAddEventBtn');        if (globalAddBtn) globalAddBtn.addEventListener('click', () => { window.openCreateEventModal(new Date()); });		            const membersList = document.getElementById('membersList');            const schedulesList = document.getElementById('schedulesList');            const recentEl = document.getElementById('recentSchedules');            const permissionsList = document.getElementById('permissionsList');        let calendarEvents = [];        let calendarMonthStart = (new Date()).setDate(1);        async function fetchSchedulesRaw() {            try {                const res = await fetch('/api/groups/' + groupId + '/schedules');                if (!res.ok) throw new Error('Failed to load schedules');                const data = await res.json();                return (Array.isArray(data) ? data.map(ev => ({ id: ev.id, title: ev.title || '일정', start: (typeof ev.start === 'number') ? ev.start : (ev.start ? Number(ev.start) : null), createdBy: ev.createdBy || null, description: ev.description || '' })) : []);            } catch (e) { console.warn(e); return []; }        }        function startOfMonth(date){ const d = new Date(date); d.setHours(0,0,0,0); d.setDate(1); return d; }        function sameDate(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }        function openEventDetail(ev){            const d = new Date(ev.start);            const content = document.createElement('div');            const pWhen = document.createElement('div'); pWhen.textContent = '일시: ' + d.toLocaleString(); pWhen.style.marginBottom='8px';            const pBy = document.createElement('div'); pBy.textContent = '작성자: ' + (ev.createdBy || '-'); pBy.style.marginBottom='8px';            const pDesc = document.createElement('div'); pDesc.style.whiteSpace='pre-wrap'; pDesc.textContent = ev.description || '';            content.appendChild(pWhen); content.appendChild(pBy); content.appendChild(pDesc);            window.openCommonModal({ title: ev.title || '일정', content: content, size: 'sm' });        }        // 일정 생성 모달 (공통 모달 사용)        window.openCreateEventModal = function(date){            if (!isMember) { window.openCommonModal({ title: '알림', content: '<div>일정 추가는 그룹 멤버만 가능합니다. 가입 후 이용해주세요.</div>', size: 'sm' }); return; }            const d = new Date(date); d.setHours(12,0,0,0);            const container = document.createElement('div');            container.style.display='flex'; container.style.flexDirection='column'; container.style.gap='8px';            // 제목            const titleLabel = document.createElement('label'); titleLabel.textContent='제목';            const titleInput = document.createElement('input'); titleInput.type='text'; titleInput.style.width='100%'; titleInput.style.padding='8px'; titleInput.style.border='1px solid #ddd'; titleInput.style.borderRadius='6px'; titleInput.placeholder = '일정 제목'; titleLabel.appendChild(titleInput);            // 내용(설명)            const contentLabel = document.createElement('label'); contentLabel.textContent='내용';            const contentInput = document.createElement('textarea'); contentInput.style.width='100%'; contentInput.style.minHeight='100px'; contentInput.style.padding='8px'; contentInput.style.border='1px solid #ddd'; contentInput.style.borderRadius='6px'; contentInput.placeholder = '세부 내용(선택)'; contentLabel.appendChild(contentInput);            // 장소            const locLabel = document.createElement('label'); locLabel.textContent='장소';            const locInput = document.createElement('input'); locInput.type='text'; locInput.style.width='100%'; locInput.style.padding='8px'; locInput.style.border='1px solid #ddd'; locInput.style.borderRadius='6px'; locInput.placeholder = '장소명(예: 강남역 스터디룸)'; locLabel.appendChild(locInput);            // 시작/종료            const whenRow = document.createElement('div'); whenRow.style.display='grid'; whenRow.style.gridTemplateColumns='1fr 1fr'; whenRow.style.gap='8px';            const whenStartLabel = document.createElement('label'); whenStartLabel.textContent='시작 시간';            const startInput = document.createElement('input'); startInput.type='datetime-local'; startInput.style.width='100%'; startInput.style.padding='8px'; startInput.style.border='1px solid #ddd'; startInput.style.borderRadius='6px'; startInput.value = new Date(d).toISOString().substring(0,16); whenStartLabel.appendChild(startInput);            const whenEndLabel = document.createElement('label'); whenEndLabel.textContent='종료 시간';            const endInput = document.createElement('input'); endInput.type='datetime-local'; endInput.style.width='100%'; endInput.style.padding='8px'; endInput.style.border='1px solid #ddd'; endInput.style.borderRadius='6px'; whenEndLabel.appendChild(endInput);            whenRow.appendChild(whenStartLabel); whenRow.appendChild(whenEndLabel);            // 인원 제한: 체크박스로 활성화하고 숫자 입력은 체크된 경우만 사용            const limitRow = document.createElement('div');            limitRow.style.display = 'flex';            limitRow.style.alignItems = 'center';            limitRow.style.gap = '8px';            const limitCheckbox = document.createElement('input');            limitCheckbox.type = 'checkbox';            limitCheckbox.id = 'maxToggle';            const limitText = document.createElement('label');            limitText.htmlFor = 'maxToggle';            limitText.textContent = '인원 제한 적용';            const maxInput = document.createElement('input');            maxInput.type = 'number'; maxInput.min = '0';            maxInput.style.width = '150px'; maxInput.style.padding = '8px'; maxInput.style.border = '1px solid #ddd'; maxInput.style.borderRadius = '6px';            maxInput.value = '0';            maxInput.disabled = true; // 기본 비활성화            // 체크박스 토글로 숫자 입력 활성화/비활성화            limitCheckbox.addEventListener('change', () => { maxInput.disabled = !limitCheckbox.checked; if (!limitCheckbox.checked) maxInput.value = '0'; });            limitRow.appendChild(limitCheckbox);            limitRow.appendChild(limitText);            limitRow.appendChild(maxInput);            // 액션 버튼            const actions = document.createElement('div'); actions.style.display='flex'; actions.style.justifyContent='flex-end'; actions.style.gap='8px';            const saveBtn = document.createElement('button'); saveBtn.textContent='저장'; saveBtn.className='btn';            const cancelBtn = document.createElement('button'); cancelBtn.textContent='취소'; cancelBtn.className='tab'; actions.appendChild(cancelBtn); actions.appendChild(saveBtn);            // 조립            container.appendChild(titleLabel);            container.appendChild(contentLabel);            container.appendChild(locLabel);            container.appendChild(whenRow);            container.appendChild(limitRow);            container.appendChild(actions);            window.openCommonModal({ title: '일정 등록', content: container, size: 'md', backdropClose: false, onClose: null });            cancelBtn.addEventListener('click', ()=> window.closeCommonModal());            saveBtn.addEventListener('click', async ()=>{                const title = (titleInput.value||'').trim();                const content = (contentInput.value||'').trim();                const locationName = (locInput.value||'').trim();                const whenStart = startInput.value; // yyyy-MM-ddTHH:mm                const whenEnd = endInput.value;                const maxVal = (typeof limitCheckbox !== 'undefined' && limitCheckbox.checked) ? (Number(maxInput.value) || 0) : 0;                if (!title || !whenStart) { window.openCommonModal({ title:'알림', content:'<div>제목과 시작 시간을 입력하세요.</div>', size:'sm' }); return; }                const startEpoch = Date.parse(whenStart);                // 종료시간이 지정되지 않았다면 시작시간 + 1시간을 기본으로 사용                const endEpoch = whenEnd ? Date.parse(whenEnd) : (startEpoch + 60 * 60 * 1000);                // 종료가 시작 이전이면 에러                if (endEpoch <= startEpoch) { window.openCommonModal({ title:'알림', content:'<div>종료시간은 시작시간보다 이후여야 합니다.</div>', size:'sm' }); return; }                const payload = {                    title: title,                    content: content || null,                    location_name: locationName || null,                    start: startEpoch, // 기존 호환용 epoch ms                    start_at: new Date(startEpoch).toISOString(),                    end_at: endEpoch ? new Date(endEpoch).toISOString() : null,                    max_attendance: maxVal                };                try{                    const res = await fetch('/api/groups/' + groupId + '/schedules', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });                    if (!res.ok){                        if (res.status===401) { window.openCommonModal({ title:'알림', content:'<div>로그인이 필요합니다.</div>', size:'sm' }); window.closeCommonModal(); return; }                        const text = await res.text().catch(()=>null);                        throw new Error('생성 실패' + (text ? (': ' + text) : ''));                    }                    await res.json();                    calendarEvents = await fetchSchedulesRaw(); renderCalendar(); updateRecentSchedules(); window.closeCommonModal(); window.openCommonModal({ title:'완료', content:'<div>일정이 추가되었습니다.</div>', size:'sm' });                } catch(err) { console.error(err); window.openCommonModal({ title:'오류', content:'<div>일정 추가에 실패했습니다.</div>', size:'sm' }); }            });        };        // 최근 일정 목록 갱신        function updateRecentSchedules(){            if (!recentEl) return; recentEl.innerHTML = '';            const now = Date.now();            const upcoming = (calendarEvents || []).filter(ev => ev.start && ev.start >= now).sort((a,b)=>a.start-b.start).slice(0,3);            if (upcoming.length === 0){ recentEl.innerHTML = '<div class="muted">임박한 일정이 없습니다.</div>'; return; }            upcoming.forEach(ev=>{                const row = document.createElement('div'); row.style.padding='8px'; row.style.borderBottom='1px solid #f0f0f0'; row.style.cursor='pointer';                const when = new Date(ev.start).toLocaleString(); row.innerHTML = '<div style="font-weight:700">'+(ev.title||'일정')+'</div><div style="color:#64748b">'+when+'</div>';                row.addEventListener('click', ()=> openEventDetail(ev));                recentEl.appendChild(row);            });        }        // 달력 렌더링        function renderCalendar(){            const cal = document.getElementById('calendarFull'); if (!cal) return; cal.innerHTML='';            const monthStart = startOfMonth(calendarMonthStart); const month = monthStart.getMonth(); const year = monthStart.getFullYear();            const header = document.createElement('div'); header.className='flex justify-center items-center mb-6 px-2'; header.innerHTML = `                <button id="prevBtn" class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">◀</button>                <h2 class="text-xl font-bold text-slate-800">${year}년 ${month+1}월</h2>                <button id="nextBtn" class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">▶</button>            `; cal.appendChild(header);            header.querySelector('#prevBtn').onclick = ()=>{ calendarMonthStart = new Date(year, month-1, 1); renderCalendar(); };            header.querySelector('#nextBtn').onclick = ()=>{ calendarMonthStart = new Date(year, month+1, 1); renderCalendar(); };            const grid = document.createElement('div'); grid.className='grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden shadow-sm';            const weekdays = ['일','월','화','수','목','금','토']; weekdays.forEach((w,i)=>{ const wEl = document.createElement('div'); wEl.className = `bg-slate-50 py-3 text-center text-xs font-bold uppercase tracking-wider ${i===0? 'text-red-500': i===6? 'text-blue-500':'text-slate-500'}`; wEl.textContent = w; grid.appendChild(wEl); });            const firstDayWeek = monthStart.getDay(); const startDate = new Date(monthStart); startDate.setDate(startDate.getDate() - firstDayWeek);            const eventsByDate = {}; (calendarEvents||[]).forEach(ev=>{ if (!ev.start) return; const d=new Date(ev.start); const key=d.toISOString().split('T')[0]; if (!eventsByDate[key]) eventsByDate[key]=[]; eventsByDate[key].push(ev); });            const todayStr = new Date().toISOString().split('T')[0];            for (let i=0;i<42;i++){ const cellDate = new Date(startDate); cellDate.setDate(cellDate.getDate()+i); const dateKey = cellDate.toISOString().split('T')[0]; const isCurrentMonth = cellDate.getMonth()===month; const isToday = dateKey===todayStr; const cell = document.createElement('div'); cell.className = `min-height-[110px] p-2 bg-white flex flex-col gap-1 transition-colors hover:bg-slate-50 cursor-pointer ${!isCurrentMonth? 'bg-slate-50/50 text-slate-300':'text-slate-700'}`; const cellHeader = document.createElement('div'); cellHeader.className='flex justify-between items-start'; const dayNum = document.createElement('span'); dayNum.className = `inline-flex items-center justify-center w-7 h-7 text-sm font-semibold rounded-full ${isToday ? 'bg-blue-600 text-white' : ''}`; dayNum.textContent = cellDate.getDate(); cellHeader.appendChild(dayNum);                 cell.appendChild(cellHeader);                const evs = eventsByDate[dateKey] || []; const evContainer = document.createElement('div'); evContainer.className='flex flex-col gap-1 mt-1 overflow-hidden'; evs.slice(0,3).forEach(it=>{ const itEl = document.createElement('div'); itEl.className='text-[10px] sm:text-xs p-1 px-1.5 bg-blue-50 text-blue-700 rounded border border-blue-100 truncate font-medium'; itEl.textContent = it.title; itEl.onclick = (e)=>{ e.stopPropagation(); openEventDetail(it); }; evContainer.appendChild(itEl); }); if (evs.length>3){ const more = document.createElement('div'); more.className='text-[10px] text-slate-400 pl-1 font-medium'; more.textContent = `+ ${evs.length-3}개 더보기`; evContainer.appendChild(more); }                cell.appendChild(evContainer);                // 날짜 클릭 기본 동작: Shift 누르면 일정 생성, 아니면 일별 보기                cell.onclick = (e)=>{ if (e.shiftKey){ window.openCreateEventModal(cellDate); } else { openDayView(cellDate, evs); } };                grid.appendChild(cell);            }            cal.appendChild(grid);        }        async function loadMembers(){ if (!membersList) return; membersList.innerHTML = '<div class="muted">멤버 목록을 불러오는 중...</div>'; try{ const res = await fetch('/api/groups/'+groupId+'/members'); if(!res.ok) throw new Error('Failed'); const data = await res.json(); membersList.innerHTML=''; if(!Array.isArray(data)||data.length===0){ membersList.innerHTML='<div class="muted">멤버가 없습니다.</div>'; return; } data.forEach(m=> membersList.appendChild(renderMember(m))); }catch(e){ membersList.innerHTML='<div class="muted">멤버를 불러오지 못했습니다.</div>'; } }        async function loadSchedules(){ const cal = document.getElementById('calendarFull'); if (!cal) return; cal.textContent='일정을 불러오는 중...'; calendarEvents = await fetchSchedulesRaw(); renderCalendar(); updateRecentSchedules(); }        async function loadSchedulesForManage(){ const el = document.getElementById('schedulesList'); if(!el) return; el.innerHTML = '<div class="muted">일정 목록을 불러오는 중...</div>'; try{ const data = await fetchSchedulesRaw(); el.innerHTML=''; if(!Array.isArray(data)||data.length===0){ el.innerHTML='<div class="muted">일정이 없습니다.</div>'; return; } data.forEach(ev=>{ const d = document.createElement('div'); d.textContent = (ev.title||'일정') + ' - ' + new Date(ev.start||ev.date).toLocaleString(); el.appendChild(d); }); }catch(e){ el.innerHTML = '<div class="muted">일정을 불러오지 못했습니다.</div>'; } }        function renderMember(m){ const div = document.createElement('div'); div.className='member-item'; const left = document.createElement('div'); left.innerHTML = '<div style="font-weight:700">'+(m.displayName||m.userKey)+'</div><div class="member-meta">'+(m.status||'ACTIVE')+' • '+(m.joinedAt?new Date(m.joinedAt).toLocaleString():'-')+'</div>'; const actions = document.createElement('div'); const banBtn = document.createElement('button'); banBtn.textContent='차단(Ban)'; banBtn.className='btn secondary'; banBtn.style.marginLeft='8px'; banBtn.addEventListener('click', async ()=>{            // 모달로 차단 확인을 띄우고, 확인 시 API 호출            const content = document.createElement('div');            const p = document.createElement('div'); p.textContent = '정말 차단하시겠습니까?'; p.style.marginBottom='12px';            const btns = document.createElement('div'); btns.style.display='flex'; btns.style.justifyContent='flex-end'; btns.style.gap='8px';            const ok = document.createElement('button'); ok.textContent='차단'; ok.className='btn danger';            const cancel = document.createElement('button'); cancel.textContent='취소'; cancel.className='tab';            btns.appendChild(cancel); btns.appendChild(ok); content.appendChild(p); content.appendChild(btns);            window.openCommonModal({ title: '멤버 차단', content: content, size: 'sm', backdropClose: false, onClose: null });            cancel.addEventListener('click', ()=> window.closeCommonModal());            ok.addEventListener('click', async ()=>{                try{ const r = await fetch('/api/groups/'+groupId+'/members/'+m.userKey+'/ban', { method:'PATCH' }); if(!r.ok) throw new Error('ban failed'); window.closeCommonModal(); window.openCommonModal({ title:'완료', content:'<div>차단되었습니다.</div>', size:'sm' }); loadMembers(); }catch(ex){ window.openCommonModal({ title:'오류', content:'<div>차단 요청 실패</div>', size:'sm' }); }            });        }); actions.appendChild(banBtn); div.appendChild(left); div.appendChild(actions); return div; }        function openDayView(date, evs){ const dayList = document.getElementById('calendarDayList'); if(!dayList) return; dayList.innerHTML=''; const h = document.createElement('div'); h.textContent = date.getFullYear()+'-'+(date.getMonth()+1)+'-'+date.getDate(); h.style.fontWeight='700'; h.style.marginBottom='8px'; dayList.appendChild(h); if(!evs||evs.length===0){ const p = document.createElement('div'); p.textContent='해당일의 일정이 없습니다.'; dayList.appendChild(p); return; } evs.forEach(it=>{ const row = document.createElement('div'); row.style.padding='8px'; row.style.border='1px solid #eee'; row.style.borderRadius='8px'; row.style.marginBottom='6px'; row.textContent = (new Date(it.start)).toLocaleString() + ' — ' + it.title; dayList.appendChild(row); }); }        // 외부에서 사용하는 함수 노출        window.fetchSchedulesRaw = fetchSchedulesRaw; window.renderCalendar = renderCalendar;    });</script>
 
 </body>
 </html>

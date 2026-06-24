@@ -271,8 +271,9 @@
                     }
                 }
             });
-            const sub = document.createElement('div'); sub.className='group-sub'; sub.textContent = (item.currentMemberCount? item.currentMemberCount + '명':'') + (item.capacity? ' / '+item.capacity:'');
-            left.appendChild(name); left.appendChild(sub);
+            const sub = document.createElement('div'); sub.className='group-sub'; sub.textContent = (item.currentMemberCount? item.currentMemberCount + '명':'0명') + ' / '+item.capacity+'명';
+            console.log(sub);
+			left.appendChild(name); left.appendChild(sub);
             li.appendChild(left);
 
             const right = document.createElement('div');

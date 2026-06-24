@@ -41,9 +41,6 @@ public class GroupController {
         toUpdate.setCapacity(dto.getCapacity());
         toUpdate.setAutoApprove(dto.getAutoApprove());
         toUpdate.setSchedulePolicy(dto.getSchedulePolicy());
-        toUpdate.setDefSubCanSchedule(dto.getDefSubCanSchedule());
-        toUpdate.setDefSubCanMember(dto.getDefSubCanMember());
-        toUpdate.setDefSubCanNickname(dto.getDefSubCanNickname());
         boolean ok = groupManageService.updateGroupBasicInfo(groupId, toUpdate);
         if (ok) return ResponseEntity.ok().build();
         return ResponseEntity.badRequest().build();

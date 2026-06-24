@@ -23,9 +23,6 @@
             <if test="capacity != null">capacity = #{capacity},</if>
             <if test="autoApprove != null">auto_approve = #{autoApprove},</if>
             <if test="schedulePolicy != null">schedule_policy = #{schedulePolicy},</if>
-            <if test="defSubCanSchedule != null">def_sub_can_schedule = #{defSubCanSchedule},</if>
-            <if test="defSubCanMember != null">def_sub_can_member = #{defSubCanMember},</if>
-            <if test="defSubCanNickname != null">def_sub_can_nickname = #{defSubCanNickname},</if>
         </set>
         WHERE group_id = #{groupId}
     </update>

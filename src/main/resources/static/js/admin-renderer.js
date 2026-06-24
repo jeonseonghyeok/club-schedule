@@ -104,7 +104,8 @@
         if (!key) return '';
         // common mappings for nicer display
         const map = {
-            groupNo: '그룹번호', group_no: '그룹번호', group: '그룹', name: '이름', title: '제목', description: '설명', requester: '요청자', owner: '주최자', createdAt: '생성일', created_at: '생성일', createdDate: '생성일', status: '상태', kakaoApiId: '카카오ID'
+            groupId: '그룹번호', group_no: '그룹번호', group: '그룹', name: '이름', title: '제목', description: '설명', requester: '요청자', owner: '주최자', createdAt: '생성일', created_at: '생성일', createdDate: '생성일', status: '상태', kakaoApiId: '카카오ID'
+			,leaderUserKey: '리더번호', capacity: '수용인원', currentMemberCount: '현재인원', autoApprove: '자동승인', schedulePolicy: '일정 등록 권한 정책', groupRequestId: '그룹요청번호', requestNo: '요청번호', groupNo: '그룹번호', joinRequestNo: '가입요청번호'
         };
         if (map[key]) return map[key];
         // snake_case -> words
@@ -141,8 +142,10 @@
         const hr = document.createElement('tr');
 
         // Determine columns: preferred order per panel, then keys from first item
+		debugger;
         const preferred = {
-            groupsPanel: ['groupNo','group','name','title','description','owner','requester','createdAt','created_at','status'],
+			//리더명,상태 추가 필요
+            groupsPanel: ['groupId','name','leaderUserKey','capacity','currentMemberCount','autoApprove','schedulePolicy','defSubCanMember','defSubCanNickname','groupRequestId','createdAt','updatedAt'],
             groupRequestsPanel: ['requestNo','group','groupNo','requester','createdAt','status'],
             groupJoinsPanel: ['joinRequestNo','group','groupNo','requester','createdAt','status']
         };
@@ -153,11 +156,14 @@
                 const v = items[0][k];
                 return (['string','number','boolean'].includes(typeof v)) || isDateKey(k);
             });
-            const pref = preferred[panelId] || [];
-            // take preferred keys present
-            pref.forEach(k => { if (firstKeys.indexOf(k) !== -1 && columns.indexOf(k) === -1) columns.push(k); });
-            // add remaining keys from first item
-            firstKeys.forEach(k => { if (columns.indexOf(k) === -1) columns.push(k); });
+			// ② 현재 패널(panelId)에 지정된 '선호하는 컬럼 순서'가 있는지 확인
+			const pref = preferred[panelId] || [];
+			pref.forEach(k => { 
+	            // 내가 지정한 키(k)가 실제 백엔드 데이터(firstKeys)에 존재할 때만 컬럼에 추가!
+	            if (firstKeys.indexOf(k) !== -1 && columns.indexOf(k) === -1) {
+	                columns.push(k); 
+	            } 
+	        });
         }
 
         // If no items, show a default column

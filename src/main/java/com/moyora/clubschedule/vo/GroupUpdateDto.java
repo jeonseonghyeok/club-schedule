@@ -19,7 +19,4 @@ public class GroupUpdateDto {
 
     private Boolean autoApprove;
     private String schedulePolicy; // optional: ALL, LEADERS_ONLY, APPROVAL_REQUIRED
-    private Boolean defSubCanSchedule;
-    private Boolean defSubCanMember;
-    private Boolean defSubCanNickname;
 }

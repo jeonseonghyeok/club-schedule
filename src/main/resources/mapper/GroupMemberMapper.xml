@@ -30,9 +30,6 @@
                (SELECT COUNT(*) FROM group_member gm WHERE gm.group_id = g.group_id AND gm.status = 'ACTIVE') as currentMemberCount,
                g.auto_approve as autoApprove,
                g.schedule_policy as schedulePolicy,
-               g.def_sub_can_schedule as defSubCanSchedule,
-               g.def_sub_can_member as defSubCanMember,
-               g.def_sub_can_nickname as defSubCanNickname,
                g.created_at as createdAt,
                g.updated_at as updatedAt
         FROM `group` g

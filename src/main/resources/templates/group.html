@@ -215,7 +215,12 @@
                     max_attendance: maxVal
                 };
                 try{
-                    const res = await fetch('/api/groups/' + groupId + '/schedules', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+                    const res = await fetch('/api/groups/' + groupId + '/schedules', { 
+						method:'POST', 
+						credentials: 'same-origin',// 쿠키 전송
+						headers:{'Content-Type':'application/json'}, 
+						body: JSON.stringify(payload) 
+					});
                     if (!res.ok){
                         if (res.status===401) { showModalError('로그인이 필요합니다.'); return; }
                         const text = await res.text().catch(()=>null);

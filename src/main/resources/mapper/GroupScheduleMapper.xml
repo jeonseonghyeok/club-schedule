@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.moyora.clubschedule.mapper.GroupScheduleMapper">
+
+    <!--
+        GroupScheduleVo는 모든 필드가 final → Lombok이 전체 필드 순서대로 생성자를 만듦.
+        MyBatis는 setter를 쓸 수 없으므로 <constructor> 매핑으로 주입.
+        arg 순서는 VO 필드 선언 순서와 정확히 일치해야 한다.
+    -->
+    <resultMap id="GroupScheduleVoMap" type="com.moyora.clubschedule.vo.GroupScheduleVo">
+        <constructor>
+            <idArg column="schedule_id"    javaType="java.lang.Long"/>
+            <arg   column="group_id"       javaType="java.lang.Long"/>
+            <arg   column="title"          javaType="java.lang.String"/>
+            <arg   column="content"        javaType="java.lang.String"/>
+            <arg   column="location_name"  javaType="java.lang.String"/>
+            <arg   column="latitude"       javaType="java.lang.String"/>
+            <arg   column="longitude"      javaType="java.lang.String"/>
+            <arg   column="start_at"       javaType="java.lang.String"/>
+            <arg   column="end_at"         javaType="java.lang.String"/>
+            <arg   column="max_attendance" javaType="java.lang.Integer"/>
+            <arg   column="status"         javaType="com.moyora.clubschedule.vo.GroupScheduleVo$ScheduleStatus"/>
+            <arg   column="created_by"     javaType="java.lang.Long"/>
+            <arg   column="approved_by"    javaType="java.lang.Long"/>
+            <arg   column="created_at"     javaType="java.lang.String"/>
+            <arg   column="updated_at"     javaType="java.lang.String"/>
+            <arg   column="is_completed"   javaType="boolean"/>
+            <arg   column="completed_at"   javaType="java.lang.String"/>
+        </constructor>
+    </resultMap>
+
+    <select id="selectByGroupId" resultMap="GroupScheduleVoMap">
+        SELECT
+            schedule_id, group_id, title, content,
+            location_name, latitude, longitude,
+            start_at, end_at, max_attendance,
+            status, created_by, approved_by,
+            created_at, updated_at, is_completed, completed_at
+        FROM group_schedule
+        WHERE group_id = #{groupId}
+        ORDER BY start_at ASC
+    </select>
+
+    <select id="countByGroupId" resultType="int">
+        SELECT COUNT(*) FROM group_schedule WHERE group_id = #{groupId}
+    </select>
+
+</mapper>

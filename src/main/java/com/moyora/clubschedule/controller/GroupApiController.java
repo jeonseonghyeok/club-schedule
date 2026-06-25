@@ -1,5 +1,8 @@
 package com.moyora.clubschedule.controller;
 
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -19,8 +22,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupManageService;
+import com.moyora.clubschedule.service.GroupScheduleService;
 import com.moyora.clubschedule.service.GroupService;
 import com.moyora.clubschedule.vo.GroupMemberVo;
+import com.moyora.clubschedule.vo.GroupScheduleVo;
 import com.moyora.clubschedule.vo.GroupVo;
 
 import lombok.RequiredArgsConstructor;
@@ -32,6 +37,7 @@ public class GroupApiController {
 
     private final GroupService groupService;
     private final GroupManageService groupManageService;
+    private final GroupScheduleService groupScheduleService;
 
     // Simple in-memory schedule store for demo purposes (groupId -> list of events)
     private static final ConcurrentHashMap<Long, List<Map<String,Object>>> SCHEDULE_STORE = new ConcurrentHashMap<>();
@@ -64,17 +70,47 @@ public class GroupApiController {
 
     @GetMapping("/{groupId}/schedules")
     public ResponseEntity<?> schedules(@PathVariable("groupId") Long groupId) {
-        // Return schedules from in-memory store if present, otherwise return a demo event
-        List<Map<String,Object>> ev = SCHEDULE_STORE.get(groupId);
-        if (ev == null) {
-            ev = new ArrayList<>();
-            Map<String,Object> e = new HashMap<>();
-            e.put("id", 101);
-            e.put("title", "정기 모임");
-            e.put("start", System.currentTimeMillis() + 86400000L);
-            ev.add(e);
+        List<GroupScheduleVo> schedules = groupScheduleService.listSchedules(groupId);
+        List<Map<String,Object>> result = new ArrayList<>();
+        for (GroupScheduleVo s : schedules) {
+            result.add(toCalendarEvent(s));
         }
-        return ResponseEntity.ok(ev);
+        return ResponseEntity.ok(result);
+    }
+
+    private Map<String,Object> toCalendarEvent(GroupScheduleVo s) {
+        Map<String,Object> ev = new HashMap<>();
+        ev.put("id", s.getScheduleId());
+        ev.put("title", s.getTitle());
+        ev.put("description", s.getContent());
+        ev.put("locationName", s.getLocationName());
+        ev.put("status", s.getStatus() != null ? s.getStatus().name() : null);
+        ev.put("maxAttendance", s.getMaxAttendance());
+        ev.put("createdBy", s.getCreatedBy());
+        ev.put("startAt", s.getStartAt());
+        ev.put("endAt", s.getEndAt());
+        ev.put("isCompleted", s.isCompleted());
+        // FullCalendar / 기존 프론트 호환: start를 epoch ms로 변환
+        ev.put("start", parseToEpochMs(s.getStartAt()));
+        ev.put("end", parseToEpochMs(s.getEndAt()));
+        return ev;
+    }
+
+    private static final DateTimeFormatter DB_DT_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private Long parseToEpochMs(String datetime) {
+        if (datetime == null || datetime.isBlank()) return null;
+        try {
+            // MySQL datetime → "yyyy-MM-dd HH:mm:ss"
+            String normalized = datetime.length() > 19 ? datetime.substring(0, 19) : datetime;
+            return LocalDateTime.parse(normalized, DB_DT_FORMAT)
+                    .atZone(ZoneId.systemDefault())
+                    .toInstant()
+                    .toEpochMilli();
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @PostMapping("/{groupId}/schedules")

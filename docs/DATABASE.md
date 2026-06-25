@@ -125,7 +125,7 @@ CREATE TABLE `group_join_request` (
 CREATE TABLE `group_member` (
   `group_id` bigint(20) unsigned NOT NULL COMMENT '모임그룹 키',
   `user_key` bigint(20) unsigned NOT NULL COMMENT '회원 유저 키',
-  `role` enum('LEADER','MEMBER') NOT NULL DEFAULT 'MEMBER' COMMENT '역할',
+  `role` enum('LEADER','MANAGER','MEMBER') NOT NULL DEFAULT 'MEMBER' COMMENT '역할 (LEADER > MANAGER > MEMBER 3단계)',
   `status` enum('ACTIVE','WITHDRAWN','KICKED') NOT NULL DEFAULT 'ACTIVE' COMMENT '회원 상태',
   `joined_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '참여일시',
   `left_at` datetime DEFAULT NULL COMMENT '탈퇴/강퇴 일시',
@@ -137,12 +137,14 @@ CREATE TABLE `group_member` (
 
 
 -- club_schedule.group_member_permission definition
+-- MANAGER 개인에게 그룹 정책(group_schedule_policy)의 기본값을 덮어쓰는 예외 권한(Override)을 부여할 때 사용.
+-- is_allowed=1: 명시적 허용, is_allowed=0: 명시적 차단. 행이 없으면 그룹 정책의 기본값을 따른다.
 
 CREATE TABLE `group_member_permission` (
   `group_id` bigint(20) unsigned NOT NULL,
   `user_key` bigint(20) unsigned NOT NULL,
   `permission_type` enum('CREATE_SCHEDULE_DIRECT','MANAGE_SCHEDULE','MANAGE_MEMBER','MANAGE_NICKNAME','MANAGE_NOTICE') NOT NULL,
-  `is_allowed` tinyint(1) NOT NULL DEFAULT 1,
+  `is_allowed` tinyint(1) NOT NULL DEFAULT 1 COMMENT '1: 허용, 0: 차단 (그룹 정책보다 최우선 적용)',
   `granted_by` bigint(20) unsigned DEFAULT NULL COMMENT '권한 부여 주체',
   `granted_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp() COMMENT '권한 수정 일시',
@@ -182,21 +184,19 @@ CREATE TABLE `group_schedule` (
 
 
 -- club_schedule.group_schedule_policy definition
+-- 그룹 단위 일정 관련 기본 정책. group_member_permission에 개인 예외 행이 없는 경우 이 값을 따른다.
 
 CREATE TABLE `group_schedule_policy` (
   `group_id` bigint(20) unsigned NOT NULL COMMENT '그룹 키',
-  `allow_member_create` enum('ALL','LEADERS_ONLY') NOT NULL DEFAULT 'ALL' COMMENT '일정 생성 가능 대상 (ALL: 전체, LEADERS_ONLY: 방장/부방장)',
-  `requires_approval` tinyint(1) NOT NULL DEFAULT 0 COMMENT '일반멤버 등록 시 승인 필요 여부 (0: 즉시확정, 1: 승인대기)',
-  `def_sub_can_manage_schedule` tinyint(1) NOT NULL DEFAULT 1 COMMENT '부방장 기본: 일정 관리 권한',
-  `def_sub_can_manage_member` tinyint(1) NOT NULL DEFAULT 0 COMMENT '부방장 기본: 멤버 관리 권한',
-  `def_sub_can_manage_nickname` tinyint(1) NOT NULL DEFAULT 0 COMMENT '부방장 기본: 닉네임 관리 권한',
-  `allow_self_nickname` tinyint(1) NOT NULL DEFAULT 1 COMMENT '본인 별명 수정 허용 여부',
+  `min_role_to_create` enum('LEADER','MANAGER','MEMBER') NOT NULL DEFAULT 'MEMBER' COMMENT '일정 등록 허용 최소 역할 (LEADER: 리더만, MANAGER: 매니저 이상, MEMBER: 전체)',
+  `requires_approval` tinyint(1) NOT NULL DEFAULT 0 COMMENT 'MEMBER 등록 시 승인 필요 여부 (0: 즉시 CONFIRMED, 1: PENDING→승인)',
+  `def_manager_can_manage_schedule` tinyint(1) NOT NULL DEFAULT 1 COMMENT '매니저 기본 일정 관리 권한 (승인·반려·취소). 개인 예외가 없을 때 이 값 사용.',
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `requires_attendance_approval` tinyint(1) NOT NULL DEFAULT 0 COMMENT '참석 신청 시 승인 필요 여부 (0: 즉시확정, 1: 승인대기)',
   `visibility_type` enum('PUBLIC','PARTIAL','PRIVATE') NOT NULL DEFAULT 'PARTIAL' COMMENT '일정 공개 범위 (PUBLIC: 전체공개, PARTIAL: 일부공개(3일), PRIVATE: 멤버만)',
   PRIMARY KEY (`group_id`),
   CONSTRAINT `fk_policy_group` FOREIGN KEY (`group_id`) REFERENCES `group` (`group_id`) ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='나중 삭제될 예정';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
 -- club_schedule.schedule_attendance definition
@@ -217,6 +217,51 @@ CREATE TABLE `schedule_attendance` (
   CONSTRAINT `fk_attendance_schedule` FOREIGN KEY (`schedule_id`) REFERENCES `group_schedule` (`schedule_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
+
+---
+
+## 역할 구조 및 일정 권한 검증 규칙
+
+### 역할 등급 (group_member.role)
+
+| 역할 | 설명 |
+|------|------|
+| `LEADER` | 그룹 최고 관리자. 모든 권한 보유. |
+| `MANAGER` | 부관리자. 그룹 정책 또는 개인 예외 권한에 따라 일정·멤버 관리 가능. |
+| `MEMBER` | 일반 멤버. 그룹 정책이 허용하는 범위 내에서 일정 등록 가능. |
+
+> LEADER는 MANAGER의 상위 등급이므로, `isManager` 판단 시 LEADER이면 자동으로 true.
+
+---
+
+### 일정 권한 검증 우선순위
+
+권한 판단은 아래 순서로 처리되며, 앞 단계에서 결론이 나면 이후 단계는 건너뜁니다.
+
+```
+1순위 — 유저별 예외 권한 (group_member_permission)
+  └─ 해당 유저·그룹·권한 타입으로 행이 존재하면
+       is_allowed=1 → 허용 / is_allowed=0 → 차단 (즉시 결론)
+
+2순위 — 그룹 정책 (group_schedule_policy)
+  ├─ 일정 등록:  min_role_to_create 등급과 유저 역할 비교
+  │    LEADER만 → MANAGER·MEMBER 차단
+  │    MANAGER 이상 → MEMBER 차단
+  │    MEMBER 이상(기본) → 전체 허용
+  └─ 일정 관리(승인·반려·취소):  def_manager_can_manage_schedule 값
+       1(기본) → MANAGER 허용 / 0 → MANAGER 차단
+```
+
+#### 일정 등록 시 초기 status 결정
+
+| 역할 | 조건 | 초기 status |
+|------|------|-------------|
+| LEADER | 항상 | `CONFIRMED` |
+| MANAGER | `CREATE_SCHEDULE_DIRECT` 예외 허용 행 있음 | `CONFIRMED` |
+| MANAGER | 예외 없음 | `PENDING` |
+| MEMBER | `min_role_to_create` 허용 + `requires_approval=0` | `CONFIRMED` |
+| MEMBER | `min_role_to_create` 허용 + `requires_approval=1` | `PENDING` |
+| MEMBER | `min_role_to_create` 미달 | 403 차단 |
 
 ---
 
@@ -252,7 +297,7 @@ erDiagram
     group_member {
         BIGINT group_id FK
         BIGINT user_key FK
-        ENUM role
+        ENUM role "LEADER|MANAGER|MEMBER"
         ENUM status
         DATETIME joined_at
         DATETIME left_at

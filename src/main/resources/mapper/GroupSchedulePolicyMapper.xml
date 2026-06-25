@@ -5,16 +5,13 @@
 
     <select id="selectByGroupId" resultType="com.moyora.clubschedule.vo.GroupSchedulePolicyVo">
         SELECT
-            group_id                    AS groupId,
-            allow_member_create         AS allowMemberCreate,
-            requires_approval           AS requiresApproval,
-            def_sub_can_manage_schedule AS defSubCanManageSchedule,
-            def_sub_can_manage_member   AS defSubCanManageMember,
-            def_sub_can_manage_nickname AS defSubCanManageNickname,
-            allow_self_nickname         AS allowSelfNickname,
-            requires_attendance_approval AS requiresAttendanceApproval,
-            visibility_type             AS visibilityType,
-            updated_at                  AS updatedAt
+            group_id                        AS groupId,
+            min_role_to_create              AS minRoleToCreate,
+            requires_approval               AS requiresApproval,
+            def_manager_can_manage_schedule AS defManagerCanManageSchedule,
+            requires_attendance_approval    AS requiresAttendanceApproval,
+            visibility_type                 AS visibilityType,
+            updated_at                      AS updatedAt
         FROM group_schedule_policy
         WHERE group_id = #{groupId}
     </select>

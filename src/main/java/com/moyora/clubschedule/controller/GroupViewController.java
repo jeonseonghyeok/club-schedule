@@ -7,8 +7,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import com.moyora.clubschedule.security.CustomUserDetails;
-import com.moyora.clubschedule.service.GroupService;
 import com.moyora.clubschedule.service.GroupManageService;
+import com.moyora.clubschedule.service.GroupPermissionService;
+import com.moyora.clubschedule.service.GroupService;
 import com.moyora.clubschedule.vo.GroupVo;
 
 import lombok.RequiredArgsConstructor;
@@ -17,23 +18,36 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class GroupViewController {
 
-    private final GroupService groupService;
-    private final GroupManageService groupManageService;
+    private final GroupService           groupService;
+    private final GroupManageService     groupManageService;
+    private final GroupPermissionService groupPermissionService;
 
     @GetMapping("/groups/{groupId}")
-    public String manageView(@PathVariable("groupId") Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails, Model model) {
+    public String manageView(@PathVariable("groupId") Long groupId,
+                             @AuthenticationPrincipal CustomUserDetails userDetails,
+                             Model model) {
         GroupVo group = groupService.findById(groupId);
         if (group == null) {
-            return "redirect:/groups"; // 그룹이 없으면 목록으로
+            return "redirect:/groups";
         }
-        model.addAttribute("group", group);
+
         Long userKey = (userDetails != null) ? userDetails.getUserKey() : null;
-        boolean isLeader = userKey != null && userKey.equals(group.getLeaderUserKey());
+        boolean isLeader  = userKey != null && userKey.equals(group.getLeaderUserKey());
         boolean isManager = isLeader || groupManageService.isManager(groupId, userKey);
-        boolean isMember = groupManageService.isMember(groupId, userKey);
-        model.addAttribute("isLeader", isLeader);
-        model.addAttribute("isManager", isManager);
-        model.addAttribute("isMember", isMember);
-        return "group"; // Thymeleaf 템플릿 이름 (src/main/resources/templates/group.html)
+        boolean isMember  = groupManageService.isMember(groupId, userKey);
+
+        GroupPermissionService.SchedulePermissions sp = isLeader
+                ? new GroupPermissionService.SchedulePermissions(true, false, true)
+                : groupPermissionService.resolveSchedulePermissions(groupId, userKey);
+
+        model.addAttribute("group",               group);
+        model.addAttribute("isLeader",            isLeader);
+        model.addAttribute("isManager",           isManager);
+        model.addAttribute("isMember",            isMember);
+        model.addAttribute("canCreateSchedule",   sp.isCanCreate());
+        model.addAttribute("createNeedsApproval", sp.isCreateNeedsApproval());
+        model.addAttribute("canManageSchedule",   sp.isCanManage());
+
+        return "group";
     }
 }

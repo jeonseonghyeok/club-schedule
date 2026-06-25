@@ -12,4 +12,13 @@
           AND is_allowed      = 1
     </select>
 
+    <select id="findIsAllowed" resultType="java.lang.Integer">
+        SELECT is_allowed
+        FROM group_member_permission
+        WHERE group_id       = #{groupId}
+          AND user_key        = #{userKey}
+          AND permission_type = #{permissionType}
+        LIMIT 1
+    </select>
+
 </mapper>

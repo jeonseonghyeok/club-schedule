@@ -120,6 +120,39 @@ public class GroupApiController {
         return ResponseEntity.ok(toCalendarEvent(created));
     }
 
+    @PatchMapping("/{groupId}/schedules/{scheduleId}/approve")
+    public ResponseEntity<?> approveSchedule(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long operator = userDetails != null ? userDetails.getUserKey() : null;
+        if (operator == null) return ResponseEntity.status(401).build();
+        GroupScheduleVo result = groupScheduleService.approveSchedule(groupId, scheduleId, operator);
+        return ResponseEntity.ok(toCalendarEvent(result));
+    }
+
+    @PatchMapping("/{groupId}/schedules/{scheduleId}/reject")
+    public ResponseEntity<?> rejectSchedule(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long operator = userDetails != null ? userDetails.getUserKey() : null;
+        if (operator == null) return ResponseEntity.status(401).build();
+        GroupScheduleVo result = groupScheduleService.rejectSchedule(groupId, scheduleId, operator);
+        return ResponseEntity.ok(toCalendarEvent(result));
+    }
+
+    @PatchMapping("/{groupId}/schedules/{scheduleId}/cancel")
+    public ResponseEntity<?> cancelSchedule(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long operator = userDetails != null ? userDetails.getUserKey() : null;
+        if (operator == null) return ResponseEntity.status(401).build();
+        GroupScheduleVo result = groupScheduleService.cancelSchedule(groupId, scheduleId, operator);
+        return ResponseEntity.ok(toCalendarEvent(result));
+    }
+
     // ── Shared helpers ────────────────────────────────────────────────────────
 
     private Map<String,Object> toCalendarEvent(GroupScheduleVo s) {

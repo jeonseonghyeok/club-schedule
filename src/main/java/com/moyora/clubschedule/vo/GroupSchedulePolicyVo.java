@@ -7,33 +7,22 @@ import lombok.Data;
 public class GroupSchedulePolicyVo {
 
     private Long groupId;
-    private AllowMemberCreate allowMemberCreate;
+    private GroupRole minRoleToCreate;          // LEADER: 리더만, MANAGER: 매니저 이상, MEMBER: 전체
     private boolean requiresApproval;
-    private boolean defSubCanManageSchedule;
-    private boolean defSubCanManageMember;
-    private boolean defSubCanManageNickname;
-    private boolean allowSelfNickname;
+    private boolean defManagerCanManageSchedule; // 매니저 기본 일정 관리(승인·반려·취소) 권한
     private boolean requiresAttendanceApproval;
     private VisibilityType visibilityType;
     private LocalDateTime updatedAt;
 
-    public enum AllowMemberCreate {
-        ALL,
-        LEADERS_ONLY
-    }
-
-    public enum VisibilityType {
-        PUBLIC,
-        PARTIAL,
-        PRIVATE
-    }
+    public enum VisibilityType { PUBLIC, PARTIAL, PRIVATE }
 
     /** 정책 미설정 그룹에 적용할 기본값 */
     public static GroupSchedulePolicyVo defaultPolicy(Long groupId) {
         GroupSchedulePolicyVo p = new GroupSchedulePolicyVo();
         p.setGroupId(groupId);
-        p.setAllowMemberCreate(AllowMemberCreate.ALL);
+        p.setMinRoleToCreate(GroupRole.MEMBER);
         p.setRequiresApproval(false);
+        p.setDefManagerCanManageSchedule(true);
         p.setVisibilityType(VisibilityType.PARTIAL);
         return p;
     }

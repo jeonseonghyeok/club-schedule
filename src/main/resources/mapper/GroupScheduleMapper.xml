@@ -15,18 +15,18 @@
             <arg   column="title"          javaType="java.lang.String"/>
             <arg   column="content"        javaType="java.lang.String"/>
             <arg   column="location_name"  javaType="java.lang.String"/>
-            <arg   column="latitude"       javaType="java.lang.String"/>
-            <arg   column="longitude"      javaType="java.lang.String"/>
-            <arg   column="start_at"       javaType="java.lang.String"/>
-            <arg   column="end_at"         javaType="java.lang.String"/>
-            <arg   column="max_attendance" javaType="java.lang.Integer"/>
+            <arg   column="latitude"       javaType="java.math.BigDecimal"/>
+            <arg   column="longitude"      javaType="java.math.BigDecimal"/>
+            <arg   column="start_at"       javaType="java.time.LocalDateTime"/>
+            <arg   column="end_at"         javaType="java.time.LocalDateTime"/>
+            <arg   column="max_attendance" javaType="int"/>
             <arg   column="status"         javaType="com.moyora.clubschedule.vo.GroupScheduleVo$ScheduleStatus"/>
             <arg   column="created_by"     javaType="java.lang.Long"/>
             <arg   column="approved_by"    javaType="java.lang.Long"/>
-            <arg   column="created_at"     javaType="java.lang.String"/>
-            <arg   column="updated_at"     javaType="java.lang.String"/>
+            <arg   column="created_at"     javaType="java.time.LocalDateTime"/>
+            <arg   column="updated_at"     javaType="java.time.LocalDateTime"/>
             <arg   column="is_completed"   javaType="boolean"/>
-            <arg   column="completed_at"   javaType="java.lang.String"/>
+            <arg   column="completed_at"   javaType="java.time.LocalDateTime"/>
         </constructor>
     </resultMap>
 

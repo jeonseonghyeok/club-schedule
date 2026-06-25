@@ -2,7 +2,6 @@ package com.moyora.clubschedule.controller;
 
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -80,37 +79,24 @@ public class GroupApiController {
 
     private Map<String,Object> toCalendarEvent(GroupScheduleVo s) {
         Map<String,Object> ev = new HashMap<>();
-        ev.put("id", s.getScheduleId());
-        ev.put("title", s.getTitle());
-        ev.put("description", s.getContent());
-        ev.put("locationName", s.getLocationName());
-        ev.put("status", s.getStatus() != null ? s.getStatus().name() : null);
+        ev.put("id",            s.getScheduleId());
+        ev.put("title",         s.getTitle());
+        ev.put("description",   s.getContent());
+        ev.put("locationName",  s.getLocationName());
+        ev.put("status",        s.getStatus() != null ? s.getStatus().name() : null);
         ev.put("maxAttendance", s.getMaxAttendance());
-        ev.put("createdBy", s.getCreatedBy());
-        ev.put("startAt", s.getStartAt());
-        ev.put("endAt", s.getEndAt());
-        ev.put("isCompleted", s.isCompleted());
-        // FullCalendar / 기존 프론트 호환: start를 epoch ms로 변환
-        ev.put("start", parseToEpochMs(s.getStartAt()));
-        ev.put("end", parseToEpochMs(s.getEndAt()));
+        ev.put("createdBy",     s.getCreatedBy());
+        ev.put("isCompleted",   s.isCompleted());
+        ev.put("startAt", s.getStartAt() != null ? s.getStartAt().toString() : null);
+        ev.put("endAt",   s.getEndAt()   != null ? s.getEndAt().toString()   : null);
+        ev.put("start", toEpochMs(s.getStartAt()));
+        ev.put("end",   toEpochMs(s.getEndAt()));
         return ev;
     }
 
-    private static final DateTimeFormatter DB_DT_FORMAT =
-            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
-
-    private Long parseToEpochMs(String datetime) {
-        if (datetime == null || datetime.isBlank()) return null;
-        try {
-            // MySQL datetime → "yyyy-MM-dd HH:mm:ss"
-            String normalized = datetime.length() > 19 ? datetime.substring(0, 19) : datetime;
-            return LocalDateTime.parse(normalized, DB_DT_FORMAT)
-                    .atZone(ZoneId.systemDefault())
-                    .toInstant()
-                    .toEpochMilli();
-        } catch (Exception e) {
-            return null;
-        }
+    private Long toEpochMs(LocalDateTime ldt) {
+        return ldt == null ? null :
+                ldt.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli();
     }
 
     @PostMapping("/{groupId}/schedules")

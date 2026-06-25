@@ -19,13 +19,13 @@
             <arg   column="longitude"      javaType="java.math.BigDecimal"/>
             <arg   column="start_at"       javaType="java.time.LocalDateTime"/>
             <arg   column="end_at"         javaType="java.time.LocalDateTime"/>
-            <arg   column="max_attendance" javaType="int"/>
+            <arg   column="max_attendance" javaType="_int"/>
             <arg   column="status"         javaType="com.moyora.clubschedule.vo.GroupScheduleVo$ScheduleStatus"/>
             <arg   column="created_by"     javaType="java.lang.Long"/>
             <arg   column="approved_by"    javaType="java.lang.Long"/>
             <arg   column="created_at"     javaType="java.time.LocalDateTime"/>
             <arg   column="updated_at"     javaType="java.time.LocalDateTime"/>
-            <arg   column="is_completed"   javaType="boolean"/>
+            <arg   column="is_completed"   javaType="_boolean"/>
             <arg   column="completed_at"   javaType="java.time.LocalDateTime"/>
         </constructor>
     </resultMap>
@@ -42,8 +42,38 @@
         ORDER BY start_at ASC
     </select>
 
+    <select id="selectByScheduleId" resultMap="GroupScheduleVoMap">
+        SELECT
+            schedule_id, group_id, title, content,
+            location_name, latitude, longitude,
+            start_at, end_at, max_attendance,
+            status, created_by, approved_by,
+            created_at, updated_at, is_completed, completed_at
+        FROM group_schedule
+        WHERE schedule_id = #{scheduleId}
+    </select>
+
     <select id="countByGroupId" resultType="int">
         SELECT COUNT(*) FROM group_schedule WHERE group_id = #{groupId}
     </select>
+
+    <update id="updateScheduleStatus">
+        UPDATE group_schedule
+        SET status      = #{status},
+            approved_by = #{approvedBy}
+        WHERE schedule_id = #{scheduleId}
+    </update>
+
+    <insert id="insertSchedule" parameterType="com.moyora.clubschedule.dto.GroupScheduleCreateDto">
+        <selectKey keyProperty="scheduleId" resultType="long" order="AFTER">
+            SELECT LAST_INSERT_ID()
+        </selectKey>
+        INSERT INTO group_schedule
+            (group_id, title, content, location_name, latitude, longitude,
+             start_at, end_at, max_attendance, status, created_by)
+        VALUES
+            (#{groupId}, #{title}, #{content}, #{locationName}, #{latitude}, #{longitude},
+             #{startAt}, #{endAt}, #{maxAttendance}, #{status}, #{createdBy})
+    </insert>
 
 </mapper>

@@ -4,6 +4,7 @@ import org.springframework.stereotype.Service;
 
 import com.moyora.clubschedule.mapper.GroupMapper;
 import com.moyora.clubschedule.mapper.GroupMemberMapper;
+import com.moyora.clubschedule.vo.GroupRole;
 import com.moyora.clubschedule.vo.GroupVo;
 
 import lombok.RequiredArgsConstructor;
@@ -28,18 +29,18 @@ public class GroupManageService {
     }
 
     /**
-     * groupId에 대해 userKey가 리더나 부방장인지 확인
+     * groupId에 대해 userKey가 LEADER 또는 MANAGER인지 확인
      */
-    public boolean isLeaderOrSubLeader(Long groupId, Long userKey) {
+    public boolean isLeaderOrManager(Long groupId, Long userKey) {
         if (userKey == null) return false;
-        // 리더 확인
-        GroupVo g = groupMapper.findById(groupId);
-        if (g == null) return false;
-        if (userKey.equals(g.getLeaderUserKey())) return true;
-        // 부방장은 group_member.role이 'SUB_LEADER'로 가정
-        String role = groupMemberMapper.selectRoleByGroupAndUser(groupId, userKey);
-        if (role == null) return false;
-        return "SUB_LEADER".equalsIgnoreCase(role) || "LEADER".equalsIgnoreCase(role);
+        String roleStr = groupMemberMapper.selectRoleByGroupAndUser(groupId, userKey);
+        if (roleStr == null) return false;
+        try {
+            GroupRole role = GroupRole.valueOf(roleStr.toUpperCase());
+            return role == GroupRole.LEADER || role == GroupRole.MANAGER;
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     /**
@@ -59,11 +60,11 @@ public class GroupManageService {
     }
 
     /**
-     * 특정 멤버를 차단(KICKED) 처리 (리더/부방장 권한 필요)
+     * 특정 멤버를 차단(KICKED) 처리 (LEADER 또는 MANAGER 권한 필요)
      */
     public boolean banMember(Long groupId, Long targetUserKey, Long operatorUserKey) {
         if (operatorUserKey == null) return false;
-        if (!isLeaderOrSubLeader(groupId, operatorUserKey)) return false;
+        if (!isLeaderOrManager(groupId, operatorUserKey)) return false;
         int updated = groupMemberMapper.updateMemberStatus(groupId, targetUserKey, "KICKED");
         return updated > 0;
     }

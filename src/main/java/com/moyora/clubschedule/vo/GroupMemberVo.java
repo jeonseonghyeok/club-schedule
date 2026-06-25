@@ -8,7 +8,7 @@ import lombok.Data;
 public class GroupMemberVo {
     private Long groupId;
     private Long userKey;
-    private String role;   // 'LEADER', 'MEMBER'
+    private String role;   // 'LEADER', 'MANAGER', 'MEMBER'
     private String status; // 'ACTIVE', 'WITHDRAWN', 'KICKED'
     private LocalDateTime joinedAt;
     private LocalDateTime leftAt;

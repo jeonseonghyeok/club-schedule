@@ -1,46 +1,43 @@
 # Club Schedule API 문서
 
-이 문서는 현재 프로젝트에 추가되었거나 수정된 주요 API(관리자 페이지, 그룹 멤버/일정 관련)를 한국어로 정리한 문서입니다.
+이 문서는 현재 구현된 API 엔드포인트를 기술합니다.
 
-목차
-- 공통 규약
-- 페이징 응답 형식: `PagingResponse<T>`
-- 관리자(Admin) API
-  - GET /admin/api/users
-  - GET /admin/api/groups
-  - GET /admin/api/group-joins
-- 그룹(Group) API
-  - GET /api/groups/{groupId}/schedules
-  - POST /api/groups/{groupId}/schedules
-  - GET /api/groups/{groupId}/members
-  - PATCH /api/groups/{groupId}/members/{userKey}/ban
-- 예제 요청/응답 (curl 및 JSON)
-- 에러/상태 코드 정리
-- 보안/권한 관련 주의사항
-- 권장 향후 개선사항
+## 목차
+
+- [공통 규약](#공통-규약)
+- [페이징 응답 형식](#페이징-응답-형식-pagingreresponset)
+- [관리자 API](#관리자-api)
+- [그룹 일정 API](#그룹-일정-api)
+- [그룹 멤버 API](#그룹-멤버-api)
+- [에러 코드](#에러-코드)
+- [보안 주의사항](#보안-주의사항)
 
 ---
 
 ## 공통 규약
-- 모든 JSON 요청/응답은 `application/json`을 사용합니다.
-- 타임스탬프 형식(일정의 `start` 등)은 epoch milliseconds (Number)을 사용합니다.
-- 인증/권한은 스프링 시큐리티를 사용합니다. 각 엔드포인트 아래에 권한 요구사항을 명시합니다.
+
+- 모든 요청/응답 바디는 `application/json`을 사용합니다.
+- 타임스탬프(`start`, `end`)는 **epoch milliseconds** (Number) 형식입니다.
+- 날짜/시간 문자열(`startAt`, `endAt` 등)은 **ISO 8601** (`yyyy-MM-ddTHH:mm:ss`) 형식입니다.
+- 인증은 JWT 기반이며, 쿠키(`AUTH_TOKEN`) 또는 Authorization 헤더로 전달합니다.
+- CSRF 보호는 현재 비활성화 상태입니다.
 
 ---
 
 ## 페이징 응답 형식: `PagingResponse<T>`
-서버에서 페이징 처리된 결과를 반환할 때 사용되는 공통 응답 객체입니다.
 
-필드 요약
-- `totalCount` (Number): 전체 레코드 수
-- `currentPage` (Integer): 현재 페이지 (1 기반)
-- `size` (Integer): 페이지당 항목 수
-- `totalPages` (Integer): 총 페이지 수 = ceil(totalCount / size)
-- `startPage` (Integer): 페이징 블록의 시작 페이지 (예: 블록 사이즈 5일 때 1,6,11...)
-- `endPage` (Integer): 페이징 블록의 끝 페이지
-- `items` (Array<T>): 현재 페이지의 데이터 배열
+페이징 처리된 결과에 사용되는 공통 응답 객체입니다.
 
-예시
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `totalCount` | Number | 전체 레코드 수 |
+| `currentPage` | Integer | 현재 페이지 (1 기반) |
+| `size` | Integer | 페이지당 항목 수 |
+| `totalPages` | Integer | 총 페이지 수 |
+| `startPage` | Integer | 현재 블록의 시작 페이지 (블록 크기 5) |
+| `endPage` | Integer | 현재 블록의 끝 페이지 |
+| `items` | Array\<T\> | 현재 페이지 데이터 |
+
 ```json
 {
   "totalCount": 123,
@@ -49,150 +46,229 @@
   "totalPages": 5,
   "startPage": 1,
   "endPage": 5,
-  "items": [ /* 데이터 항목 */ ]
+  "items": []
 }
 ```
 
-비고: 기본 블록 사이즈는 5이며, 프론트엔드와 백엔드에서 동일한 규칙을 사용합니다.
-
 ---
 
-## 관리자 API (관리자 권한 필요)
-관리자 전용 API는 `@PreAuthorize("hasRole('ADMIN')")`로 보호됩니다. ADMIN 권한이 없는 요청은 403을 반환합니다.
+## 관리자 API
+
+> **권한**: `ADMIN` 역할 필요. 미충족 시 403 반환.
 
 ### GET /admin/api/users
-- 설명: 회원 목록 조회 (검색 및 페이징 지원)
-- 권한: ADMIN
-- 쿼리 파라미터:
-  - `page` (optional): 페이지 번호(1 기반). 존재 시 DB-level 페이징 사용.
-  - `size` (optional): 페이지 사이즈(기본 25)
-  - `q` (optional): 검색 키워드
-- 응답: `PagingResponse<UserVo>`
-- 예시: `/admin/api/users?page=1&size=20&q=홍길동`
+
+회원 목록 조회 (검색·페이징 지원).
+
+**쿼리 파라미터**
+
+| 파라미터 | 필수 | 기본값 | 설명 |
+|---------|------|--------|------|
+| `page` | N | — | 페이지 번호(1 기반). 지정 시 DB-level 페이징 사용 |
+| `size` | N | 25 | 페이지 사이즈 |
+| `q` | N | — | 닉네임 검색 키워드 |
+
+**응답**: `PagingResponse<UserVo>`
 
 ### GET /admin/api/groups
-- 설명: 그룹 목록 조회 (검색 및 페이징 지원)
-- 권한: ADMIN
-- 파라미터: `page`, `size`, `q` (users와 동일)
-- 응답: `PagingResponse<GroupVo>`
+
+그룹 목록 조회. 파라미터·응답 구조는 `/admin/api/users`와 동일. 응답 타입: `PagingResponse<GroupVo>`.
 
 ### GET /admin/api/group-joins
-- 설명: 가입 요청(모니터링) 조회
-- 권한: ADMIN
-- 파라미터: `page`, `size`, `q` (현재는 in-memory 페이징 fallback)
-- 응답: `PagingResponse<GroupJoinRequestVo>`
 
-비고: `page`가 제공되면 서버는 DB-level 페이징(예: MyBatis LIMIT/OFFSET + COUNT)을 사용해 `PagingResponse`를 구성합니다. `page`가 없으면 기존 방식으로 전체 목록을 불러와 서버에서 필터 및 슬라이스를 수행합니다(하위 호환성 유지 목적).
+가입 요청 목록 조회. 응답 타입: `PagingResponse<GroupJoinRequestVo>`.
+
+> `page` 미전달 시 전체 목록을 서버에서 슬라이스하는 fallback 방식으로 동작합니다.
 
 ---
 
-## 그룹(Group) API
-일반 그룹 관련 엔드포인트입니다. 일부는 인증이 필요합니다.
+## 그룹 일정 API
 
 ### GET /api/groups/{groupId}/schedules
-- 설명: 그룹의 일정 목록 조회
-- 권한: 공개(현재는 인증 없이도 조회 가능)
-- 경로 파라미터:
-  - `groupId` (Long)
-- 응답: 배열 of 이벤트 객체
 
-응답 이벤트 객체 필드
-- `id` (Number): 이벤트 ID
-- `title` (String)
-- `start` (Number): epoch milliseconds
-- `createdBy` (Number, optional): 생성자 userKey
+그룹의 일정 목록을 `group_schedule` 테이블에서 조회합니다.
 
-예시 응답
+**경로 파라미터**
+
+| 파라미터 | 타입 | 설명 |
+|---------|------|------|
+| `groupId` | Long | 그룹 식별자 |
+
+**권한**: 공개 (인증 불필요)
+
+**응답**: `200 OK` — 이벤트 객체 배열
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `id` | Number | 일정 PK (`schedule_id`) |
+| `title` | String | 일정 제목 |
+| `description` | String\|null | 상세 내용 |
+| `locationName` | String\|null | 장소 명칭 |
+| `status` | String | 일정 상태: `PENDING` \| `CONFIRMED` \| `REJECTED` \| `CANCELLED` |
+| `maxAttendance` | Number | 최대 인원 (0 = 무제한) |
+| `createdBy` | Number | 작성자 `user_key` |
+| `isCompleted` | Boolean | 최종 종료·정산 여부 |
+| `startAt` | String | 시작 시간 (ISO 8601) |
+| `endAt` | String\|null | 종료 시간 (ISO 8601) |
+| `start` | Number | 시작 시간 (epoch ms, FullCalendar 호환) |
+| `end` | Number\|null | 종료 시간 (epoch ms) |
+
+**응답 예시**
+
 ```json
 [
-  { "id": 101, "title": "정기 모임", "start": 1710806400000, "createdBy": 12 },
-  { "id": 102, "title": "스터디", "start": 1710892800000, "createdBy": 34 }
+  {
+    "id": 1,
+    "title": "정기 모임",
+    "description": "5월 정기 모임입니다.",
+    "locationName": "강남역 스터디룸",
+    "status": "CONFIRMED",
+    "maxAttendance": 20,
+    "createdBy": 1000001,
+    "isCompleted": false,
+    "startAt": "2025-05-10T14:00:00",
+    "endAt": "2025-05-10T17:00:00",
+    "start": 1746871200000,
+    "end": 1746882000000
+  }
 ]
 ```
+
+---
 
 ### POST /api/groups/{groupId}/schedules
-- 설명: 그룹 일정 생성
-- 권한: 인증된 사용자(로그인 필요). 현재는 단순 인증 체크만 수행.
-- 경로 파라미터: `groupId` (Long)
-- 요청 바디 (JSON) 형식:
+
+새 일정을 `group_schedule` 테이블에 저장합니다.
+
+**경로 파라미터**
+
+| 파라미터 | 타입 | 설명 |
+|---------|------|------|
+| `groupId` | Long | 그룹 식별자 |
+
+**권한**: 로그인 + 해당 그룹의 ACTIVE 멤버
+
+**요청 바디**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `title` | String | **Y** | 일정 제목 (최대 100자) |
+| `start` | Number | **Y** | 시작 시간 (epoch ms) |
+| `end` | Number | N | 종료 시간 (epoch ms). 미전달 시 null 저장 |
+| `content` | String | N | 상세 내용 |
+| `location_name` | String | N | 장소 명칭 |
+| `latitude` | Number | N | 위도 (decimal) |
+| `longitude` | Number | N | 경도 (decimal) |
+| `max_attendance` | Number | N | 최대 인원 (기본 0 = 무제한) |
+
+**요청 예시**
+
 ```json
 {
-  "title": "스터디 모임",
-  "start": 1710806400000
+  "title": "5월 스터디",
+  "start": 1746871200000,
+  "end": 1746882000000,
+  "content": "알고리즘 문제 풀이",
+  "location_name": "강남역 스터디룸",
+  "max_attendance": 10
 }
 ```
-- 필수 필드: `title`, `start`
-- 응답(성공): 생성된 이벤트 객체(200 OK)
-```json
-{ "id": 1000, "title": "스터디 모임", "start": 1710806400000, "createdBy": 12 }
-```
-- 에러:
-  - 400 Bad Request: `title` 또는 `start`가 없을 때 (메시지: "title and start are required")
-  - 401 Unauthorized: 인증 필요
 
-비고: 현재 이벤트는 메모리 저장소(`ConcurrentHashMap`)에 보관되며 서버 재시작 시 초기화됩니다. 영속화(데이터베이스) 추가 권장.
+**응답**: `200 OK` — 생성된 일정 객체 (GET 응답 객체와 동일한 형식)
+
+```json
+{
+  "id": 42,
+  "title": "5월 스터디",
+  "description": "알고리즘 문제 풀이",
+  "locationName": "강남역 스터디룸",
+  "status": "PENDING",
+  "maxAttendance": 10,
+  "createdBy": 1000001,
+  "isCompleted": false,
+  "startAt": "2025-05-10T14:00:00",
+  "endAt": "2025-05-10T17:00:00",
+  "start": 1746871200000,
+  "end": 1746882000000
+}
+```
+
+**에러**
+
+| 코드 | 조건 |
+|------|------|
+| 400 | `title` 또는 `start` 누락 |
+| 401 | 미인증 |
+| 403 | 그룹 멤버가 아님 |
+
+**내부 동작**
+
+1. JWT에서 `userKey` 추출
+2. `group_member.countByGroupAndUser(groupId, userKey) > 0` 으로 멤버 여부 검증
+3. `group_schedule` 테이블에 INSERT (기본 `status = PENDING`)
+4. `useGeneratedKeys`로 발급된 `schedule_id`로 SELECT 후 반환
+
+---
+
+## 그룹 멤버 API
 
 ### GET /api/groups/{groupId}/members
-- 설명: 그룹 멤버 목록 조회
-- 권한: 공개(현재는 인증 없이도 조회 가능)
-- 응답 예시
+
+그룹 멤버 목록 조회.
+
+**권한**: 공개
+
+**응답**: `200 OK`
+
 ```json
 [
-  { "userKey": 12, "displayName": "user01", "role": "MEMBER", "status": "ACTIVE", "joinedAt": "2025-01-01T12:00:00" },
-  ...
+  {
+    "userKey": 1000001,
+    "displayName": null,
+    "role": "LEADER",
+    "status": "ACTIVE",
+    "joinedAt": "2025-01-01T12:00:00"
+  }
 ]
 ```
 
+> `displayName`은 현재 미구현 상태입니다 (null 반환).
+
 ### PATCH /api/groups/{groupId}/members/{userKey}/ban
-- 설명: 멤버 차단(관리자 또는 리더 권한이 내부적으로 검증될 수 있음)
-- 권한: 인증 필요
-- 응답: 200 OK(성공), 401(미인증), 403(권한 없음)
+
+멤버 강제 탈퇴(KICKED) 처리.
+
+**권한**: 인증 + 리더 또는 부방장
+
+**응답**: `200 OK` (성공) / `401` (미인증) / `403` (권한 없음)
 
 ---
 
-## 예제 요청/응답 (curl)
-- 일정 목록 조회
-```bash
-curl -X GET "http://localhost:8080/api/groups/42/schedules" -H "Accept: application/json"
-```
+## 에러 코드
 
-- 일정 생성 (예: 토큰 방식)
-```bash
-curl -X POST "http://localhost:8080/api/groups/42/schedules" \
-  -H "Authorization: Bearer <TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{"title":"스터디 모임","start":1710806400000}'
-```
-
-- 관리자에서 사용자 페이징 조회
-```bash
-curl -X GET "http://localhost:8080/admin/api/users?page=2&size=25&q=홍길동" -H "Authorization: Bearer <ADMIN_TOKEN>"
-```
+| 코드 | 의미 |
+|------|------|
+| 200 | 정상 |
+| 400 | 요청 파라미터 오류 (메시지 포함) |
+| 401 | 인증 필요 |
+| 403 | 권한 부족 (메시지 포함) |
+| 500 | 서버 내부 오류 |
 
 ---
 
-## 에러/상태 코드 정리
-- 200 OK: 정상 응답
-- 400 Bad Request: 입력 값 불충분 또는 형식 오류
-- 401 Unauthorized: 인증 필요 (로그인 등)
-- 403 Forbidden: 권한 부족 (ADMIN 권한 등)
-- 500 Internal Server Error: 서버 예외
+## 보안 주의사항
+
+- Admin API는 `@PreAuthorize("hasRole('ADMIN')")` 로 보호됩니다.
+- 일정 생성은 **그룹 멤버 여부**를 서버에서 검증합니다. (`group_member` 테이블 조회)
+- 일정 조회(GET)는 인증 없이 접근 가능합니다. 비공개 그룹 지원이 필요한 경우 멤버 검증 추가가 필요합니다.
 
 ---
 
-## 보안/권한 관련 주의사항
-- 현재 Admin API는 `@PreAuthorize("hasRole('ADMIN')")`로 보호됩니다. 실제 운영에서는 세션/토큰 만료, CSRF, CORS 정책 등을 함께 검토하세요.
-- 일정 생성은 현재 "로그인만 하면 가능"한 상태입니다. 필요 시 "그룹 멤버만 생성 가능" 또는 "리더만 생성 가능" 같은 권한 규칙을 서버에서 검증해야 합니다.
+## 향후 개선 사항
 
----
-
-## 권장 향후 개선사항
-1. 일정 영속화: `schedule` 테이블(스키마 설계) + 매퍼(XML) + `ScheduleService` 구현. 현재 인메모리는 데모/프로토타입 용도입니다.
-2. 권한 강화: 그룹 소속 여부/리더 여부에 따른 권한 체크 구현.
-3. 일정 편집/삭제 API 제공: PUT/PATCH/DELETE `/api/groups/{groupId}/schedules/{scheduleId}`
-4. OpenAPI(Swagger) 문서 자동화: `springdoc-openapi` 등을 통해 스펙 자동 생성.
-5. 프론트엔드 개선: FullCalendar 같은 검증된 라이브러리 도입 고려.
-
----
-
-문서 생성을 완료했습니다. 원하시면 이 파일을 커밋 메시지와 함께 커밋해드리거나, OpenAPI 스펙으로 변환해 드릴게요.
+1. 일정 수정/삭제: `PUT|PATCH /api/groups/{groupId}/schedules/{scheduleId}`, `DELETE` 구현
+2. `schedule_policy` 연동: 그룹 일정 등록 권한 정책(`ALL`/`LEADERS_ONLY`/`APPROVAL_REQUIRED`) 적용
+3. 출석 관리: `schedule_attendance` 테이블 기반 참석 신청/확정 API
+4. 일정 상태 전환: PENDING → CONFIRMED/REJECTED 처리 API (리더/부방장 전용)
+5. `displayName` 조회: 멤버 목록 응답에 `user.nickname` 포함
+6. OpenAPI(Swagger) 문서 자동화: `springdoc-openapi` 도입

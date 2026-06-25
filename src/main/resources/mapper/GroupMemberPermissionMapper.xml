@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.moyora.clubschedule.mapper.GroupMemberPermissionMapper">
+
+    <select id="countPermission" resultType="int">
+        SELECT COUNT(*)
+        FROM group_member_permission
+        WHERE group_id       = #{groupId}
+          AND user_key        = #{userKey}
+          AND permission_type = #{permissionType}
+          AND is_allowed      = 1
+    </select>
+
+</mapper>

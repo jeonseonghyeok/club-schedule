@@ -18,7 +18,7 @@ public interface GroupMemberMapper {
     // 새로 추가: 사용자가 속한 그룹 목록 조회 (ACTIVE 상태)
     List<GroupVo> selectGroupsByUser(@Param("userKey") Long userKey);
 
-    // 새로 추가: 특정 그룹에서 사용자의 역할 조회 (예: LEADER, SUB_LEADER, MEMBER)
+    // 특정 그룹에서 사용자의 역할 조회 (예: LEADER, MANAGER, MEMBER)
     String selectRoleByGroupAndUser(@Param("groupId") Long groupId, @Param("userKey") Long userKey);
 
     // 새로 추가: 특정 그룹의 모든 멤버 조회 (상태 포함)

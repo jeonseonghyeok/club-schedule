@@ -31,7 +31,7 @@ public class GroupManageService {
     /**
      * groupId에 대해 userKey가 LEADER 또는 MANAGER인지 확인
      */
-    public boolean isLeaderOrManager(Long groupId, Long userKey) {
+    public boolean isManager(Long groupId, Long userKey) {
         if (userKey == null) return false;
         String roleStr = groupMemberMapper.selectRoleByGroupAndUser(groupId, userKey);
         if (roleStr == null) return false;
@@ -64,7 +64,7 @@ public class GroupManageService {
      */
     public boolean banMember(Long groupId, Long targetUserKey, Long operatorUserKey) {
         if (operatorUserKey == null) return false;
-        if (!isLeaderOrManager(groupId, operatorUserKey)) return false;
+        if (!isManager(groupId, operatorUserKey)) return false;
         int updated = groupMemberMapper.updateMemberStatus(groupId, targetUserKey, "KICKED");
         return updated > 0;
     }

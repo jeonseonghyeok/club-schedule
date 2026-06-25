@@ -28,11 +28,11 @@ public class GroupViewController {
         }
         model.addAttribute("group", group);
         Long userKey = (userDetails != null) ? userDetails.getUserKey() : null;
-        boolean isLeader = (userKey != null && userKey.equals(group.getLeaderUserKey()));
-        boolean isLeaderOrCoLeader = groupManageService.isLeaderOrSubLeader(groupId, userKey);
+        boolean isLeader = userKey != null && userKey.equals(group.getLeaderUserKey());
+        boolean isManager = isLeader || groupManageService.isManager(groupId, userKey);
         boolean isMember = groupManageService.isMember(groupId, userKey);
         model.addAttribute("isLeader", isLeader);
-        model.addAttribute("isLeaderOrCoLeader", isLeaderOrCoLeader);
+        model.addAttribute("isManager", isManager);
         model.addAttribute("isMember", isMember);
         return "group"; // Thymeleaf 템플릿 이름 (src/main/resources/templates/group.html)
     }

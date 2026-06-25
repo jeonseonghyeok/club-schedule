@@ -63,7 +63,7 @@
         <div class="tabs">
             <div id="tabHome" class="tab active">홈</div>
             <div id="tabSchedule" class="tab">일정</div>
-            <div id="tabManage" class="tab" th:if="${isLeaderOrCoLeader}">관리</div>
+            <div id="tabManage" class="tab" th:if="${isManager}">관리</div>
         </div>
 
         <div th:if="${!isMember}">
@@ -102,7 +102,7 @@
 			<!-- Calendar will be rendered here; add button handled in renderCalendar() -->                <div class="calendar" id="calendarFull">달력 컴포넌트 자리</div>            </div>        </div>
 		
 		<!--관리탭-->
-        <div id="contentManage" style="display:none;" th:if="${isLeaderOrCoLeader}">
+        <div id="contentManage" style="display:none;" th:if="${isManager}">
             <div class="card">
                 <div class="section-title">회원 관리</div>
                 <div class="members-list" id="membersList">

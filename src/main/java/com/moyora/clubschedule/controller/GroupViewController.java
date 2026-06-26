@@ -44,6 +44,7 @@ public class GroupViewController {
         model.addAttribute("isLeader",            isLeader);
         model.addAttribute("isManager",           isManager);
         model.addAttribute("isMember",            isMember);
+        model.addAttribute("currentUserKey",      userKey);
         model.addAttribute("canCreateSchedule",   sp.isCanCreate());
         model.addAttribute("createNeedsApproval", sp.isCreateNeedsApproval());
         model.addAttribute("canManageSchedule",   sp.isCanManage());

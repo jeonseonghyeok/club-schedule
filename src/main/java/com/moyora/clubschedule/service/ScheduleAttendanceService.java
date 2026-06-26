@@ -1,0 +1,215 @@
+package com.moyora.clubschedule.service;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.moyora.clubschedule.exception.GroupAccessDeniedException;
+import com.moyora.clubschedule.exception.ScheduleNotFoundException;
+import com.moyora.clubschedule.mapper.GroupMemberMapper;
+import com.moyora.clubschedule.mapper.GroupScheduleMapper;
+import com.moyora.clubschedule.mapper.GroupSchedulePolicyMapper;
+import com.moyora.clubschedule.mapper.ScheduleAttendanceMapper;
+import com.moyora.clubschedule.vo.GroupRole;
+import com.moyora.clubschedule.vo.GroupSchedulePolicyVo;
+import com.moyora.clubschedule.vo.GroupScheduleVo;
+import com.moyora.clubschedule.vo.GroupScheduleVo.ScheduleStatus;
+import com.moyora.clubschedule.vo.ScheduleAttendanceVo;
+import com.moyora.clubschedule.vo.ScheduleAttendanceVo.AttendanceStatus;
+import com.moyora.clubschedule.vo.ScheduleAttendanceVo.ActualStatus;
+
+import lombok.RequiredArgsConstructor;
+
+@Service
+@RequiredArgsConstructor
+public class ScheduleAttendanceService {
+
+    private final ScheduleAttendanceMapper   attendanceMapper;
+    private final GroupScheduleMapper        scheduleMapper;
+    private final GroupSchedulePolicyMapper  policyMapper;
+    private final GroupMemberMapper          memberMapper;
+
+    // ── 참가 신청 ─────────────────────────────────────────────────────────────
+
+    @Transactional
+    public ScheduleAttendanceVo attend(Long groupId, Long scheduleId, Long userKey) {
+        GroupScheduleVo schedule = requireSchedule(scheduleId, groupId);
+
+        if (schedule.getStatus() != ScheduleStatus.CONFIRMED) {
+            throw new IllegalStateException("승인된 일정에만 참가 신청할 수 있습니다.");
+        }
+
+        ScheduleAttendanceVo existing = attendanceMapper.selectLatest(scheduleId, userKey);
+        if (existing != null && existing.getStatus() == AttendanceStatus.PENDING
+                || existing != null && existing.getStatus() == AttendanceStatus.CONFIRMED) {
+            throw new IllegalStateException("이미 참가 신청 중이거나 참가 확정된 일정입니다.");
+        }
+
+        // 이전 이력 무효화
+        attendanceMapper.invalidateLatest(scheduleId, userKey);
+
+        // 역할에 따라 즉시 확정 or 대기
+        AttendanceStatus initialStatus = resolveInitialStatus(groupId, scheduleId, userKey);
+
+        ScheduleAttendanceVo vo = new ScheduleAttendanceVo();
+        vo.setScheduleId(scheduleId);
+        vo.setUserKey(userKey);
+        vo.setStatus(initialStatus);
+        vo.setActualStatus(ActualStatus.NONE);
+        vo.setUpdatedBy(userKey);
+        attendanceMapper.insertAttendance(vo);
+
+        return attendanceMapper.selectById(vo.getAttendanceId());
+    }
+
+    // ── 참가 취소 (본인) ──────────────────────────────────────────────────────
+
+    @Transactional
+    public void cancelAttend(Long groupId, Long scheduleId, Long userKey) {
+        GroupScheduleVo schedule = requireSchedule(scheduleId, groupId);
+        requireBeforeStart(schedule);
+
+        ScheduleAttendanceVo att = requireLatest(scheduleId, userKey);
+        if (att.getStatus() == AttendanceStatus.CANCELLED
+                || att.getStatus() == AttendanceStatus.REJECTED) {
+            throw new IllegalStateException("이미 취소되었거나 거부된 참가 신청입니다.");
+        }
+
+        attendanceMapper.updateStatus(att.getAttendanceId(), AttendanceStatus.CANCELLED, userKey);
+        attendanceMapper.invalidateLatest(scheduleId, userKey);
+    }
+
+    // ── 참가자 목록 ───────────────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<ScheduleAttendanceVo> listAttendees(Long groupId, Long scheduleId) {
+        requireSchedule(scheduleId, groupId);
+        return attendanceMapper.selectActiveList(scheduleId);
+    }
+
+    // ── 승인 ──────────────────────────────────────────────────────────────────
+
+    @Transactional
+    public ScheduleAttendanceVo approveAttendance(Long groupId, Long scheduleId,
+                                                   Long targetUserKey, Long operatorUserKey) {
+        GroupScheduleVo schedule = requireSchedule(scheduleId, groupId);
+        validateAttendanceManagerPermission(groupId, schedule, operatorUserKey);
+
+        ScheduleAttendanceVo att = requireLatest(scheduleId, targetUserKey);
+        if (att.getStatus() != AttendanceStatus.PENDING) {
+            throw new IllegalStateException("대기 중인 참가 신청만 승인할 수 있습니다.");
+        }
+
+        attendanceMapper.updateProcessed(att.getAttendanceId(), AttendanceStatus.CONFIRMED,
+                operatorUserKey, operatorUserKey);
+        return attendanceMapper.selectById(att.getAttendanceId());
+    }
+
+    // ── 거부 ──────────────────────────────────────────────────────────────────
+
+    @Transactional
+    public void rejectAttendance(Long groupId, Long scheduleId,
+                                  Long targetUserKey, Long operatorUserKey) {
+        GroupScheduleVo schedule = requireSchedule(scheduleId, groupId);
+        validateAttendanceManagerPermission(groupId, schedule, operatorUserKey);
+
+        ScheduleAttendanceVo att = requireLatest(scheduleId, targetUserKey);
+        if (att.getStatus() != AttendanceStatus.PENDING) {
+            throw new IllegalStateException("대기 중인 참가 신청만 거부할 수 있습니다.");
+        }
+
+        attendanceMapper.updateProcessed(att.getAttendanceId(), AttendanceStatus.REJECTED,
+                operatorUserKey, operatorUserKey);
+        attendanceMapper.invalidateLatest(scheduleId, targetUserKey);
+    }
+
+    // ── 강제 취소 (관리자) ────────────────────────────────────────────────────
+
+    @Transactional
+    public void forceCancel(Long groupId, Long scheduleId,
+                             Long targetUserKey, Long operatorUserKey) {
+        GroupScheduleVo schedule = requireSchedule(scheduleId, groupId);
+        requireBeforeStart(schedule);
+        validateAttendanceManagerPermission(groupId, schedule, operatorUserKey);
+
+        ScheduleAttendanceVo att = requireLatest(scheduleId, targetUserKey);
+        attendanceMapper.updateStatus(att.getAttendanceId(), AttendanceStatus.CANCELLED, operatorUserKey);
+        attendanceMapper.invalidateLatest(scheduleId, targetUserKey);
+    }
+
+    // ── 출석 체크 ─────────────────────────────────────────────────────────────
+
+    @Transactional
+    public ScheduleAttendanceVo checkActual(Long groupId, Long scheduleId,
+                                             Long targetUserKey, ActualStatus actualStatus,
+                                             Long operatorUserKey) {
+        GroupScheduleVo schedule = requireSchedule(scheduleId, groupId);
+        requireManagerRole(groupId, operatorUserKey);
+
+        ScheduleAttendanceVo att = requireLatest(scheduleId, targetUserKey);
+        if (att.getStatus() != AttendanceStatus.CONFIRMED) {
+            throw new IllegalStateException("참가 확정된 멤버만 출석 체크할 수 있습니다.");
+        }
+
+        attendanceMapper.updateActualStatus(att.getAttendanceId(), actualStatus, operatorUserKey);
+        return attendanceMapper.selectById(att.getAttendanceId());
+    }
+
+    // ── Private helpers ───────────────────────────────────────────────────────
+
+    private GroupScheduleVo requireSchedule(Long scheduleId, Long groupId) {
+        GroupScheduleVo s = scheduleMapper.selectByScheduleId(scheduleId);
+        if (s == null) throw new ScheduleNotFoundException(scheduleId);
+        if (!s.getGroupId().equals(groupId)) {
+            throw new GroupAccessDeniedException("해당 그룹의 일정이 아닙니다.");
+        }
+        return s;
+    }
+
+    private ScheduleAttendanceVo requireLatest(Long scheduleId, Long userKey) {
+        ScheduleAttendanceVo att = attendanceMapper.selectLatest(scheduleId, userKey);
+        if (att == null) throw new IllegalStateException("참가 신청 내역이 없습니다.");
+        return att;
+    }
+
+    private void requireBeforeStart(GroupScheduleVo schedule) {
+        if (LocalDateTime.now().isAfter(schedule.getStartAt())) {
+            throw new IllegalStateException("일정 시작 이후에는 참가 취소/변경이 불가합니다.");
+        }
+    }
+
+    /** 일정 등록자이거나 MANAGER 이상이면 허용 */
+    private void validateAttendanceManagerPermission(Long groupId, GroupScheduleVo schedule,
+                                                      Long operatorUserKey) {
+        if (schedule.getCreatedBy().equals(operatorUserKey)) return;
+        requireManagerRole(groupId, operatorUserKey);
+    }
+
+    private void requireManagerRole(Long groupId, Long userKey) {
+        String roleStr = memberMapper.selectRoleByGroupAndUser(groupId, userKey);
+        GroupRole role = GroupRole.from(roleStr);
+        if (role == GroupRole.MEMBER) {
+            throw new GroupAccessDeniedException("매니저 이상 권한이 필요합니다.");
+        }
+    }
+
+    private AttendanceStatus resolveInitialStatus(Long groupId, Long scheduleId, Long userKey) {
+        String roleStr = memberMapper.selectRoleByGroupAndUser(groupId, userKey);
+        GroupRole role;
+        try { role = GroupRole.valueOf(roleStr.toUpperCase()); }
+        catch (Exception e) { role = GroupRole.MEMBER; }
+
+        if (role == GroupRole.LEADER || role == GroupRole.MANAGER) {
+            return AttendanceStatus.CONFIRMED;
+        }
+
+        GroupSchedulePolicyVo policy = policyMapper.selectByGroupId(groupId);
+        if (policy == null) policy = GroupSchedulePolicyVo.defaultPolicy(groupId);
+
+        return policy.isRequiresAttendanceApproval()
+                ? AttendanceStatus.PENDING
+                : AttendanceStatus.CONFIRMED;
+    }
+}

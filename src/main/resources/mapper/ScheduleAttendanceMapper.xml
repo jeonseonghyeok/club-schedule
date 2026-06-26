@@ -3,12 +3,90 @@
 
 <mapper namespace="com.moyora.clubschedule.mapper.ScheduleAttendanceMapper">
 
+    <resultMap id="attendanceRM" type="com.moyora.clubschedule.vo.ScheduleAttendanceVo">
+        <id     property="attendanceId"       column="attendance_id"/>
+        <result property="scheduleId"         column="schedule_id"/>
+        <result property="userKey"            column="user_key"/>
+        <result property="displayName"        column="display_name"/>
+        <result property="status"             column="status"/>
+        <result property="actualStatus"       column="actual_status"/>
+        <result property="isLatest"           column="is_latest"/>
+        <result property="processedByUserKey" column="processed_by_user_key"/>
+        <result property="updatedBy"          column="updated_by"/>
+        <result property="createdAt"          column="created_at"/>
+        <result property="updatedAt"          column="updated_at"/>
+    </resultMap>
+
     <select id="countConfirmedAttendees" resultType="int">
         SELECT COUNT(*)
         FROM schedule_attendance
         WHERE schedule_id = #{scheduleId}
           AND status      = 'CONFIRMED'
           AND is_latest   = 1
+    </select>
+
+    <select id="selectLatest" resultMap="attendanceRM">
+        SELECT sa.*
+        FROM schedule_attendance sa
+        WHERE sa.schedule_id = #{scheduleId}
+          AND sa.user_key    = #{userKey}
+          AND sa.is_latest   = 1
+        LIMIT 1
+    </select>
+
+    <select id="selectActiveList" resultMap="attendanceRM">
+        SELECT sa.*,
+               COALESCE(u.nickname, u.name) AS display_name
+        FROM schedule_attendance sa
+        JOIN user u ON u.user_key = sa.user_key
+        WHERE sa.schedule_id = #{scheduleId}
+          AND sa.is_latest   = 1
+        ORDER BY sa.created_at ASC
+    </select>
+
+    <update id="invalidateLatest">
+        UPDATE schedule_attendance
+        SET is_latest = 0
+        WHERE schedule_id = #{scheduleId}
+          AND user_key    = #{userKey}
+          AND is_latest   = 1
+    </update>
+
+    <insert id="insertAttendance" useGeneratedKeys="true" keyProperty="attendanceId">
+        INSERT INTO schedule_attendance
+            (schedule_id, user_key, status, actual_status, is_latest, updated_by, created_at, updated_at)
+        VALUES
+            (#{scheduleId}, #{userKey}, #{status}, #{actualStatus}, 1, #{updatedBy}, NOW(), NOW())
+    </insert>
+
+    <update id="updateStatus">
+        UPDATE schedule_attendance
+        SET status     = #{status},
+            updated_by = #{updatedBy},
+            updated_at = NOW()
+        WHERE attendance_id = #{attendanceId}
+    </update>
+
+    <update id="updateActualStatus">
+        UPDATE schedule_attendance
+        SET actual_status      = #{actualStatus},
+            checked_by_user_key = #{updatedBy},
+            updated_by         = #{updatedBy},
+            updated_at         = NOW()
+        WHERE attendance_id = #{attendanceId}
+    </update>
+
+    <update id="updateProcessed">
+        UPDATE schedule_attendance
+        SET status               = #{status},
+            processed_by_user_key = #{processedByUserKey},
+            updated_by           = #{updatedBy},
+            updated_at           = NOW()
+        WHERE attendance_id = #{attendanceId}
+    </update>
+
+    <select id="selectById" resultMap="attendanceRM">
+        SELECT * FROM schedule_attendance WHERE attendance_id = #{attendanceId}
     </select>
 
 </mapper>

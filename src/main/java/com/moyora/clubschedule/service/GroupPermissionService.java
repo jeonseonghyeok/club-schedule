@@ -144,16 +144,19 @@ public class GroupPermissionService {
             throw new GroupAccessDeniedException("반려되었거나 취소된 일정은 수정할 수 없습니다.");
         }
 
+        // 승인 대기 중인 일정은 작성자만 수정 가능 (관리자·리더 불가)
+        if (status == ScheduleStatus.PENDING) {
+            if (schedule.getCreatedBy().equals(userKey)) return;
+            throw new GroupAccessDeniedException("승인 대기 중인 일정은 작성자만 수정할 수 있습니다.");
+        }
+
+        // 승인된(CONFIRMED) 일정: LEADER 또는 MANAGE_SCHEDULE 권한 MANAGER만 수정 가능
         GroupRole role = resolveRole(groupId, userKey);
-
         if (role == GroupRole.LEADER) return;
-
         if (role == GroupRole.MANAGER) {
             GroupSchedulePolicyVo policy = fetchPolicy(groupId);
             if (resolveManagerCanManage(groupId, userKey, policy)) return;
         }
-
-        if (schedule.getCreatedBy().equals(userKey) && status == ScheduleStatus.PENDING) return;
 
         throw new GroupAccessDeniedException("일정 수정 권한이 없습니다.");
     }

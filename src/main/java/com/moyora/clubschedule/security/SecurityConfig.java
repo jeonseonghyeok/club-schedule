@@ -11,22 +11,30 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 
+import com.moyora.clubschedule.service.UserService;
 import com.moyora.clubschedule.util.KakaoTokenUtil;
+import com.moyora.clubschedule.util.TestAuthUtil;
 
-import lombok.AllArgsConstructor;
+import lombok.RequiredArgsConstructor;
+
+import org.springframework.beans.factory.annotation.Autowired;
 
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class SecurityConfig {
 
-	private final KakaoTokenUtil kakaoTokenUtil;
-	
-	@Bean
-	public JwtAuthenticationFilter jwtAuthenticationFilter() {
-		return new JwtAuthenticationFilter(kakaoTokenUtil);
-	}
+    private final KakaoTokenUtil kakaoTokenUtil;
+    private final UserService    userService;
+
+    @Autowired(required = false)
+    private TestAuthUtil testAuthUtil;
+
+    @Bean
+    public JwtAuthenticationFilter jwtAuthenticationFilter() {
+        return new JwtAuthenticationFilter(kakaoTokenUtil, testAuthUtil, userService);
+    }
 
 	@Bean
 	SecurityFilterChain filterChain(HttpSecurity http) throws Exception {

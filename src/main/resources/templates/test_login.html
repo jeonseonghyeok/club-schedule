@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>테스트 로그인</title>
+<style>
+  body{font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0;background:#f1f5f9;}
+  .card{background:#fff;border-radius:12px;padding:32px 40px;box-shadow:0 4px 20px rgba(0,0,0,.08);width:320px;}
+  h1{font-size:18px;margin:0 0 8px;color:#1e293b;}
+  p{font-size:13px;color:#64748b;margin:0 0 24px;}
+  label{font-size:13px;font-weight:600;color:#475569;display:block;margin-bottom:6px;}
+  select,input{width:100%;box-sizing:border-box;padding:9px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;color:#1e293b;margin-bottom:16px;}
+  button{width:100%;padding:10px;background:#3b82f6;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;}
+  button:hover{background:#2563eb;}
+  .msg{margin-top:12px;font-size:13px;text-align:center;padding:8px;border-radius:6px;display:none;}
+  .msg.error{background:#fee2e2;color:#991b1b;}
+  .msg.ok{background:#dcfce7;color:#166534;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>테스트 로그인</h1>
+  <p>개발 환경 전용. 운영 서버에서는 동작하지 않습니다.</p>
+  <label for="username">테스트 계정 선택</label>
+  <select id="username">
+    <option value="">-- 계정 선택 --</option>
+    <script>
+      for(var i=1;i<=100;i++){
+        var n='test'+String(i).padStart(2,'0');
+        document.write('<option value="'+n+'">'+n+'</option>');
+      }
+    </script>
+  </select>
+  <label for="custom">직접 입력 (test01 형식)</label>
+  <input id="custom" type="text" placeholder="test01">
+  <button onclick="doLogin()">로그인</button>
+  <div class="msg" id="msg"></div>
+</div>
+<script>
+async function doLogin(){
+  var username=(document.getElementById('custom').value.trim()||document.getElementById('username').value).trim();
+  if(!username){showMsg('계정을 선택하거나 입력해주세요.','error');return;}
+  try{
+    var r=await fetch('/login/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username})});
+    var j=await r.json();
+    if(r.ok){
+      showMsg(j.nickname+'('+j.userKey+') 로그인 완료. 이동 중…','ok');
+      setTimeout(()=>location.href='/',600);
+    }else{
+      showMsg(j.message||'로그인 실패','error');
+    }
+  }catch(e){showMsg(e.message,'error');}
+}
+function showMsg(m,type){var el=document.getElementById('msg');el.textContent=m;el.className='msg '+type;el.style.display='block';}
+document.getElementById('custom').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
+</script>
+</body>
+</html>

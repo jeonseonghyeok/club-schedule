@@ -9,7 +9,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.AntPathMatcher;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.moyora.clubschedule.service.UserService;
 import com.moyora.clubschedule.util.KakaoTokenUtil;
+import com.moyora.clubschedule.util.TestAuthUtil;
+import com.moyora.clubschedule.vo.UserVo;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,10 +23,16 @@ import java.nio.charset.StandardCharsets;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
-	private final KakaoTokenUtil kakaoTokenUtil;
+    private final KakaoTokenUtil kakaoTokenUtil;
+    private final TestAuthUtil   testAuthUtil;
+    private final UserService    userService;
 
-    public JwtAuthenticationFilter(KakaoTokenUtil kakaoTokenUtil) {
+    public JwtAuthenticationFilter(KakaoTokenUtil kakaoTokenUtil,
+                                   TestAuthUtil testAuthUtil,
+                                   UserService userService) {
         this.kakaoTokenUtil = kakaoTokenUtil;
+        this.testAuthUtil   = testAuthUtil;
+        this.userService    = userService;
     }
 
 
@@ -90,11 +99,36 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String token = header.substring(7);
 
         try {
-            // 1. 토큰 유효성 검사 및 kakaoApiId 획득 (public-key로 서명 검증 포함)
+            // 1. 카카오 JWT 검증 시도
             Long kakaoApiId = kakaoTokenUtil.validateAndGetUserId(token);
-            if (kakaoApiId == null) {
-                logger.warn("Token validation failed or user id missing for uri={}", uri);
-                // 토큰이 유효하지 않으면, 화이트리스트일 경우에는 인증없이 통과, 아니면 401
+            Authentication authentication = null;
+
+            if (kakaoApiId != null) {
+                // 1a. 카카오 토큰: kakaoApiId → userKey → Authentication
+                authentication = kakaoTokenUtil.getAuthentication(kakaoApiId);
+                logger.debug("Kakao auth for kakaoApiId={} uri={}", kakaoApiId, uri);
+            } else if (testAuthUtil != null && testAuthUtil.isEnabled()) {
+                // 1b. 테스트 토큰 fallback: sub = userKey
+                Long userKey = testAuthUtil.validateToken(token);
+                if (userKey != null) {
+                    UserVo userVo = userService.getUserByUserKey(userKey);
+                    if (userVo != null) {
+                        java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> auths =
+                                new java.util.ArrayList<>();
+                        if ("ADMIN".equalsIgnoreCase(userVo.getSystemRole())) {
+                            auths.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_ADMIN"));
+                        }
+                        auths.add(new org.springframework.security.core.authority.SimpleGrantedAuthority("ROLE_USER"));
+                        CustomUserDetails ud = new CustomUserDetails(userKey, auths);
+                        authentication = new org.springframework.security.authentication
+                                .UsernamePasswordAuthenticationToken(ud, null, ud.getAuthorities());
+                        logger.debug("Test auth for userKey={} uri={}", userKey, uri);
+                    }
+                }
+            }
+
+            if (authentication == null || !authentication.isAuthenticated()) {
+                logger.warn("Token validation failed for uri={}", uri);
                 if (isWhite) {
                     chain.doFilter(request, response);
                     return;
@@ -103,20 +137,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
 
-            // 2. 토큰 클레임 기반으로 Authentication 생성 (DB 조회 없이)
-            Authentication authentication = kakaoTokenUtil.getAuthentication(kakaoApiId);
-            if (authentication == null || !authentication.isAuthenticated()) {
-                logger.warn("Failed to build Authentication from token for kakaoApiId={} uri={}", kakaoApiId, uri);
-                if (isWhite) {
-                    chain.doFilter(request, response);
-                    return;
-                }
-                sendUnauthorized(response, "Invalid authentication");
-                return;
-            }
-
             SecurityContextHolder.getContext().setAuthentication(authentication);
-            logger.debug("Authentication set for kakaoApiId={} uri={}", kakaoApiId, uri);
 
             chain.doFilter(request, response);
         } catch (Exception ex) {

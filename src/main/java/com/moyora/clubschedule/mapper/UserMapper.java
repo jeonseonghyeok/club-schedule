@@ -17,4 +17,6 @@ public interface UserMapper {
     Long findUserKeyByKakaoApiId(@Param("kakaoApiId") Long kakaoApiId);
 
 	List<UserVo> selectAllOrderByUserKeyDesc();
+
+    UserVo selectByNickname(@Param("nickname") String nickname);
 }

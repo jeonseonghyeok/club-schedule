@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moyora.clubschedule.dto.GroupScheduleCreateDto;
+import com.moyora.clubschedule.dto.GroupScheduleEditDto;
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupManageService;
 import com.moyora.clubschedule.service.GroupScheduleService;
@@ -47,7 +48,7 @@ public class GroupApiController {
         for (GroupMemberVo m : members) {
             Map<String,Object> map = new HashMap<>();
             map.put("userKey",     m.getUserKey());
-            map.put("displayName", null);
+            map.put("displayName", m.getDisplayName());
             map.put("role",        m.getRole());
             map.put("status",      m.getStatus());
             map.put("joinedAt",    m.getJoinedAt() != null ? m.getJoinedAt().toString() : null);
@@ -118,6 +119,36 @@ public class GroupApiController {
 
         GroupScheduleVo created = groupScheduleService.createSchedule(dto);
         return ResponseEntity.ok(toCalendarEvent(created));
+    }
+
+    @PatchMapping("/{groupId}/schedules/{scheduleId}")
+    public ResponseEntity<?> editSchedule(
+            @PathVariable("groupId")    Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
+            @RequestBody Map<String,Object> payload,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long operator = userDetails != null ? userDetails.getUserKey() : null;
+        if (operator == null) return ResponseEntity.status(401).build();
+
+        GroupScheduleEditDto dto = new GroupScheduleEditDto();
+        dto.setChangeReason(getString(payload, "changeReason"));
+        dto.setTitle(getString(payload, "title"));
+        dto.setContent(getString(payload, "content"));
+        dto.setLocationName(getString(payload, "location_name"));
+        dto.setLatitude(getBigDecimal(payload, "latitude"));
+        dto.setLongitude(getBigDecimal(payload, "longitude"));
+        Long startMs = getLong(payload, "start");
+        Long endMs   = getLong(payload, "end");
+        if (startMs != null) dto.setStartAt(epochToLocalDateTime(startMs));
+        if (endMs   != null) dto.setEndAt(epochToLocalDateTime(endMs));
+        dto.setMaxAttendance(getInt(payload, "max_attendance", 0));
+
+        try {
+            GroupScheduleVo result = groupScheduleService.editSchedule(groupId, scheduleId, dto, operator);
+            return ResponseEntity.ok(toCalendarEvent(result));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 
     @PatchMapping("/{groupId}/schedules/{scheduleId}/approve")

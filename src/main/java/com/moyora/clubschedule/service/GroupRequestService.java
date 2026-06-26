@@ -3,6 +3,7 @@ package com.moyora.clubschedule.service;
 import com.moyora.clubschedule.mapper.GroupRequestMapper;
 import com.moyora.clubschedule.mapper.GroupMapper;
 import com.moyora.clubschedule.mapper.GroupMemberMapper;
+import com.moyora.clubschedule.mapper.GroupSchedulePolicyMapper;
 import com.moyora.clubschedule.vo.GroupRequest;
 import com.moyora.clubschedule.vo.GroupRequestDto;
 import com.moyora.clubschedule.vo.GroupVo;
@@ -22,10 +23,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class GroupRequestService {
 
-    private final GroupRequestMapper groupRequestMapper;
-    private final NotificationService notificationService;
-    private final GroupMapper groupMapper;
-    private final GroupMemberMapper groupMemberMapper;
+    private final GroupRequestMapper      groupRequestMapper;
+    private final NotificationService     notificationService;
+    private final GroupMapper             groupMapper;
+    private final GroupMemberMapper       groupMemberMapper;
+    private final GroupSchedulePolicyMapper groupSchedulePolicyMapper;
 
     private static final int DEFAULT_PAGE_SIZE = 10;
 
@@ -80,6 +82,9 @@ public class GroupRequestService {
         gm.setRole("LEADER");
         gm.setStatus("ACTIVE");
         groupMemberMapper.insertGroupMember(gm);
+
+        // 3.5) 그룹 일정 정책 기본값 삽입
+        groupSchedulePolicyMapper.insertDefaultPolicy(g.getGroupId());
 
         // 4) 신청 상태 업데이트 -> APPROVED
         groupRequestMapper.updateStatusToAccepted(requestId, userKey);

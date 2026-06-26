@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import com.moyora.clubschedule.dto.GroupScheduleCreateDto;
+import com.moyora.clubschedule.dto.GroupScheduleEditDto;
 import com.moyora.clubschedule.vo.GroupScheduleVo;
 
 @Mapper
@@ -20,4 +21,7 @@ public interface GroupScheduleMapper {
             @Param("scheduleId") Long scheduleId,
             @Param("status")     GroupScheduleVo.ScheduleStatus status,
             @Param("approvedBy") Long approvedBy);
+
+    /** 일정 내용 수정 */
+    int updateSchedule(GroupScheduleEditDto dto);
 }

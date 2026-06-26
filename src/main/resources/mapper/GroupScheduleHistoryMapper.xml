@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.moyora.clubschedule.mapper.GroupScheduleHistoryMapper">
+
+    <insert id="insertHistory" parameterType="com.moyora.clubschedule.vo.GroupScheduleHistoryVo"
+            useGeneratedKeys="true" keyProperty="historyId">
+        INSERT INTO group_schedule_history (
+            schedule_id, group_id, changed_by, change_reason,
+            title, content, location_name, latitude, longitude,
+            start_at, end_at, max_attendance, status
+        ) VALUES (
+            #{scheduleId}, #{groupId}, #{changedBy}, #{changeReason},
+            #{title}, #{content}, #{locationName}, #{latitude}, #{longitude},
+            #{startAt}, #{endAt}, #{maxAttendance}, #{status}
+        )
+    </insert>
+
+</mapper>

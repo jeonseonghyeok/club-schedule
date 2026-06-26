@@ -3,6 +3,11 @@
 
 <mapper namespace="com.moyora.clubschedule.mapper.GroupSchedulePolicyMapper">
 
+    <insert id="insertDefaultPolicy">
+        INSERT IGNORE INTO group_schedule_policy (group_id)
+        VALUES (#{groupId})
+    </insert>
+
     <select id="selectByGroupId" resultType="com.moyora.clubschedule.vo.GroupSchedulePolicyVo">
         SELECT
             group_id                        AS groupId,

@@ -9,6 +9,7 @@ import com.moyora.clubschedule.mapper.GroupSchedulePolicyMapper;
 import com.moyora.clubschedule.vo.GroupMemberPermissionVo.PermissionType;
 import com.moyora.clubschedule.vo.GroupRole;
 import com.moyora.clubschedule.vo.GroupSchedulePolicyVo;
+import com.moyora.clubschedule.vo.GroupScheduleVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo.ScheduleStatus;
 
 import lombok.AllArgsConstructor;
@@ -128,6 +129,33 @@ public class GroupPermissionService {
         }
 
         throw new GroupAccessDeniedException("일정 승인/반려 권한이 없습니다. 리더 또는 권한 있는 매니저만 가능합니다.");
+    }
+
+    /**
+     * 일정 수정 권한 검증.
+     *  LEADER                             → PENDING·CONFIRMED 수정 가능
+     *  MANAGER + MANAGE_SCHEDULE 권한     → PENDING·CONFIRMED 수정 가능
+     *  본인 작성 PENDING                  → 수정 가능
+     *  REJECTED·CANCELLED                 → 누구도 수정 불가
+     */
+    public void validateEditPermission(Long groupId, Long userKey, GroupScheduleVo schedule) {
+        ScheduleStatus status = schedule.getStatus();
+        if (status == ScheduleStatus.REJECTED || status == ScheduleStatus.CANCELLED) {
+            throw new GroupAccessDeniedException("반려되었거나 취소된 일정은 수정할 수 없습니다.");
+        }
+
+        GroupRole role = resolveRole(groupId, userKey);
+
+        if (role == GroupRole.LEADER) return;
+
+        if (role == GroupRole.MANAGER) {
+            GroupSchedulePolicyVo policy = fetchPolicy(groupId);
+            if (resolveManagerCanManage(groupId, userKey, policy)) return;
+        }
+
+        if (schedule.getCreatedBy().equals(userKey) && status == ScheduleStatus.PENDING) return;
+
+        throw new GroupAccessDeniedException("일정 수정 권한이 없습니다.");
     }
 
     /**

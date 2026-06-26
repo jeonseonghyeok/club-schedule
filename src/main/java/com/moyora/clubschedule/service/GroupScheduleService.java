@@ -6,9 +6,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.moyora.clubschedule.dto.GroupScheduleCreateDto;
+import com.moyora.clubschedule.dto.GroupScheduleEditDto;
 import com.moyora.clubschedule.exception.GroupAccessDeniedException;
 import com.moyora.clubschedule.exception.ScheduleNotFoundException;
+import com.moyora.clubschedule.mapper.GroupScheduleHistoryMapper;
 import com.moyora.clubschedule.mapper.GroupScheduleMapper;
+import com.moyora.clubschedule.mapper.ScheduleAttendanceMapper;
+import com.moyora.clubschedule.vo.GroupScheduleHistoryVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo.ScheduleStatus;
 
@@ -18,8 +22,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class GroupScheduleService {
 
-    private final GroupScheduleMapper   groupScheduleMapper;
-    private final GroupPermissionService groupPermissionService;
+    private final GroupScheduleMapper        groupScheduleMapper;
+    private final GroupScheduleHistoryMapper groupScheduleHistoryMapper;
+    private final ScheduleAttendanceMapper   scheduleAttendanceMapper;
+    private final GroupPermissionService     groupPermissionService;
 
     // ── 조회 ──────────────────────────────────────────────────────────────────
 
@@ -76,6 +82,55 @@ public class GroupScheduleService {
 
         groupPermissionService.validateApprovePermission(groupId, operatorUserKey);
         groupScheduleMapper.updateScheduleStatus(scheduleId, ScheduleStatus.REJECTED, operatorUserKey);
+        return groupScheduleMapper.selectByScheduleId(scheduleId);
+    }
+
+    // ── 수정 ──────────────────────────────────────────────────────────────────
+
+    /**
+     * 일정 수정.
+     * 수정 전 스냅샷을 group_schedule_history에 저장하고 group_schedule를 업데이트한다.
+     * change_reason 필수, max_attendance 정원 검증 포함.
+     */
+    @Transactional
+    public GroupScheduleVo editSchedule(Long groupId, Long scheduleId,
+                                        GroupScheduleEditDto dto, Long operatorUserKey) {
+        GroupScheduleVo schedule = getAndValidateGroup(scheduleId, groupId);
+
+        if (dto.getChangeReason() == null || dto.getChangeReason().isBlank()) {
+            throw new IllegalArgumentException("변경 사유는 필수입니다.");
+        }
+
+        groupPermissionService.validateEditPermission(groupId, operatorUserKey, schedule);
+
+        if (dto.getMaxAttendance() > 0) {
+            int confirmed = scheduleAttendanceMapper.countConfirmedAttendees(scheduleId);
+            if (dto.getMaxAttendance() < confirmed) {
+                throw new IllegalArgumentException(
+                        String.format("현재 참가 확정 인원(%d명)보다 정원이 작을 수 없습니다.", confirmed));
+            }
+        }
+
+        GroupScheduleHistoryVo history = new GroupScheduleHistoryVo();
+        history.setScheduleId(schedule.getScheduleId());
+        history.setGroupId(schedule.getGroupId());
+        history.setChangedBy(operatorUserKey);
+        history.setChangeReason(dto.getChangeReason());
+        history.setTitle(schedule.getTitle());
+        history.setContent(schedule.getContent());
+        history.setLocationName(schedule.getLocationName());
+        history.setLatitude(schedule.getLatitude());
+        history.setLongitude(schedule.getLongitude());
+        history.setStartAt(schedule.getStartAt());
+        history.setEndAt(schedule.getEndAt());
+        history.setMaxAttendance(schedule.getMaxAttendance());
+        history.setStatus(schedule.getStatus());
+        groupScheduleHistoryMapper.insertHistory(history);
+
+        dto.setScheduleId(scheduleId);
+        dto.setGroupId(groupId);
+        groupScheduleMapper.updateSchedule(dto);
+
         return groupScheduleMapper.selectByScheduleId(scheduleId);
     }
 

@@ -37,7 +37,7 @@
 	        requested_at,
 	        status,
 	        reject_reason,
-	        updated_by_user_key,
+	        updated_by,
 			status_updated_at
 	    FROM group_create_request
 	    WHERE user_key = #{userKey}
@@ -53,7 +53,7 @@
 			requested_at,
 			status,
 			reject_reason,
-			updated_by_user_key,
+			updated_by,
 			status_updated_at
 		FROM group_create_request
 		WHERE status = 'PENDING'
@@ -70,7 +70,7 @@
 			requested_at,
 			status,
 			reject_reason,
-			updated_by_user_key,
+			updated_by,
 			status_updated_at
 		FROM group_create_request
 		ORDER BY requested_at ASC
@@ -86,7 +86,7 @@
 			requested_at,
 			status,
 			reject_reason,
-			updated_by_user_key,
+			updated_by,
 			status_updated_at
 		FROM group_create_request
 		WHERE status = #{status}
@@ -103,7 +103,7 @@
 			requested_at,
 			status,
 			reject_reason,
-			updated_by_user_key,
+			updated_by,
 			status_updated_at
 		FROM group_create_request
 		<where>
@@ -142,7 +142,7 @@
 	<update id="updateStatusToAccepted">
 		UPDATE group_create_request
 		SET status = 'APPROVED',
-		    updated_by_user_key = #{userKey},
+		    updated_by = #{userKey},
 		    status_updated_at = NOW()
 		WHERE request_id = #{requestId}
 	</update>
@@ -151,7 +151,7 @@
     <update id="updateStatusToProcessing">
         UPDATE group_create_request
         SET status = 'PROCESSING',
-            updated_by_user_key = #{userKey},
+            updated_by = #{userKey},
             status_updated_at = NOW()
         WHERE request_id = #{requestId}
         AND status = 'PENDING'
@@ -160,7 +160,7 @@
 	<update id="updateStatusToCancelled">
 		UPDATE group_create_request
 		SET status = 'CANCELLED',
-		    updated_by_user_key = #{userKey},
+		    updated_by = #{userKey},
 		    status_updated_at = NOW()
 		WHERE request_id = #{requestId}
 		AND user_key = #{userKey}
@@ -170,7 +170,7 @@
         UPDATE group_create_request
         SET status = 'REJECTED',
             reject_reason = #{rejectReason},
-            updated_by_user_key = #{userKey},
+            updated_by = #{userKey},
             status_updated_at = NOW()
         WHERE request_id = #{requestId}
     </update> 
@@ -188,7 +188,7 @@
             requested_at,
             status,
             reject_reason,
-            updated_by_user_key,
+            updated_by,
             status_updated_at
         FROM group_create_request
         WHERE request_id = #{requestId}

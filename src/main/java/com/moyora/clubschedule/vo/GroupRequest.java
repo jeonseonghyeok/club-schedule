@@ -15,6 +15,6 @@ public class GroupRequest {
     private LocalDateTime requestedAt;     // 신청일시
     private GroupRequestStatus status;             // 신청 상태 ('PENDING', 'APPROVED', 'REJECTED', 'CANCELLED')
     private String rejectReason;       // 거절 사유
-    private Long updatedByUserKey;     // 마지막 상태 변경자
+    private Long updatedBy;             // 마지막 상태 변경자
     private LocalDateTime statusUpdatedAt; // 상태 변경일시
 }

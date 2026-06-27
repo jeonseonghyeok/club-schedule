@@ -87,7 +87,7 @@
 
 <div class="container">
     <div class="stack">
-        <!-- 내 정보 -->
+        <!--
         <div class="card">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
                 <div class="profile">
@@ -104,13 +104,14 @@
                 </div>
             </div>
         </div>
+        -->
 
         <!-- 내 모임 -->
         <div class="card">
             <div class="section-title">
                 <span>내 모임</span>
                 <div class="controls">
-                    <button id="openRequestModalBtn" class="btn">신규모임 생성</button>
+                    <button id="openRequestModalBtn" class="btn" style="display:none;">신규모임 생성</button>
                 </div>
             </div>
 
@@ -118,16 +119,16 @@
                 <li class="muted">로딩 중...</li>
             </ul>
         </div>
-		<!--모임 추천-->
+        <!-- 모임 검색 -->
         <div class="card">
             <div class="section-title">
-                <span>모임 추천</span>
+                <span>모임 검색</span>
+                <input id="groupSearchInput" type="search" placeholder="모임명 검색..." class="search">
             </div>
-
             <ul id="recommendedGroupsList">
                 <li class="muted">로딩 중...</li>
             </ul>
-    </div>
+        </div>
 </div>
 
 <!-- 로그인 유도 -->
@@ -239,6 +240,16 @@
         const refreshGroupsBtn = document.getElementById('refreshMyGroupsBtn'); if (refreshGroupsBtn) refreshGroupsBtn.addEventListener('click', loadMyGroups);
 
         loadMyGroups();
+        loadRecommendedGroups();
+
+        let searchDebounce;
+        const groupSearchInput = document.getElementById('groupSearchInput');
+        if (groupSearchInput) {
+            groupSearchInput.addEventListener('input', e => {
+                clearTimeout(searchDebounce);
+                searchDebounce = setTimeout(() => loadRecommendedGroups(e.target.value.trim()), 300);
+            });
+        }
     });
 
     function renderGroups(groups) {
@@ -247,6 +258,8 @@
         if (!listEl) return;
         if (!Array.isArray(groups) || groups.length === 0) {
             listEl.innerHTML = '<li class="muted">모임이 없습니다.</li>';
+            const btn = document.getElementById('openRequestModalBtn');
+            if (btn) btn.style.display = '';
             return;
         }
         listEl.innerHTML = '';
@@ -280,6 +293,10 @@
             li.appendChild(right);
             listEl.appendChild(li);
         });
+
+        const amLeader = groups.some(g => g && g.leaderUserKey && String(g.leaderUserKey) === String(currentUserKey));
+        const btn = document.getElementById('openRequestModalBtn');
+        if (btn) btn.style.display = amLeader ? 'none' : '';
     }
 
     async function loadMyGroups() {
@@ -495,6 +512,40 @@
                 listEl.appendChild(li);
             });
         } catch (e) { console.error(e); listEl.innerHTML = '<li class="muted">오류 발생</li>'; }
+    }
+
+    async function loadRecommendedGroups(q = '') {
+        const listEl = document.getElementById('recommendedGroupsList');
+        if (!listEl) return;
+        listEl.innerHTML = '<li class="muted">로딩 중...</li>';
+        try {
+            const url = '/groups/recommended' + (q ? '?q=' + encodeURIComponent(q) : '');
+            const res = await fetch(url, { credentials: 'same-origin' });
+            if (!res.ok) { listEl.innerHTML = '<li class="muted">불러오기 실패</li>'; return; }
+            const data = await res.json();
+            if (!data.length) {
+                listEl.innerHTML = '<li class="muted">일치하는 모임을 찾지 못하였습니다.</li>';
+                return;
+            }
+            listEl.innerHTML = '';
+            data.forEach(g => {
+                const li = document.createElement('li');
+                const left = document.createElement('div');
+                left.className = 'group-left';
+                left.style.flexDirection = 'column';
+                const a = document.createElement('a');
+                a.href = '/groups/' + g.groupId;
+                a.className = 'group-name';
+                a.textContent = g.name || '무제 모임';
+                const sub = document.createElement('div');
+                sub.className = 'group-sub';
+                sub.textContent = (g.description || '').slice(0, 40) || '설명 없음';
+                left.appendChild(a);
+                left.appendChild(sub);
+                li.appendChild(left);
+                listEl.appendChild(li);
+            });
+        } catch (e) { listEl.innerHTML = '<li class="muted">오류 발생</li>'; }
     }
 
     async function submitModalRequest() {

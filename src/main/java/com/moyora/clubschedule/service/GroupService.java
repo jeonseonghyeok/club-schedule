@@ -42,4 +42,12 @@ public class GroupService {
     public int countGroupsFiltered(String q){
         return pagingMapper.countGroupsFiltered(q);
     }
+
+    public List<GroupVo> findRecentBySchedule(int limit) {
+        return groupMapper.findRecentBySchedule(limit);
+    }
+
+    public List<GroupVo> searchByName(String q) {
+        return groupMapper.searchByName(q);
+    }
 }

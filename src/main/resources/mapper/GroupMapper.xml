@@ -34,4 +34,24 @@
     <select id="findAllOrderByGroupIdDesc" resultType="GroupVo">
         SELECT * FROM `group` ORDER BY group_id DESC
     </select>
+
+    <select id="findRecentBySchedule" resultType="GroupVo" parameterType="int">
+        SELECT g.group_id, g.name, g.description, g.leader_user_key, g.capacity
+        FROM `group` g
+        JOIN (
+            SELECT group_id, MAX(created_at) AS latest
+            FROM group_schedule
+            GROUP BY group_id
+            ORDER BY latest DESC
+            LIMIT #{limit}
+        ) rec ON g.group_id = rec.group_id
+        ORDER BY rec.latest DESC
+    </select>
+
+    <select id="searchByName" resultType="GroupVo" parameterType="string">
+        SELECT group_id, name, description, leader_user_key, capacity
+        FROM `group`
+        WHERE name LIKE CONCAT('%', #{q}, '%')
+        ORDER BY group_id DESC
+    </select>
 </mapper>

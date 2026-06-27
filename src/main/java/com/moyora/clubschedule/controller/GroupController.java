@@ -32,6 +32,14 @@ public class GroupController {
         return ResponseEntity.ok(groups);
     }
 
+    @GetMapping("/recommended")
+    public ResponseEntity<?> recommended(@RequestParam(name = "q", required = false) String q) {
+        if (q != null && !q.isBlank()) {
+            return ResponseEntity.ok(groupService.searchByName(q.trim()));
+        }
+        return ResponseEntity.ok(groupService.findRecentBySchedule(3));
+    }
+
     @PatchMapping("/{groupId}")
     @PreAuthorize("@groupManageService.isLeaderOrSubLeader(#groupId, principal.userKey)")
     public ResponseEntity<?> updateGroup(@PathVariable("groupId") Long groupId, @Valid @RequestBody com.moyora.clubschedule.vo.GroupUpdateDto dto) {

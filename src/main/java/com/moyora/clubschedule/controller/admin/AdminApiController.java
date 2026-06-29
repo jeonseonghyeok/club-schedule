@@ -3,11 +3,17 @@ package com.moyora.clubschedule.controller.admin;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.moyora.clubschedule.security.CustomUserDetails;
+import com.moyora.clubschedule.service.GroupRequestService;
 import com.moyora.clubschedule.service.UserService;
 import com.moyora.clubschedule.service.GroupService;
 import com.moyora.clubschedule.service.GroupJoinRequestService;
@@ -30,6 +36,9 @@ public class AdminApiController {
 
     @Autowired
     private GroupJoinRequestService groupJoinRequestService;
+
+    @Autowired
+    private GroupRequestService groupRequestService;
 
     // Helper: common paging + optional query filtering logic - now returns PagingResponse
     private <T> PagingResponse<T> buildPagedResponse(List<T> all, Integer page, Integer size, String q) {
@@ -120,6 +129,58 @@ public class AdminApiController {
         List<?> all = groupService.findAllGroups();
         PagingResponse<?> resp = buildPagedResponse(all, page, size, q);
         return ResponseEntity.ok(resp);
+    }
+
+    // group-requests: 목록 조회 (status + q 필터, 페이징)
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/group-requests")
+    public ResponseEntity<?> apiGroupRequests(
+            @RequestParam(value = "page",   required = false) Integer page,
+            @RequestParam(value = "size",   required = false) Integer size,
+            @RequestParam(value = "status", required = false) String status,
+            @RequestParam(value = "q",      required = false) String q) {
+
+        Map<String, Object> result = groupRequestService.getRequestsByFilters(status, q, page, size);
+        int total = (int) result.get("total");
+        int pg    = (int) result.get("page");
+        int sz    = (int) result.get("size");
+
+        PagingResponse<Object> resp = new PagingResponse<>();
+        resp.setItems((List<Object>) result.get("items"));
+        resp.setTotalCount(total);
+        resp.setCurrentPage(pg);
+        resp.setSize(sz);
+        resp.setTotalPages((total + sz - 1) / sz);
+        int blockSize = 5, block = (pg - 1) / blockSize;
+        resp.setStartPage(block * blockSize + 1);
+        resp.setEndPage(Math.min(resp.getStartPage() + blockSize - 1, resp.getTotalPages()));
+        return ResponseEntity.ok(resp);
+    }
+
+    // group-requests: 승인 (생성된 groupId 반환)
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/group-requests/{requestId}/approve")
+    public ResponseEntity<?> approveGroupRequest(
+            @PathVariable("requestId") Long requestId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            Long groupId = groupRequestService.approveRequest(requestId, userDetails.getUserKey());
+            return ResponseEntity.ok(Map.of("groupId", groupId));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(409).body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    // group-requests: 거부
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/group-requests/{requestId}/reject")
+    public ResponseEntity<?> rejectGroupRequest(
+            @PathVariable("requestId") Long requestId,
+            @RequestBody Map<String, String> body,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        boolean ok = groupRequestService.rejectGroupRequest(
+                requestId, userDetails.getUserKey(), body.get("rejectReason"));
+        return ok ? ResponseEntity.ok().build() : ResponseEntity.badRequest().build();
     }
 
     // group-joins: 간단한 페이징

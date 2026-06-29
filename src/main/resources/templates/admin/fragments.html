@@ -82,17 +82,15 @@
     <h2>그룹 신청관리</h2>
     <form id="gr-search-form" style="display:flex;flex-direction:column;gap:8px;">
         <div id="gr-controls" style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
-            <select id="gr-cond1" name="cond1Field">
-                <option value="">선택</option>
-                <option value="requestNo">그룹요청번호</option>
-                <option value="group">그룹</option>
-                <option value="requester">요청자</option>
-            </select>
-            <input id="gr-cond1-value" name="cond1Value" type="search" placeholder="그룹번호 또는 그룹명 입력하세요" />
+            <input id="gr-q" name="q" type="search" placeholder="모임명 검색" style="padding:6px;border:1px solid #ccc;border-radius:4px;min-width:160px;" />
 
-            <label>요청일:</label>
-            <input id="gr-from" name="from" type="date" /> ~ 
-            <input id="gr-to" name="to" type="date" />
+            <select id="gr-status" name="status" style="padding:6px;border:1px solid #ccc;border-radius:4px;">
+                <option value="PENDING" selected>대기 (기본)</option>
+                <option value="">전체 이력</option>
+                <option value="APPROVED">승인</option>
+                <option value="REJECTED">거부</option>
+                <option value="CANCELLED">취소</option>
+            </select>
 
             <button id="gr-search" type="button">조회</button>
         </div>

@@ -30,95 +30,105 @@
 	<!-- 그룹 신청 전체조회 (사용자) -->
     <select id="selectByUserKey" parameterType="long" resultType="com.moyora.clubschedule.vo.GroupRequest">
 	    SELECT
-	        request_id,
-	        user_key,
-	        group_name,
-	        description,
-	        requested_at,
-	        status,
-	        reject_reason,
-	        updated_by,
-			status_updated_at
-	    FROM group_create_request
-	    WHERE user_key = #{userKey}
+	        gcr.request_id,
+	        gcr.user_key,
+	        gcr.group_name,
+	        gcr.description,
+	        gcr.requested_at,
+	        gcr.status,
+	        gcr.reject_reason,
+	        gcr.updated_by,
+	        gcr.status_updated_at,
+	        g.group_id
+	    FROM group_create_request gcr
+	    LEFT JOIN `group` g ON g.group_create_request_id = gcr.request_id
+	    WHERE gcr.user_key = #{userKey}
     </select>
-    
-	<!-- 그룹 신청 전체조회(관리자용) - 기존: PENDING만 -->
+
+	<!-- 그룹 신청 전체조회(관리자용) - PENDING만 -->
 	<select id="select" resultType="com.moyora.clubschedule.vo.GroupRequest">
 		SELECT
-			request_id,
-			user_key,
-			group_name,
-			description,
-			requested_at,
-			status,
-			reject_reason,
-			updated_by,
-			status_updated_at
-		FROM group_create_request
-		WHERE status = 'PENDING'
-		ORDER BY requested_at ASC
+			gcr.request_id,
+			gcr.user_key,
+			gcr.group_name,
+			gcr.description,
+			gcr.requested_at,
+			gcr.status,
+			gcr.reject_reason,
+			gcr.updated_by,
+			gcr.status_updated_at,
+			g.group_id
+		FROM group_create_request gcr
+		LEFT JOIN `group` g ON g.group_create_request_id = gcr.request_id
+		WHERE gcr.status = 'PENDING'
+		ORDER BY gcr.requested_at ASC
 	</select>
 
 	<!-- 관리자: 전체 조회 (상태 무관) -->
 	<select id="selectAll" resultType="com.moyora.clubschedule.vo.GroupRequest">
 		SELECT
-			request_id,
-			user_key,
-			group_name,
-			description,
-			requested_at,
-			status,
-			reject_reason,
-			updated_by,
-			status_updated_at
-		FROM group_create_request
-		ORDER BY requested_at ASC
+			gcr.request_id,
+			gcr.user_key,
+			gcr.group_name,
+			gcr.description,
+			gcr.requested_at,
+			gcr.status,
+			gcr.reject_reason,
+			gcr.updated_by,
+			gcr.status_updated_at,
+			g.group_id
+		FROM group_create_request gcr
+		LEFT JOIN `group` g ON g.group_create_request_id = gcr.request_id
+		ORDER BY gcr.requested_at ASC
 	</select>
 
 	<!-- 관리자: 상태별 조회 -->
 	<select id="selectByStatus" parameterType="string" resultType="com.moyora.clubschedule.vo.GroupRequest">
 		SELECT
-			request_id,
-			user_key,
-			group_name,
-			description,
-			requested_at,
-			status,
-			reject_reason,
-			updated_by,
-			status_updated_at
-		FROM group_create_request
-		WHERE status = #{status}
-		ORDER BY requested_at ASC
+			gcr.request_id,
+			gcr.user_key,
+			gcr.group_name,
+			gcr.description,
+			gcr.requested_at,
+			gcr.status,
+			gcr.reject_reason,
+			gcr.updated_by,
+			gcr.status_updated_at,
+			g.group_id
+		FROM group_create_request gcr
+		LEFT JOIN `group` g ON g.group_create_request_id = gcr.request_id
+		WHERE gcr.status = #{status}
+		ORDER BY gcr.requested_at ASC
 	</select>
 
 	<!-- 관리자: 필터(상태, 그룹명) + 페이징 -->
 	<select id="selectByFilters" parameterType="map" resultType="com.moyora.clubschedule.vo.GroupRequest">
 		SELECT
-			request_id,
-			user_key,
-			group_name,
-			description,
-			requested_at,
-			status,
-			reject_reason,
-			updated_by,
-			status_updated_at
-		FROM group_create_request
+			gcr.request_id,
+			gcr.user_key,
+			gcr.group_name,
+			gcr.description,
+			gcr.requested_at,
+			gcr.status,
+			gcr.reject_reason,
+			gcr.updated_by,
+			gcr.status_updated_at,
+			g.group_id
+		FROM group_create_request gcr
+		LEFT JOIN `group` g ON g.group_create_request_id = gcr.request_id
 		<where>
 			<if test="status != null and status != ''">
-				status = #{status}
+				gcr.status = #{status}
 			</if>
 			<!-- when status is not provided, exclude PROCESSING -->
 			<if test="status == null or status == ''">
-				AND status != 'PROCESSING'
+				AND gcr.status != 'PROCESSING'
 			</if>
 			<if test="groupName != null and groupName != ''">
-				AND group_name LIKE CONCAT('%', #{groupName}, '%')
+				AND gcr.group_name LIKE CONCAT('%', #{groupName}, '%')
 			</if>
 		</where>
-		ORDER BY requested_at DESC
+		ORDER BY gcr.requested_at DESC
 		LIMIT #{limit} OFFSET #{offset}
 	</select>
 	
@@ -178,18 +188,20 @@
 	<select id="selectRequesterUserKey" parameterType="long" resultType="long">
 		SELECT user_key FROM group_create_request WHERE request_id = #{requestId}
 	</select>
-	<!-- 새로 추가: requestId로 그룹 요청 조회 -->
+	<!-- requestId로 그룹 요청 조회 -->
     <select id="selectByRequestId" parameterType="long" resultType="com.moyora.clubschedule.vo.GroupRequest">
         SELECT
-            request_id,
-            user_key,
-            group_name,
-            description,
-            requested_at,
-            status,
-            reject_reason,
-            updated_by,
-            status_updated_at
-        FROM group_create_request
-        WHERE request_id = #{requestId}
+            gcr.request_id,
+            gcr.user_key,
+            gcr.group_name,
+            gcr.description,
+            gcr.requested_at,
+            gcr.status,
+            gcr.reject_reason,
+            gcr.updated_by,
+            gcr.status_updated_at,
+            g.group_id
+        FROM group_create_request gcr
+        LEFT JOIN `group` g ON g.group_create_request_id = gcr.request_id
+        WHERE gcr.request_id = #{requestId}
     </select>    </mapper>

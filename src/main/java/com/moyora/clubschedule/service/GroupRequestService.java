@@ -56,7 +56,7 @@ public class GroupRequestService {
      * 승인 처리: 그룹 생성, 리더 멤버 추가, 신청 상태 업데이트, 알림 전달
      */
     @Transactional
-    public void approveRequest(Long requestId, Long userKey) {
+    public Long approveRequest(Long requestId, Long userKey) {
         // 1) 신청 정보 조회
         GroupRequest req = groupRequestMapper.selectByRequestId(requestId);
         if (req == null) throw new RuntimeException("요청을 찾을 수 없습니다.");
@@ -103,8 +103,9 @@ public class GroupRequestService {
                     .build();
             notificationService.createNotification(notification);
         }
+        return g.getGroupId();
     }
-   
+
     
     /**
      * 관리자에 의한 그룹 신청 거부 및 거부 사유 기록.

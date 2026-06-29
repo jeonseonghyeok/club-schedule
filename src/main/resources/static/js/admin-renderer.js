@@ -142,7 +142,6 @@
         const hr = document.createElement('tr');
 
         // Determine columns: preferred order per panel, then keys from first item
-		debugger;
         const preferred = {
 			//리더명,상태 추가 필요
             groupsPanel: ['groupId','name','leaderUserKey','capacity','currentMemberCount','autoApprove','schedulePolicy','defSubCanMember','defSubCanNickname','groupRequestId','createdAt','updatedAt'],
@@ -216,6 +215,177 @@
         common.appendChild(table);
     }
 
+    function renderGroupRequests(common, data) {
+        const items = extractItems(data) || [];
+        common.innerHTML = '';
+
+        const total = (data && (data.totalCount || data.total)) || items.length;
+        const header = document.createElement('div');
+        header.style.marginBottom = '8px';
+        header.textContent = '총 ' + total + '건';
+        common.appendChild(header);
+
+        const thStyle = 'border:1px solid #ddd;padding:8px;text-align:left;background:#f7f7f7;';
+        const tdStyle = 'border:1px solid #eee;padding:8px;vertical-align:middle;';
+
+        const table = document.createElement('table');
+        table.style.cssText = 'width:100%;border-collapse:collapse;';
+
+        const statusLabel = {PENDING:'대기', APPROVED:'승인', REJECTED:'거부', CANCELLED:'취소'};
+
+        const thead = document.createElement('thead');
+        const hr = document.createElement('tr');
+        ['신청번호', '모임명', '요청자(userKey)', '신청일시', '상태'].forEach(function(h) {
+            const th = document.createElement('th');
+            th.setAttribute('style', thStyle);
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        if (items.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.setAttribute('style', tdStyle + 'text-align:center;');
+            td.colSpan = 5;
+            td.textContent = '조회 결과가 없습니다.';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        } else {
+            items.forEach(function(it) {
+                const tr = document.createElement('tr');
+                tr.style.cursor = 'pointer';
+                tr.addEventListener('click', function() { openGroupRequestDetail(it); });
+                [it.requestId, it.groupName, it.userKey, formatDateTime(it.requestedAt), statusLabel[it.status] || it.status].forEach(function(v) {
+                    const td = document.createElement('td');
+                    td.setAttribute('style', tdStyle);
+                    td.textContent = v != null ? String(v) : '';
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+        table.appendChild(tbody);
+        common.appendChild(table);
+    }
+
+    async function approveGroupRequest(requestId, groupName) {
+        if (!confirm('[' + groupName + '] 신청을 승인하시겠습니까?')) return;
+        try {
+            const res = await fetch('/admin/api/group-requests/' + requestId + '/approve', { method: 'POST' });
+            if (res.ok) {
+                const data = await res.json();
+                const groupId = data.groupId;
+                if (confirm('승인되었습니다.\n생성된 그룹 페이지로 이동하시겠습니까? (/groups/' + groupId + ')')) {
+                    window.open('/groups/' + groupId, '_blank');
+                }
+                window.dispatchEvent(new CustomEvent('admin:reload:panel', { detail: { panelId: 'groupRequestsPanel' } }));
+            } else {
+                const body = await res.json().catch(function() { return {}; });
+                alert('승인 실패: ' + (body.error || res.status));
+            }
+        } catch(err) {
+            alert('오류: ' + err.message);
+        }
+    }
+
+    function openGroupRequestDetail(item) {
+        const modal = document.getElementById('grDetailModal');
+        if (!modal) return;
+        const body = document.getElementById('grDetailBody');
+        const actionsDiv = document.getElementById('grDetailActions');
+        if (!body) return;
+
+        const thStyle = 'text-align:left;padding:7px 14px 7px 0;color:#64748b;font-weight:600;white-space:nowrap;vertical-align:top;width:140px;border-bottom:1px solid #f1f5f9;';
+        const tdStyle = 'padding:7px 0;word-break:break-word;border-bottom:1px solid #f1f5f9;';
+        const statusLabelMap = {PENDING:'대기', APPROVED:'승인', REJECTED:'거부', CANCELLED:'취소'};
+
+        const isPending  = item.status === 'PENDING';
+        const isApproved = item.status === 'APPROVED';
+        const isRejected = item.status === 'REJECTED';
+
+        // 항상 표시
+        const fields = [
+            ['신청번호',        item.requestId],
+            ['모임명',          item.groupName],
+            ['요청자(userKey)', item.userKey],
+            ['신청 설명',       item.description || '-'],
+            ['신청일시',        formatDateTime(item.requestedAt)],
+            ['상태',            statusLabelMap[item.status] || item.status || '-']
+        ];
+
+        // PENDING이 아닐 때만 처리 결과 표시
+        if (!isPending) {
+            fields.push(['처리자(userKey)',  item.updatedBy != null ? item.updatedBy : '-']);
+            fields.push(['상태 변경일시',    item.statusUpdatedAt ? formatDateTime(item.statusUpdatedAt) : '-']);
+        }
+        if (isRejected) {
+            fields.push(['거부 사유', item.rejectReason || '-']);
+        }
+
+        body.innerHTML = '';
+        fields.forEach(function(pair) {
+            const tr = document.createElement('tr');
+            const th = document.createElement('th');
+            th.setAttribute('style', thStyle);
+            th.textContent = pair[0];
+            const td = document.createElement('td');
+            td.setAttribute('style', tdStyle);
+            td.textContent = pair[1] != null ? String(pair[1]) : '-';
+            tr.appendChild(th);
+            tr.appendChild(td);
+            body.appendChild(tr);
+        });
+
+        // 액션 영역 초기화
+        if (actionsDiv) {
+            actionsDiv.innerHTML = '';
+
+            if (isPending) {
+                actionsDiv.style.cssText = 'display:flex;gap:8px;justify-content:flex-end;margin-top:16px;';
+                const approveBtn = document.createElement('button');
+                approveBtn.textContent = '승인';
+                approveBtn.setAttribute('style', 'padding:8px 20px;background:#1976d2;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.95rem;');
+                approveBtn.onclick = function() { modal.style.display = 'none'; approveGroupRequest(item.requestId, item.groupName); };
+
+                const rejectBtn = document.createElement('button');
+                rejectBtn.textContent = '거부';
+                rejectBtn.setAttribute('style', 'padding:8px 20px;background:#d32f2f;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.95rem;');
+                rejectBtn.onclick = function() { modal.style.display = 'none'; openRejectModal(item.requestId, item.groupName); };
+
+                actionsDiv.appendChild(approveBtn);
+                actionsDiv.appendChild(rejectBtn);
+            } else if (isApproved && item.groupId) {
+                actionsDiv.style.cssText = 'margin-top:14px;';
+                const link = document.createElement('a');
+                link.href = '/groups/' + item.groupId;
+                link.target = '_blank';
+                link.textContent = '모임 바로가기 →';
+                link.setAttribute('style', 'color:#1976d2;text-decoration:none;font-weight:600;font-size:0.95rem;');
+                actionsDiv.appendChild(link);
+            } else {
+                actionsDiv.style.cssText = '';
+            }
+        }
+
+        modal.style.display = 'flex';
+    }
+
+    function openRejectModal(requestId, groupName) {
+        const modal = document.getElementById('grRejectModal');
+        if (!modal) return;
+        modal.dataset.requestId = requestId;
+        const titleEl = document.getElementById('grRejectModalTitle');
+        if (titleEl) titleEl.textContent = '[' + groupName + '] 거부 사유 선택';
+        const reasonSel = document.getElementById('grRejectReason');
+        if (reasonSel) reasonSel.selectedIndex = 0;
+        const customInput = document.getElementById('grRejectCustomInput');
+        if (customInput) { customInput.style.display = 'none'; customInput.value = ''; }
+        modal.style.display = 'flex';
+    }
+
     function onResults(e){
         const detail = e.detail || {};
         const panelId = detail.panelId;
@@ -234,7 +404,7 @@
                 renderGeneric(common, data, 'groupsPanel');
                 break;
             case 'groupRequestsPanel':
-                renderGeneric(common, data, 'groupRequestsPanel');
+                renderGroupRequests(common, data);
                 break;
             case 'groupJoinsPanel':
                 renderGeneric(common, data, 'groupJoinsPanel');

@@ -90,5 +90,99 @@
         </div>
     </div>
 
+<!-- 그룹 신청 상세 모달 -->
+<div id="grDetailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:8px;padding:24px;min-width:400px;max-width:560px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.15);max-height:80vh;overflow-y:auto;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+            <h3 style="margin:0;font-size:1rem;">그룹 신청 상세</h3>
+            <button id="grDetailCloseBtn" style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;color:#64748b;">&#215;</button>
+        </div>
+        <table id="grDetailBody" style="width:100%;border-collapse:collapse;font-size:0.92rem;"></table>
+        <div id="grDetailActions" style="margin-top:16px;"></div>
+    </div>
+</div>
+<script>
+(function() {
+    const modal    = document.getElementById('grDetailModal');
+    const closeBtn = document.getElementById('grDetailCloseBtn');
+    if (!modal) return;
+    closeBtn && closeBtn.addEventListener('click', function() { modal.style.display = 'none'; });
+    modal.addEventListener('click', function(e) { if (e.target === modal) modal.style.display = 'none'; });
+})();
+</script>
+
+<!-- 거부 사유 모달 -->
+<div id="grRejectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:8px;padding:24px;min-width:360px;max-width:480px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.15);">
+        <h3 id="grRejectModalTitle" style="margin:0 0 16px;font-size:1rem;">거부 사유 선택</h3>
+
+        <select id="grRejectReason" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:4px;font-size:0.95rem;">
+            <option value="모임명 부적절">모임명 부적절</option>
+            <option value="모임 설명 부족">모임 설명 부족</option>
+            <option value="중복 모임">중복 모임</option>
+            <option value="운영 정책 위반">운영 정책 위반</option>
+            <option value="기타">기타 (직접 입력)</option>
+        </select>
+
+        <textarea id="grRejectCustomInput" placeholder="거부 사유를 직접 입력하세요"
+            style="display:none;width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;min-height:80px;box-sizing:border-box;margin-bottom:12px;resize:vertical;font-size:0.95rem;"></textarea>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:4px;">
+            <button id="grRejectCancelBtn" style="padding:8px 16px;border:1px solid #ccc;background:#fff;border-radius:4px;cursor:pointer;">취소</button>
+            <button id="grRejectConfirmBtn" style="padding:8px 16px;background:#d32f2f;color:#fff;border:none;border-radius:4px;cursor:pointer;">거부 확정</button>
+        </div>
+    </div>
+</div>
+
+<script>
+(function() {
+    const modal       = document.getElementById('grRejectModal');
+    const reasonSel   = document.getElementById('grRejectReason');
+    const customInput = document.getElementById('grRejectCustomInput');
+    const cancelBtn   = document.getElementById('grRejectCancelBtn');
+    const confirmBtn  = document.getElementById('grRejectConfirmBtn');
+
+    if (!modal) return;
+
+    reasonSel.addEventListener('change', function() {
+        customInput.style.display = reasonSel.value === '기타' ? 'block' : 'none';
+    });
+
+    cancelBtn.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) modal.style.display = 'none';
+    });
+
+    confirmBtn.addEventListener('click', async function() {
+        const requestId  = modal.dataset.requestId;
+        const rejectReason = reasonSel.value === '기타'
+            ? customInput.value.trim()
+            : reasonSel.value;
+
+        if (!rejectReason) { alert('거부 사유를 입력하세요.'); return; }
+
+        try {
+            const res = await fetch('/admin/api/group-requests/' + requestId + '/reject', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rejectReason: rejectReason })
+            });
+            if (res.ok) {
+                modal.style.display = 'none';
+                alert('거부 처리되었습니다.');
+                window.dispatchEvent(new CustomEvent('admin:reload:panel', { detail: { panelId: 'groupRequestsPanel' } }));
+            } else {
+                alert('거부 처리 실패: ' + res.status);
+            }
+        } catch(err) {
+            alert('오류: ' + err.message);
+        }
+    });
+})();
+</script>
+
 </body>
 </html>

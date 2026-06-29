@@ -208,6 +208,12 @@
         document.querySelectorAll('.panel').forEach(p => {
             if (!p.style.display) p.style.display = 'none';
         });
+
+        // 승인/거부 후 패널 재조회
+        window.addEventListener('admin:reload:panel', function(ev) {
+            const panelId = ev.detail && ev.detail.panelId;
+            if (panelId) loadPanelPage(panelId, { updateState: false });
+        });
     }
 
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();

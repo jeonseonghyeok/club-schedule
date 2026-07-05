@@ -1,6 +1,9 @@
 package com.moyora.clubschedule.service;
 
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,6 +18,7 @@ import com.moyora.clubschedule.mapper.ScheduleAttendanceMapper;
 import com.moyora.clubschedule.vo.GroupScheduleHistoryVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo.ScheduleStatus;
+import com.moyora.clubschedule.vo.GroupSchedulePolicyVo.VisibilityType;
 
 import lombok.RequiredArgsConstructor;
 
@@ -26,12 +30,47 @@ public class GroupScheduleService {
     private final GroupScheduleHistoryMapper groupScheduleHistoryMapper;
     private final ScheduleAttendanceMapper   scheduleAttendanceMapper;
     private final GroupPermissionService     groupPermissionService;
+    private final GroupManageService         groupManageService;
 
     // ── 조회 ──────────────────────────────────────────────────────────────────
 
+    /**
+     * 그룹 일정 조회.
+     * 멤버는 전체 조회, 비회원은 group_schedule_policy.visibility_type에 따라 제한된다.
+     *  PRIVATE — 비회원에게 아무 일정도 노출하지 않음
+     *  PARTIAL — 확정된 향후 일정 중, "3일 이내 건수"와 "3건" 중 더 큰 쪽만큼만 노출
+     *  PUBLIC  — 확정된 향후 일정 전체 노출
+     */
     @Transactional(readOnly = true)
-    public List<GroupScheduleVo> listSchedules(Long groupId) {
-        return groupScheduleMapper.selectByGroupId(groupId);
+    public List<GroupScheduleVo> listSchedules(Long groupId, Long userKey) {
+        List<GroupScheduleVo> all = groupScheduleMapper.selectByGroupId(groupId);
+        if (groupManageService.isMember(groupId, userKey)) {
+            return all;
+        }
+
+        VisibilityType visibility = groupPermissionService.resolveVisibilityType(groupId);
+        if (visibility == VisibilityType.PRIVATE) {
+            return List.of();
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        List<GroupScheduleVo> confirmedFuture = all.stream()
+                .filter(s -> s.getStatus() == ScheduleStatus.CONFIRMED)
+                .filter(s -> !s.getStartAt().isBefore(now))
+                .sorted(Comparator.comparing(GroupScheduleVo::getStartAt))
+                .collect(Collectors.toList());
+
+        if (visibility == VisibilityType.PUBLIC) {
+            return confirmedFuture;
+        }
+
+        // PARTIAL: 향후 3일 이내 건수와 3건 중 더 큰 쪽을 노출
+        LocalDateTime cutoff = now.plusDays(3);
+        long within3Days = confirmedFuture.stream()
+                .filter(s -> !s.getStartAt().isAfter(cutoff))
+                .count();
+        int limit = (int) Math.max(within3Days, 3);
+        return confirmedFuture.stream().limit(limit).collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)

@@ -11,11 +11,13 @@ import com.moyora.clubschedule.exception.ScheduleNotFoundException;
 import com.moyora.clubschedule.mapper.GroupMemberMapper;
 import com.moyora.clubschedule.mapper.GroupScheduleMapper;
 import com.moyora.clubschedule.mapper.GroupSchedulePolicyMapper;
+import com.moyora.clubschedule.mapper.ScheduleAttendanceCheckHistoryMapper;
 import com.moyora.clubschedule.mapper.ScheduleAttendanceMapper;
 import com.moyora.clubschedule.vo.GroupRole;
 import com.moyora.clubschedule.vo.GroupSchedulePolicyVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo.ScheduleStatus;
+import com.moyora.clubschedule.vo.ScheduleAttendanceCheckHistoryVo;
 import com.moyora.clubschedule.vo.ScheduleAttendanceVo;
 import com.moyora.clubschedule.vo.ScheduleAttendanceVo.AttendanceStatus;
 import com.moyora.clubschedule.vo.ScheduleAttendanceVo.ActualStatus;
@@ -26,10 +28,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class ScheduleAttendanceService {
 
-    private final ScheduleAttendanceMapper   attendanceMapper;
-    private final GroupScheduleMapper        scheduleMapper;
-    private final GroupSchedulePolicyMapper  policyMapper;
-    private final GroupMemberMapper          memberMapper;
+    private final ScheduleAttendanceMapper             attendanceMapper;
+    private final ScheduleAttendanceCheckHistoryMapper checkHistoryMapper;
+    private final GroupScheduleMapper                  scheduleMapper;
+    private final GroupSchedulePolicyMapper            policyMapper;
+    private final GroupMemberMapper                    memberMapper;
 
     // ── 참가 신청 ─────────────────────────────────────────────────────────────
 
@@ -139,19 +142,34 @@ public class ScheduleAttendanceService {
         attendanceMapper.invalidateLatest(scheduleId, targetUserKey);
     }
 
-    // ── 출석 체크 ─────────────────────────────────────────────────────────────
+    // ── 출석 체크 (정정 가능, 이력 기록) ──────────────────────────────────────────
 
+    /**
+     * 출석 체크(실제 참석 여부). 최초 체크 이후에도 정정 가능하며, 매 호출마다
+     * 변경 전/후 값을 schedule_attendance_check_history에 남긴다.
+     * 권한은 참가 승인/거부/강제취소와 동일하게 일정 생성자 또는 MANAGER 이상.
+     */
     @Transactional
     public ScheduleAttendanceVo checkActual(Long groupId, Long scheduleId,
                                              Long targetUserKey, ActualStatus actualStatus,
-                                             Long operatorUserKey) {
+                                             Long operatorUserKey, String changeReason) {
         GroupScheduleVo schedule = requireSchedule(scheduleId, groupId);
-        requireManagerRole(groupId, operatorUserKey);
+        validateAttendanceManagerPermission(groupId, schedule, operatorUserKey);
 
         ScheduleAttendanceVo att = requireLatest(scheduleId, targetUserKey);
         if (att.getStatus() != AttendanceStatus.CONFIRMED) {
             throw new IllegalStateException("참가 확정된 멤버만 출석 체크할 수 있습니다.");
         }
+
+        ScheduleAttendanceCheckHistoryVo history = new ScheduleAttendanceCheckHistoryVo();
+        history.setAttendanceId(att.getAttendanceId());
+        history.setScheduleId(scheduleId);
+        history.setUserKey(targetUserKey);
+        history.setPreviousActualStatus(att.getActualStatus());
+        history.setNewActualStatus(actualStatus);
+        history.setChangedBy(operatorUserKey);
+        history.setChangeReason(changeReason);
+        checkHistoryMapper.insertHistory(history);
 
         attendanceMapper.updateActualStatus(att.getAttendanceId(), actualStatus, operatorUserKey);
         return attendanceMapper.selectById(att.getAttendanceId());

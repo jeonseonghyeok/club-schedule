@@ -36,7 +36,7 @@ public class GroupJoinRequestController {
     @GetMapping("/me")
     public ResponseEntity<?> myRequests(@PathVariable("groupId") Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userDetails.getUserKey();
-        List<GroupJoinRequestVo> list = service.getMyRequests(userKey);
+        List<GroupJoinRequestVo> list = service.getMyRequests(userKey, groupId);
         return ResponseEntity.ok(list);
     }
 }

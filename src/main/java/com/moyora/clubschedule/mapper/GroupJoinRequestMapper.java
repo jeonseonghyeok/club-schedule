@@ -10,7 +10,7 @@ import com.moyora.clubschedule.vo.GroupJoinRequestVo;
 @Mapper
 public interface GroupJoinRequestMapper {
     void insert(GroupJoinRequestVo vo);
-    List<GroupJoinRequestVo> selectByUserKey(@Param("userKey") Long userKey);
+    List<GroupJoinRequestVo> selectByUserKeyAndGroupId(@Param("userKey") Long userKey, @Param("groupId") Long groupId);
     List<GroupJoinRequestVo> selectPendingByGroupId(@Param("groupId") Long groupId);
     List<GroupJoinRequestVo> selectAllPending();
 

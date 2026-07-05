@@ -11,10 +11,11 @@
         )
     </insert>
 
-    <select id="selectByUserKey" parameterType="long" resultType="com.moyora.clubschedule.vo.GroupJoinRequestVo">
+    <select id="selectByUserKeyAndGroupId" resultType="com.moyora.clubschedule.vo.GroupJoinRequestVo">
         SELECT request_id, group_id, user_key, status, requested_at, approved_at, reject_reason
         FROM group_join_request
         WHERE user_key = #{userKey}
+        AND group_id = #{groupId}
         ORDER BY requested_at DESC
     </select>
 

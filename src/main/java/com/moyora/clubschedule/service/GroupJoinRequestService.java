@@ -47,8 +47,8 @@ public class GroupJoinRequestService {
         return vo.getRequestId();
     }
 
-    public List<GroupJoinRequestVo> getMyRequests(Long userKey) {
-        return mapper.selectByUserKey(userKey);
+    public List<GroupJoinRequestVo> getMyRequests(Long userKey, Long groupId) {
+        return mapper.selectByUserKeyAndGroupId(userKey, groupId);
     }
 
     public List<GroupJoinRequestVo> getPendingByGroup(Long groupId) {

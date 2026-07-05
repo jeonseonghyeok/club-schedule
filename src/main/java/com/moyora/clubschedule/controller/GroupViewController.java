@@ -48,6 +48,7 @@ public class GroupViewController {
         model.addAttribute("canCreateSchedule",   sp.isCanCreate());
         model.addAttribute("createNeedsApproval", sp.isCreateNeedsApproval());
         model.addAttribute("canManageSchedule",   sp.isCanManage());
+        model.addAttribute("visibilityType",      groupPermissionService.resolveVisibilityType(groupId).name());
 
         return "group";
     }

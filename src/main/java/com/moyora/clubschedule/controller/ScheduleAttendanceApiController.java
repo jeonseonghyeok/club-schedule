@@ -33,8 +33,8 @@ public class ScheduleAttendanceApiController {
     /** 참가 신청 */
     @PostMapping("/attend")
     public ResponseEntity<?> attend(
-            @PathVariable Long groupId,
-            @PathVariable Long scheduleId,
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
         if (userKey == null) return ResponseEntity.status(401).build();
@@ -45,8 +45,8 @@ public class ScheduleAttendanceApiController {
     /** 참가 취소 (본인) */
     @DeleteMapping("/attend")
     public ResponseEntity<?> cancelAttend(
-            @PathVariable Long groupId,
-            @PathVariable Long scheduleId,
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
         if (userKey == null) return ResponseEntity.status(401).build();
@@ -57,8 +57,8 @@ public class ScheduleAttendanceApiController {
     /** 참가자 목록 */
     @GetMapping("/attendance")
     public ResponseEntity<?> listAttendees(
-            @PathVariable Long groupId,
-            @PathVariable Long scheduleId,
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         if (userKey(userDetails) == null) return ResponseEntity.status(401).build();
         List<ScheduleAttendanceVo> list = attendanceService.listAttendees(groupId, scheduleId);
@@ -70,9 +70,9 @@ public class ScheduleAttendanceApiController {
     /** 참가 승인 */
     @PatchMapping("/attendance/{targetUserKey}/approve")
     public ResponseEntity<?> approve(
-            @PathVariable Long groupId,
-            @PathVariable Long scheduleId,
-            @PathVariable Long targetUserKey,
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
+            @PathVariable("targetUserKey") Long targetUserKey,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
         if (userKey == null) return ResponseEntity.status(401).build();
@@ -83,9 +83,9 @@ public class ScheduleAttendanceApiController {
     /** 참가 거부 */
     @PatchMapping("/attendance/{targetUserKey}/reject")
     public ResponseEntity<?> reject(
-            @PathVariable Long groupId,
-            @PathVariable Long scheduleId,
-            @PathVariable Long targetUserKey,
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
+            @PathVariable("targetUserKey") Long targetUserKey,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
         if (userKey == null) return ResponseEntity.status(401).build();
@@ -96,9 +96,9 @@ public class ScheduleAttendanceApiController {
     /** 강제 취소 (관리자) */
     @DeleteMapping("/attendance/{targetUserKey}")
     public ResponseEntity<?> forceCancel(
-            @PathVariable Long groupId,
-            @PathVariable Long scheduleId,
-            @PathVariable Long targetUserKey,
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
+            @PathVariable("targetUserKey") Long targetUserKey,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
         if (userKey == null) return ResponseEntity.status(401).build();
@@ -109,9 +109,9 @@ public class ScheduleAttendanceApiController {
     /** 출석 체크 */
     @PatchMapping("/attendance/{targetUserKey}/check")
     public ResponseEntity<?> check(
-            @PathVariable Long groupId,
-            @PathVariable Long scheduleId,
-            @PathVariable Long targetUserKey,
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
+            @PathVariable("targetUserKey") Long targetUserKey,
             @RequestBody Map<String, Object> payload,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
@@ -122,8 +122,11 @@ public class ScheduleAttendanceApiController {
         try { actual = ActualStatus.valueOf(actualStr.toUpperCase()); }
         catch (IllegalArgumentException e) { actual = ActualStatus.ATTENDED; }
 
+        Object reasonObj = payload.get("changeReason");
+        String changeReason = reasonObj != null ? reasonObj.toString() : null;
+
         ScheduleAttendanceVo result = attendanceService.checkActual(
-                groupId, scheduleId, targetUserKey, actual, userKey);
+                groupId, scheduleId, targetUserKey, actual, userKey, changeReason);
         return ResponseEntity.ok(toMap(result));
     }
 
@@ -143,6 +146,8 @@ public class ScheduleAttendanceApiController {
         m.put("actualStatus",       v.getActualStatus() != null ? v.getActualStatus().name() : null);
         m.put("processedByUserKey", v.getProcessedByUserKey());
         m.put("createdAt",          v.getCreatedAt() != null ? v.getCreatedAt().toString() : null);
+        m.put("checkedAt",          v.getCheckedAt() != null ? v.getCheckedAt().toString() : null);
+        m.put("checkedByUserKey",   v.getCheckedByUserKey());
         return m;
     }
 }

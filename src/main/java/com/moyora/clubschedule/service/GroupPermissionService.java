@@ -208,4 +208,11 @@ public class GroupPermissionService {
         GroupSchedulePolicyVo policy = groupSchedulePolicyMapper.selectByGroupId(groupId);
         return policy != null ? policy : GroupSchedulePolicyVo.defaultPolicy(groupId);
     }
+
+    /**
+     * 그룹의 일정 공개 범위(visibility_type) 조회. 비회원에게 일정을 얼마나 노출할지 판단하는 데 사용한다.
+     */
+    public GroupSchedulePolicyVo.VisibilityType resolveVisibilityType(Long groupId) {
+        return fetchPolicy(groupId).getVisibilityType();
+    }
 }

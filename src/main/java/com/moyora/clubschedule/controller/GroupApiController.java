@@ -71,8 +71,11 @@ public class GroupApiController {
     // ── Schedules ─────────────────────────────────────────────────────────────
 
     @GetMapping("/{groupId}/schedules")
-    public ResponseEntity<?> getSchedules(@PathVariable("groupId") Long groupId) {
-        List<GroupScheduleVo> schedules = groupScheduleService.listSchedules(groupId);
+    public ResponseEntity<?> getSchedules(
+            @PathVariable("groupId") Long groupId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long userKey = userDetails != null ? userDetails.getUserKey() : null;
+        List<GroupScheduleVo> schedules = groupScheduleService.listSchedules(groupId, userKey);
         List<Map<String,Object>> result = new ArrayList<>();
         for (GroupScheduleVo s : schedules) {
             result.add(toCalendarEvent(s));

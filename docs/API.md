@@ -7,9 +7,14 @@
 - [공통 규약](#공통-규약)
 - [페이징 응답 형식](#페이징-응답-형식-pagingreresponset)
 - [관리자 API](#관리자-api)
+- [그룹 API](#그룹-api)
+- [모임 생성 신청 API](#모임-생성-신청-api)
+- [그룹 가입 요청 API](#그룹-가입-요청-api)
 - [그룹 일정 API](#그룹-일정-api)
+- [출석 관리 API](#출석-관리-api)
 - [그룹 멤버 API](#그룹-멤버-api)
 - [에러 코드](#에러-코드)
+- [알려진 이슈](#알려진-이슈)
 - [보안 주의사항](#보안-주의사항)
 
 ---
@@ -79,6 +84,155 @@
 가입 요청 목록 조회. 응답 타입: `PagingResponse<GroupJoinRequestVo>`.
 
 > `page` 미전달 시 전체 목록을 서버에서 슬라이스하는 fallback 방식으로 동작합니다.
+
+### GET /admin/api/group-requests
+
+모임 **생성 신청**(`group_create_request`) 목록 조회 (상태·모임명 필터, 페이징). 가입 요청(`group_join_request`)과는 별개 도메인이므로 혼동 주의.
+
+**쿼리 파라미터**
+
+| 파라미터 | 필수 | 기본값 | 설명 |
+|---------|------|--------|------|
+| `page` | N | — | 페이지 번호(1 기반) |
+| `size` | N | — | 페이지 사이즈 |
+| `status` | N | — | `PENDING` \| `APPROVED` \| `REJECTED` \| `CANCELLED` |
+| `q` | N | — | 모임명 검색 키워드 |
+
+**응답**: `PagingResponse<Object>` (신청 항목: `requestId`, `groupName`, `userKey`, `requestedAt`, `status`)
+
+### POST /admin/api/group-requests/{requestId}/approve
+
+모임 생성 신청 승인. 승인 시 `group` 레코드가 생성된다.
+
+**응답**: `200 OK` — `{"groupId": Long}` / `409 Conflict` — `{"error": String}` (이미 처리된 신청 등)
+
+### POST /admin/api/group-requests/{requestId}/reject
+
+모임 생성 신청 거부.
+
+**요청 바디**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `rejectReason` | String | Y | 거부 사유 |
+
+**응답**: `200 OK` (성공) / `400 Bad Request` (실패)
+
+---
+
+## 그룹 API
+
+### GET /groups/recommended
+
+메인화면 "모임 검색" 섹션용 엔드포인트. `q` 유무에 따라 동작이 분기된다.
+
+**쿼리 파라미터**
+
+| 파라미터 | 필수 | 설명 |
+|---------|------|------|
+| `q` | N | 모임명 검색 키워드. 미지정 시 최근 일정 등록 기준 상위 3개 그룹 반환 |
+
+**권한**: 공개 (인증 불필요)
+
+**응답**: `200 OK` — `GroupVo` 배열 (`groupId`, `name`, `description`, `leaderUserKey`, `capacity`)
+
+> 향후 검색 엔진(ElasticSearch 등) 도입 시 `GroupService.searchByName()` 내부 구현만 교체하면 되도록 설계됨 (API·프론트 무변경).
+
+### GET /groups/me
+
+로그인 사용자가 속한 그룹 목록 조회.
+
+**권한**: 로그인 필요 (미인증 시 `401`)
+
+**응답**: `200 OK` — `GroupVo` 배열
+
+### PATCH /groups/{groupId}
+
+그룹 정보 수정 (이름·설명·정원·자동승인 여부·일정 등록 정책).
+
+**권한**: 리더 또는 부방장 (`@groupManageService.isLeaderOrSubLeader`)
+
+**요청 바디** (`GroupUpdateDto`, 전부 선택)
+
+| 필드 | 타입 | 설명 |
+|------|------|------|
+| `name` | String | 모임 이름 (최대 100자) |
+| `description` | String | 모임 설명 (최대 5000자) |
+| `capacity` | Integer | 정원 (1~1000) |
+| `autoApprove` | Boolean | 가입 자동 승인 여부 |
+| `schedulePolicy` | String | `ALL` \| `LEADERS_ONLY` \| `APPROVAL_REQUIRED` |
+
+---
+
+## 모임 생성 신청 API
+
+> `group_create_request` 도메인 (그룹 **가입** 요청과는 별개, [CLAUDE.md](../CLAUDE.md#주요-도메인-구분) 참고). 사용자가 신규 모임 생성을 신청하는 셀프서비스 API이며, 실제 승인/거부 처리는 관리자 패널([관리자 API](#관리자-api)의 `/admin/api/group-requests/*`)에서 이루어진다.
+
+### POST /group-requests
+
+모임 생성 신청 등록.
+
+**권한**: 로그인 필요
+
+**요청 바디**: `GroupRequestDto` — `groupName`, `description`
+
+**응답**: `200 OK` — `{"requestId": Long}` / `409 Conflict` (신청 불가 상태)
+
+### GET /group-requests
+
+내 신청 현황 목록 조회.
+
+### PATCH /group-requests/{requestId}/cancel
+
+본인 신청 취소.
+
+**응답**: `200 OK` / `400 Bad Request` (신청 없음 또는 본인 신청 아님)
+
+> ⚠️ **알려진 이슈**: 이 컨트롤러에도 `POST /group-requests/{requestId}/approve`, `POST /group-requests/{requestId}/reject`가 정의되어 있으나 `@PreAuthorize("hasRole('ROLE_ADMIN')")`로 선언되어 있어 실제로는 `ROLE_ROLE_ADMIN` 권한을 요구한다(Spring `hasRole()`이 `ROLE_` 접두사를 자동으로 붙이기 때문). 실제 관리자 권한(`ROLE_ADMIN`)으로는 항상 403이 발생하며, 프론트엔드 어디에서도 호출하지 않는 죽은 코드다. 승인/거부는 반드시 `/admin/api/group-requests/*`를 사용할 것. 상세: [ROADMAP.md — 기술 부채](ROADMAP.md#기술-부채).
+
+---
+
+## 그룹 가입 요청 API
+
+> `group_join_request` 도메인 (모임 **생성** 신청과는 별개). 기존 그룹에 멤버로 가입 신청하는 API.
+
+### POST /groups/{groupId}/join-requests
+
+가입 신청.
+
+**권한**: 로그인 필요
+
+**응답**: `200 OK` — `{"requestId": Long}`
+
+### DELETE /groups/{groupId}/join-requests/{requestId}
+
+본인 가입 신청 취소.
+
+**응답**: `200 OK` / `400 Bad Request`
+
+### GET /groups/{groupId}/join-requests/me
+
+본인의 가입 신청 목록 조회.
+
+### GET /groups/joins/pending/{groupId}
+
+그룹의 대기 중(PENDING) 가입 신청 목록 조회 (승인 처리용).
+
+### PATCH /groups/joins/{requestId}/approve
+
+가입 신청 승인.
+
+**권한**: 해당 신청이 속한 그룹의 리더 (`isLeaderForRequest`)
+
+**응답**: `200 OK` — `{"ok": true}` / `400 Bad Request` — `{"error": String}`
+
+### PATCH /groups/joins/{requestId}/reject
+
+가입 신청 거부.
+
+**요청 바디**: `{"rejectReason": String}`
+
+**권한**: 해당 신청이 속한 그룹의 리더
 
 ---
 
@@ -205,8 +359,86 @@
 
 1. JWT에서 `userKey` 추출
 2. `group_member.countByGroupAndUser(groupId, userKey) > 0` 으로 멤버 여부 검증
-3. `group_schedule` 테이블에 INSERT (기본 `status = PENDING`)
-4. `useGeneratedKeys`로 발급된 `schedule_id`로 SELECT 후 반환
+3. `GroupPermissionService.resolveCreatePermission()`이 `group_schedule_policy`(`min_role_to_create`, `requires_approval`)와 역할·개인 예외 권한을 검사해 초기 `status`(`CONFIRMED`/`PENDING`) 결정 — 규칙 상세는 [DATABASE.md](DATABASE.md#일정-권한-검증-우선순위)
+4. `group_schedule` 테이블에 INSERT
+5. `useGeneratedKeys`로 발급된 `schedule_id`로 SELECT 후 반환
+
+### PATCH /api/groups/{groupId}/schedules/{scheduleId}
+
+일정 수정. 수정 전 상태를 `group_schedule_history`에 스냅샷으로 저장한 뒤 갱신한다.
+
+**권한**: 로그인 필요 (세부 권한은 서비스 레이어에서 검증)
+
+**요청 바디**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `changeReason` | String | **Y** | 변경 사유 |
+| `title` | String | N | 일정 제목 |
+| `content` | String | N | 상세 내용 |
+| `location_name` | String | N | 장소 명칭 |
+| `latitude` / `longitude` | Number | N | 좌표 |
+| `start` / `end` | Number | N | 시작/종료 시간 (epoch ms) |
+| `max_attendance` | Number | N | 최대 인원 |
+
+**응답**: `200 OK` — 수정된 일정 객체 / `400 Bad Request` — 정원 검증 등 실패 시 메시지
+
+### PATCH /api/groups/{groupId}/schedules/{scheduleId}/approve
+
+일정 승인 (`PENDING` → `CONFIRMED`). **권한**: LEADER 또는 `MANAGE_SCHEDULE` 권한 보유 MANAGER.
+
+### PATCH /api/groups/{groupId}/schedules/{scheduleId}/reject
+
+일정 반려 (`PENDING` → `REJECTED`). 권한은 승인과 동일.
+
+### PATCH /api/groups/{groupId}/schedules/{scheduleId}/cancel
+
+일정 취소 (`CANCELLED`).
+
+---
+
+## 출석 관리 API
+
+> `schedule_attendance` 테이블 기반. **참가 신청**(attend/cancel/approve/reject/forceCancel)과 **출석 체크**(실제 참석 여부 확인, `actual_status`)는 별개 개념이다 — 전자는 참가 의사를 승인하는 절차, 후자는 일정 종료 후 실제로 참석했는지 기록하는 절차다. `CONFIRMED` 상태의 일정에 멤버가 참가 신청하고, 일정 등록자 또는 MANAGER 이상이 승인·거부·강제취소·출석체크를 처리한다. 자동 승인 규칙 및 `is_latest` 상태 전이 규칙은 [DATABASE.md — 출석 관리 규칙](DATABASE.md#출석-관리-규칙) 참고.
+
+### POST /api/groups/{groupId}/schedules/{scheduleId}/attend
+
+참가 신청.
+
+### DELETE /api/groups/{groupId}/schedules/{scheduleId}/attend
+
+본인 참가 취소.
+
+### GET /api/groups/{groupId}/schedules/{scheduleId}/attendance
+
+참가자 목록 조회 (`is_latest=1`인 행만).
+
+**응답**: `200 OK` — 배열, 각 항목: `attendanceId`, `scheduleId`, `userKey`, `displayName`, `status`, `actualStatus`, `processedByUserKey`, `createdAt`
+
+### PATCH /api/groups/{groupId}/schedules/{scheduleId}/attendance/{targetUserKey}/approve
+
+참가 승인. **권한**: 일정 등록자 또는 MANAGER 이상.
+
+### PATCH /api/groups/{groupId}/schedules/{scheduleId}/attendance/{targetUserKey}/reject
+
+참가 거부. 권한은 승인과 동일.
+
+### DELETE /api/groups/{groupId}/schedules/{scheduleId}/attendance/{targetUserKey}
+
+강제 취소. **권한**: 일정 등록자 또는 MANAGER 이상.
+
+### PATCH /api/groups/{groupId}/schedules/{scheduleId}/attendance/{targetUserKey}/check
+
+출석 체크(실제 참석 여부 확인). **정정 가능** — 최초 체크 후에도 재호출로 값을 바꿀 수 있으며, 매 호출마다 변경 전/후 값이 `schedule_attendance_check_history`에 기록된다 (설계: [DATABASE.md — 출석 체크 정정 이력](DATABASE.md#출석-체크-정정-이력)).
+
+**권한**: 일정 등록자 또는 MANAGER 이상 (승인/거부/강제취소와 동일 규칙).
+
+**요청 바디**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `actualStatus` | String | N | `ATTENDED` \| `NOSHOW` (미지정 시 기본 `ATTENDED`) |
+| `changeReason` | String | N | 정정 사유. 최초 체크 시 생략 가능, 재정정 시 남겨두는 것을 권장 |
 
 ---
 
@@ -224,7 +456,7 @@
 [
   {
     "userKey": 1000001,
-    "displayName": null,
+    "displayName": "홍길동",
     "role": "LEADER",
     "status": "ACTIVE",
     "joinedAt": "2025-01-01T12:00:00"
@@ -232,7 +464,7 @@
 ]
 ```
 
-> `displayName`은 현재 미구현 상태입니다 (null 반환).
+> `displayName`은 `GroupMemberMapper.xml`의 JOIN으로 `user.nickname`을 채워서 반환합니다.
 
 ### PATCH /api/groups/{groupId}/members/{userKey}/ban
 
@@ -256,6 +488,14 @@
 
 ---
 
+## 알려진 이슈
+
+| 이슈 | 위치 | 설명 |
+|------|------|------|
+| 이중 `ROLE_` 접두사로 인한 403 | `GroupRequestController.approveRequest/rejectRequest` | `hasRole('ROLE_ADMIN')`이 실제로는 `ROLE_ROLE_ADMIN`을 요구해 항상 실패. 미사용 죽은 코드. [모임 생성 신청 API](#모임-생성-신청-api) 참고 |
+
+---
+
 ## 보안 주의사항
 
 - Admin API는 `@PreAuthorize("hasRole('ADMIN')")` 로 보호됩니다.
@@ -266,9 +506,7 @@
 
 ## 향후 개선 사항
 
-1. 일정 수정/삭제: `PUT|PATCH /api/groups/{groupId}/schedules/{scheduleId}`, `DELETE` 구현
-2. `schedule_policy` 연동: 그룹 일정 등록 권한 정책(`ALL`/`LEADERS_ONLY`/`APPROVAL_REQUIRED`) 적용
-3. 출석 관리: `schedule_attendance` 테이블 기반 참석 신청/확정 API
-4. 일정 상태 전환: PENDING → CONFIRMED/REJECTED 처리 API (리더/부방장 전용)
-5. `displayName` 조회: 멤버 목록 응답에 `user.nickname` 포함
-6. OpenAPI(Swagger) 문서 자동화: `springdoc-openapi` 도입
+이 문서는 **구현된** API만 기술한다. 미구현 기능 및 우선순위는 [ROADMAP.md](ROADMAP.md)에서 관리한다.
+
+1. 일정 삭제 API (취소와의 정책 구분 필요)
+2. OpenAPI(Swagger) 문서 자동화: `springdoc-openapi` 도입

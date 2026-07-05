@@ -27,6 +27,12 @@ public class GlobalExceptionHandler {
                 .body(Map.of("error", "Forbidden", "message", ex.getMessage()));
     }
 
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Map<String, String>> handleSecurityAccessDenied(org.springframework.security.access.AccessDeniedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(Map.of("error", "Forbidden", "message", "권한이 없습니다."));
+    }
+
     @ExceptionHandler(ScheduleNotFoundException.class)
     public ResponseEntity<Map<String, String>> handleScheduleNotFound(ScheduleNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)

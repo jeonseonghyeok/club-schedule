@@ -11,6 +11,7 @@
   - Boolean -> TINYINT(1)
   - java.time.LocalDateTime / java.util.Date -> DATETIME
 - 문서에 포함된 CREATE TABLE 문은 제공하신 MariaDB 쿼리를 그대로 사용했습니다. 필요한 경우 제약이나 인덱스를 더 보강할 수 있습니다.
+- 아래 스키마는 [`migration_v2.sql`](migration_v2.sql)(처리자 컬럼 표준화 + `group_schedule_history` 신설), [`migration_v3.sql`](migration_v3.sql)(`schedule_attendance_check_history` 신설) 적용 이후 기준입니다. 코드(`ScheduleAttendanceVo` 등)도 이 컬럼명을 사용합니다.
 
 ---
 
@@ -77,7 +78,7 @@ CREATE TABLE `group_create_request` (
   `requested_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '신청일시',
   `status` enum('PENDING','PROCESSING','APPROVED','REJECTED','CANCELLED') NOT NULL DEFAULT 'PENDING' COMMENT '신청 상태',
   `reject_reason` text DEFAULT NULL COMMENT '거절 사유',
-  `updated_by_user_key` bigint(20) unsigned DEFAULT NULL COMMENT '마지막 상태 변경자',
+  `updated_by` bigint(20) unsigned DEFAULT NULL COMMENT '마지막 상태 변경자 (migration_v2: updated_by_user_key → updated_by)',
   `status_updated_at` datetime DEFAULT NULL COMMENT '상태 변경일시',
   PRIMARY KEY (`request_id`),
   KEY `idx_user_key` (`user_key`),
@@ -112,6 +113,7 @@ CREATE TABLE `group_join_request` (
   `requested_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '요청일시',
   `approved_at` datetime DEFAULT NULL COMMENT '승인일시',
   `reject_reason` text DEFAULT NULL COMMENT '거절 사유',
+  `updated_by` bigint(20) unsigned DEFAULT NULL COMMENT '가입 승인/거부 처리자 (자동 승인 시 NULL) — migration_v2 추가',
   PRIMARY KEY (`request_id`),
   UNIQUE KEY `uniq_group_user` (`group_id`,`user_key`),
   KEY `fk_joinreq_user` (`user_key`),
@@ -129,6 +131,7 @@ CREATE TABLE `group_member` (
   `status` enum('ACTIVE','WITHDRAWN','KICKED') NOT NULL DEFAULT 'ACTIVE' COMMENT '회원 상태',
   `joined_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '참여일시',
   `left_at` datetime DEFAULT NULL COMMENT '탈퇴/강퇴 일시',
+  `updated_by` bigint(20) unsigned DEFAULT NULL COMMENT '강퇴·역할변경 처리자 (본인 탈퇴 시 본인, 강퇴 시 처리자) — migration_v2 추가',
   PRIMARY KEY (`group_id`,`user_key`),
   KEY `fk_member_user` (`user_key`),
   CONSTRAINT `fk_member_group` FOREIGN KEY (`group_id`) REFERENCES `group` (`group_id`) ON DELETE CASCADE,
@@ -145,12 +148,12 @@ CREATE TABLE `group_member_permission` (
   `user_key` bigint(20) unsigned NOT NULL,
   `permission_type` enum('CREATE_SCHEDULE_DIRECT','MANAGE_SCHEDULE','MANAGE_MEMBER','MANAGE_NICKNAME','MANAGE_NOTICE') NOT NULL,
   `is_allowed` tinyint(1) NOT NULL DEFAULT 1 COMMENT '1: 허용, 0: 차단 (그룹 정책보다 최우선 적용)',
-  `granted_by` bigint(20) unsigned DEFAULT NULL COMMENT '권한 부여 주체',
+  `granted_by_user_key` bigint(20) unsigned DEFAULT NULL COMMENT '권한 부여 주체 (migration_v2: granted_by → granted_by_user_key)',
   `granted_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp() COMMENT '권한 수정 일시',
   PRIMARY KEY (`group_id`,`user_key`,`permission_type`),
-  KEY `fk_perm_granted_by` (`granted_by`),
-  CONSTRAINT `fk_perm_granted_by` FOREIGN KEY (`granted_by`) REFERENCES `user` (`user_key`) ON DELETE SET NULL,
+  KEY `fk_perm_granted_by` (`granted_by_user_key`),
+  CONSTRAINT `fk_perm_granted_by` FOREIGN KEY (`granted_by_user_key`) REFERENCES `user` (`user_key`) ON DELETE SET NULL,
   CONSTRAINT `fk_perm_member` FOREIGN KEY (`group_id`, `user_key`) REFERENCES `group_member` (`group_id`, `user_key`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -170,7 +173,7 @@ CREATE TABLE `group_schedule` (
   `max_attendance` int(10) unsigned DEFAULT 0 COMMENT '최대 인원 제한 (0: 무제한)',
   `status` enum('PENDING','CONFIRMED','REJECTED','CANCELLED') NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING: 승인대기, CONFIRMED: 확정, REJECTED: 반려, CANCELLED: 취소',
   `created_by` bigint(20) unsigned NOT NULL COMMENT '작성자 (user_key)',
-  `approved_by` bigint(20) unsigned DEFAULT NULL COMMENT '승인/반려 처리자 (user_key)',
+  `approved_by_user_key` bigint(20) unsigned DEFAULT NULL COMMENT '승인/반려 처리자 (user_key) — migration_v2: approved_by → approved_by_user_key',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `is_completed` tinyint(1) NOT NULL DEFAULT 0 COMMENT '방장에 의한 최종 종료 및 정산 여부',
@@ -194,12 +197,13 @@ CREATE TABLE `group_schedule_policy` (
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `requires_attendance_approval` tinyint(1) NOT NULL DEFAULT 0 COMMENT '참석 신청 시 승인 필요 여부 (0: 즉시확정, 1: 승인대기)',
   `visibility_type` enum('PUBLIC','PARTIAL','PRIVATE') NOT NULL DEFAULT 'PARTIAL' COMMENT '일정 공개 범위 (PUBLIC: 전체공개, PARTIAL: 일부공개(3일), PRIVATE: 멤버만)',
+  `updated_by` bigint(20) unsigned DEFAULT NULL COMMENT '정책 마지막 변경자 — migration_v2 추가',
   PRIMARY KEY (`group_id`),
   CONSTRAINT `fk_policy_group` FOREIGN KEY (`group_id`) REFERENCES `group` (`group_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
--- club_schedule.schedule_attendance definition
+-- club_schedule.schedule_attendance definition (migration_v2 적용 후 기준)
 
 CREATE TABLE `schedule_attendance` (
   `attendance_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -208,13 +212,66 @@ CREATE TABLE `schedule_attendance` (
   `status` enum('PENDING','CONFIRMED','REJECTED','CANCELLED') NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING: 신청대기, CONFIRMED: 참여확정, REJECTED: 거절, CANCELLED: 본인취소',
   `is_latest` tinyint(1) NOT NULL DEFAULT 1 COMMENT '현재 유효한 최신 상태 여부 (0: 과거이력, 1: 최신)',
   `applied_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '신청/변경 시점',
-  `processed_by` bigint(20) unsigned DEFAULT NULL COMMENT '승인/거절 처리 주체(본인 또는 관리자)',
+  `processed_by_user_key` bigint(20) unsigned DEFAULT NULL COMMENT '승인/거절 처리 주체(본인 또는 관리자) — migration_v2: processed_by → processed_by_user_key',
+  `updated_by` bigint(20) unsigned DEFAULT NULL COMMENT '상태를 마지막으로 변경한 유저 키 — migration_v2 추가',
+  `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp() COMMENT '상태 변경 일시 — migration_v2 추가',
   `actual_status` enum('ATTENDED','NOSHOW','NONE') NOT NULL DEFAULT 'NONE' COMMENT '실제 참석 결과 (ATTENDED: 출석, NOSHOW: 결석, NONE: 체크전)',
   `checked_at` datetime DEFAULT NULL COMMENT '출석 체크 완료 시점',
-  `checked_by` bigint(20) unsigned DEFAULT NULL COMMENT '출석 체크한 관리자',
+  `checked_by_user_key` bigint(20) unsigned DEFAULT NULL COMMENT '출석 체크한 관리자 — migration_v2: checked_by → checked_by_user_key',
   PRIMARY KEY (`attendance_id`),
   KEY `idx_schedule_user_latest` (`schedule_id`,`user_key`,`is_latest`),
-  CONSTRAINT `fk_attendance_schedule` FOREIGN KEY (`schedule_id`) REFERENCES `group_schedule` (`schedule_id`) ON DELETE CASCADE
+  CONSTRAINT `fk_attendance_schedule` FOREIGN KEY (`schedule_id`) REFERENCES `group_schedule` (`schedule_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_attendance_updated_by` FOREIGN KEY (`updated_by`) REFERENCES `user` (`user_key`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+-- club_schedule.group_schedule_history definition (migration_v2 신규 테이블)
+-- 일정 수정 이력. 수정 전 값을 스냅샷으로 보존
+
+CREATE TABLE `group_schedule_history` (
+  `history_id`     bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `schedule_id`    bigint(20) unsigned NOT NULL,
+  `group_id`       bigint(20) unsigned NOT NULL,
+  `changed_by`     bigint(20) unsigned NOT NULL COMMENT '수정한 유저 키',
+  `change_reason`  varchar(500)        NOT NULL COMMENT '변경 사유 (필수)',
+  `title`          varchar(100)        DEFAULT NULL,
+  `content`        text                DEFAULT NULL,
+  `location_name`  varchar(255)        DEFAULT NULL,
+  `latitude`       decimal(10,8)       DEFAULT NULL,
+  `longitude`      decimal(11,8)       DEFAULT NULL,
+  `start_at`       datetime            DEFAULT NULL,
+  `end_at`         datetime            DEFAULT NULL,
+  `max_attendance` int(10) unsigned    DEFAULT NULL,
+  `status`         enum('PENDING','CONFIRMED','REJECTED','CANCELLED') DEFAULT NULL,
+  `changed_at`     datetime            NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`history_id`),
+  KEY `idx_history_schedule` (`schedule_id`),
+  CONSTRAINT `fk_history_schedule` FOREIGN KEY (`schedule_id`)
+    REFERENCES `group_schedule` (`schedule_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_history_changer` FOREIGN KEY (`changed_by`)
+    REFERENCES `user` (`user_key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+-- club_schedule.schedule_attendance_check_history definition (migration_v3 신규 테이블)
+-- 출석 체크(actual_status) 정정 이력. 매 체크/재체크마다 변경 전후 값을 기록
+
+CREATE TABLE `schedule_attendance_check_history` (
+  `history_id`             bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `attendance_id`          bigint(20) unsigned NOT NULL COMMENT '대상 참가 신청 키',
+  `schedule_id`            bigint(20) unsigned NOT NULL COMMENT '스케줄 키 (조회 편의용 비정규화)',
+  `user_key`               bigint(20) unsigned NOT NULL COMMENT '출석 체크 대상 유저 키',
+  `previous_actual_status` enum('NONE','ATTENDED','NOSHOW') NOT NULL COMMENT '변경 전 값',
+  `new_actual_status`      enum('NONE','ATTENDED','NOSHOW') NOT NULL COMMENT '변경 후 값',
+  `changed_by`             bigint(20) unsigned NOT NULL COMMENT '정정 처리자 (일정 생성자/매니저/리더)',
+  `change_reason`          varchar(500)         DEFAULT NULL COMMENT '정정 사유 (최초 체크 시 NULL 허용)',
+  `changed_at`             datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`history_id`),
+  KEY `idx_check_history_attendance` (`attendance_id`),
+  CONSTRAINT `fk_check_history_attendance` FOREIGN KEY (`attendance_id`)
+    REFERENCES `schedule_attendance` (`attendance_id`) ON DELETE CASCADE,
+  CONSTRAINT `fk_check_history_changer` FOREIGN KEY (`changed_by`)
+    REFERENCES `user` (`user_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
@@ -262,6 +319,43 @@ CREATE TABLE `schedule_attendance` (
 | MEMBER | `min_role_to_create` 허용 + `requires_approval=0` | `CONFIRMED` |
 | MEMBER | `min_role_to_create` 허용 + `requires_approval=1` | `PENDING` |
 | MEMBER | `min_role_to_create` 미달 | 403 차단 |
+
+---
+
+## 출석 관리 규칙
+
+`schedule_attendance` 테이블 기반. API는 [API.md — 출석 관리 API](API.md#출석-관리-api) 참고.
+
+**참가신청 자동 승인 규칙** (`group_schedule_policy.requires_attendance_approval` 기준)
+
+| 신청자 역할 | requiresAttendanceApproval=false | requiresAttendanceApproval=true |
+|------------|----------------------------------|----------------------------------|
+| LEADER     | 즉시 CONFIRMED                   | 즉시 CONFIRMED                  |
+| MANAGER    | 즉시 CONFIRMED                   | 즉시 CONFIRMED                  |
+| MEMBER     | 즉시 CONFIRMED                   | PENDING (수동 승인 필요)         |
+
+**`is_latest` 상태 전이 규칙**
+- 참가 신청 시: 기존 `is_latest=1` 행 → `is_latest=0`, 신규 행 INSERT(`is_latest=1`, status=PENDING/CONFIRMED)
+- 취소/거부 시: 해당 행 `is_latest = 0` 으로 UPDATE (참가자 목록에서 제외)
+- 참가자 목록 조회: `WHERE schedule_id=? AND is_latest=1`
+
+**참가 취소 규칙**
+
+| 취소 주체 | 조건 |
+|----------|------|
+| 본인 | 일정 `start_at` 이전까지 |
+| 일정 등록자 또는 MANAGER 이상 | 일정 `start_at` 이전까지 (강제 취소) |
+| 누구도 | 일정 시작 후 불가 (409) |
+
+---
+
+## 출석 체크 정정 이력
+
+`schedule_attendance_check_history` 테이블 기반 (`migration_v3.sql`). API는 [API.md — 출석 관리 API](API.md#출석-관리-api)의 `PATCH .../check` 참고.
+
+- **정정 가능**: 출석 체크(`actual_status`)는 최초 체크 이후에도 재호출로 정정할 수 있다. 매 호출마다 변경 전/후 값을 이 테이블에 스냅샷으로 남긴다.
+- **권한**: 참가 승인/거부/강제취소와 동일하게 **일정 생성자 또는 MANAGER 이상**(LEADER 포함)이면 허용. `schedule_attendance`의 `checked_by_user_key`/`checked_at`은 최신 값만 반영하고, 과거 값과 변경자·변경사유 이력은 이 테이블에서 조회한다.
+- `group_schedule_history`(일정 수정 이력)와 동일한 스냅샷 패턴을 따른다.
 
 ---
 
@@ -354,12 +448,6 @@ erDiagram
 
 ---
 
-향후 작업(제안)
-- 현재 문서는 VO와 제공하신 SQL을 기반으로 작성된 초안입니다. MyBatis 매퍼(XML)나 기존 DB 스크립트를 추가로 분석하면 컬럼 길이, NOT NULL 제약, 인덱스/유니크 규칙을 더 정확히 반영할 수 있습니다.
-- Flyway/Liquibase 마이그레이션 스크립트로 변환을 원하시면 생성해 드립니다.
-- 테이블 명이 MySQL 예약어(`user`, `group`)와 충돌할 우려가 있으므로 쿼리 작성 시 백틱(``) 사용을 권장합니다.
-
-원하시면 다음 단계로 진행하겠습니다:
-- MyBatis mapper XML을 스캔하여 문서 업데이트
-- MariaDB용 마이그레이션(.sql) 파일을 별도 디렉터리에 생성
-- 컬럼별 NOT NULL/기본값에 대한 추가 검토 및 수정
+## 참고 사항
+- 테이블 명이 MySQL 예약어(`user`, `group`)와 충돌하므로 쿼리 작성 시 백틱(``) 사용이 필요합니다.
+- `notification`, `group_join_ban`, `group_member_permission` 등 최근 추가된 테이블은 관련 서비스 레이어 구현 진행 상황에 따라 컬럼이 변경될 수 있습니다. 변경 시 이 문서도 함께 갱신합니다.

@@ -2,6 +2,7 @@ package com.moyora.clubschedule.controller.group;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.parameters.P;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +26,7 @@ public class GroupJoinApprovalController {
 
     @PreAuthorize("@groupJoinRequestService.isLeaderForRequest(#requestId, principal.userKey)")
     @PatchMapping("/{requestId}/approve")
-    public ResponseEntity<?> approve(@PathVariable("requestId") Long requestId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> approve(@P("requestId") @PathVariable("requestId") Long requestId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operatorKey = userDetails.getUserKey();
         try {
             boolean ok = service.approveJoin(requestId, operatorKey);
@@ -37,7 +38,7 @@ public class GroupJoinApprovalController {
 
     @PreAuthorize("@groupJoinRequestService.isLeaderForRequest(#requestId, principal.userKey)")
     @PatchMapping("/{requestId}/reject")
-    public ResponseEntity<?> reject(@PathVariable("requestId") Long requestId, @RequestBody java.util.Map<String,String> body, @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> reject(@P("requestId") @PathVariable("requestId") Long requestId, @RequestBody java.util.Map<String,String> body, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operatorKey = userDetails.getUserKey();
         String reason = body.get("rejectReason");
         try {

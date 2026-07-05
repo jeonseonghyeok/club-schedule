@@ -15,6 +15,8 @@
         <result property="updatedBy"          column="updated_by"/>
         <result property="createdAt"          column="created_at"/>
         <result property="updatedAt"          column="updated_at"/>
+        <result property="checkedAt"          column="checked_at"/>
+        <result property="checkedByUserKey"   column="checked_by_user_key"/>
     </resultMap>
 
     <select id="countConfirmedAttendees" resultType="int">
@@ -36,9 +38,9 @@
 
     <select id="selectActiveList" resultMap="attendanceRM">
         SELECT sa.*,
-               COALESCE(u.nickname, u.name) AS display_name
+               u.nickname AS display_name
         FROM schedule_attendance sa
-        JOIN user u ON u.user_key = sa.user_key
+        JOIN `user` u ON u.user_key = sa.user_key
         WHERE sa.schedule_id = #{scheduleId}
           AND sa.is_latest   = 1
         ORDER BY sa.created_at ASC
@@ -69,10 +71,11 @@
 
     <update id="updateActualStatus">
         UPDATE schedule_attendance
-        SET actual_status      = #{actualStatus},
+        SET actual_status       = #{actualStatus},
             checked_by_user_key = #{updatedBy},
-            updated_by         = #{updatedBy},
-            updated_at         = NOW()
+            checked_at          = NOW(),
+            updated_by          = #{updatedBy},
+            updated_at          = NOW()
         WHERE attendance_id = #{attendanceId}
     </update>
 

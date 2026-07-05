@@ -16,6 +16,8 @@ public class ScheduleAttendanceVo {
     private Long updatedBy;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private LocalDateTime checkedAt;
+    private Long checkedByUserKey;
 
     public enum AttendanceStatus { PENDING, CONFIRMED, REJECTED, CANCELLED }
     public enum ActualStatus     { NONE, ATTENDED, NOSHOW }

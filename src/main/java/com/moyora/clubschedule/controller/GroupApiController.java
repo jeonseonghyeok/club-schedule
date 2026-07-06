@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.moyora.clubschedule.dto.GroupScheduleCreateDto;
 import com.moyora.clubschedule.dto.GroupScheduleEditDto;
+import com.moyora.clubschedule.mapper.ScheduleAttendanceMapper;
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupManageService;
 import com.moyora.clubschedule.service.GroupScheduleService;
@@ -38,6 +39,7 @@ public class GroupApiController {
     private final GroupService groupService;
     private final GroupManageService groupManageService;
     private final GroupScheduleService groupScheduleService;
+    private final ScheduleAttendanceMapper scheduleAttendanceMapper;
 
     // ── Members ──────────────────────────────────────────────────────────────
 
@@ -199,6 +201,9 @@ public class GroupApiController {
         ev.put("maxAttendance", s.getMaxAttendance());
         ev.put("createdBy",     s.getCreatedBy());
         ev.put("isCompleted",   s.isCompleted());
+        if (s.getStatus() == GroupScheduleVo.ScheduleStatus.CONFIRMED) {
+            ev.put("confirmedCount", scheduleAttendanceMapper.countConfirmedAttendees(s.getScheduleId()));
+        }
         ev.put("startAt", s.getStartAt().toString());
         ev.put("endAt",   s.getEndAt() != null ? s.getEndAt().toString() : null);
         ev.put("start",   toEpochMs(s.getStartAt()));

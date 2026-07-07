@@ -56,18 +56,10 @@
 
     <insert id="insertAttendance" useGeneratedKeys="true" keyProperty="attendanceId">
         INSERT INTO schedule_attendance
-            (schedule_id, user_key, status, actual_status, is_latest, updated_by, created_at, updated_at)
+            (schedule_id, user_key, status, actual_status, is_latest, processed_by_user_key, updated_by, created_at, updated_at)
         VALUES
-            (#{scheduleId}, #{userKey}, #{status}, #{actualStatus}, 1, #{updatedBy}, NOW(), NOW())
+            (#{scheduleId}, #{userKey}, #{status}, #{actualStatus}, 1, #{processedByUserKey}, #{updatedBy}, NOW(), NOW())
     </insert>
-
-    <update id="updateStatus">
-        UPDATE schedule_attendance
-        SET status     = #{status},
-            updated_by = #{updatedBy},
-            updated_at = NOW()
-        WHERE attendance_id = #{attendanceId}
-    </update>
 
     <update id="updateActualStatus">
         UPDATE schedule_attendance
@@ -79,17 +71,25 @@
         WHERE attendance_id = #{attendanceId}
     </update>
 
-    <update id="updateProcessed">
-        UPDATE schedule_attendance
-        SET status               = #{status},
-            processed_by_user_key = #{processedByUserKey},
-            updated_by           = #{updatedBy},
-            updated_at           = NOW()
-        WHERE attendance_id = #{attendanceId}
-    </update>
-
     <select id="selectById" resultMap="attendanceRM">
         SELECT * FROM schedule_attendance WHERE attendance_id = #{attendanceId}
+    </select>
+
+    <resultMap id="attendanceHistoryRM" type="com.moyora.clubschedule.vo.ScheduleAttendanceVo" extends="attendanceRM">
+        <result property="actorDisplayName" column="actor_display_name"/>
+    </resultMap>
+
+    <!-- is_latest 조건 없이 전체 행(과거 이력 포함) 시간순 조회. status 값 자체가
+         신청(PENDING)/확정(CONFIRMED)/거부(REJECTED)/취소(CANCELLED) 액션을 의미한다. -->
+    <select id="selectHistoryByScheduleId" resultMap="attendanceHistoryRM">
+        SELECT sa.*,
+               u.nickname AS display_name,
+               a.nickname AS actor_display_name
+        FROM schedule_attendance sa
+        JOIN `user` u ON u.user_key = sa.user_key
+        LEFT JOIN `user` a ON a.user_key = sa.updated_by
+        WHERE sa.schedule_id = #{scheduleId}
+        ORDER BY sa.created_at ASC
     </select>
 
 </mapper>

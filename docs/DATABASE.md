@@ -203,7 +203,7 @@ CREATE TABLE `group_schedule_policy` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
--- club_schedule.schedule_attendance definition (migration_v2 적용 후 기준)
+-- club_schedule.schedule_attendance definition (migration_v4 적용 후 기준)
 
 CREATE TABLE `schedule_attendance` (
   `attendance_id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
@@ -211,7 +211,7 @@ CREATE TABLE `schedule_attendance` (
   `user_key` bigint(20) unsigned NOT NULL COMMENT '유저 키',
   `status` enum('PENDING','CONFIRMED','REJECTED','CANCELLED') NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING: 신청대기, CONFIRMED: 참여확정, REJECTED: 거절, CANCELLED: 본인취소',
   `is_latest` tinyint(1) NOT NULL DEFAULT 1 COMMENT '현재 유효한 최신 상태 여부 (0: 과거이력, 1: 최신)',
-  `applied_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '신청/변경 시점',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '신청/변경 시점(= 해당 상태 행이 생성된 시각) — migration_v4: applied_at → created_at',
   `processed_by_user_key` bigint(20) unsigned DEFAULT NULL COMMENT '승인/거절 처리 주체(본인 또는 관리자) — migration_v2: processed_by → processed_by_user_key',
   `updated_by` bigint(20) unsigned DEFAULT NULL COMMENT '상태를 마지막으로 변경한 유저 키 — migration_v2 추가',
   `updated_at` datetime DEFAULT NULL ON UPDATE current_timestamp() COMMENT '상태 변경 일시 — migration_v2 추가',
@@ -334,17 +334,28 @@ CREATE TABLE `schedule_attendance_check_history` (
 | MANAGER    | 즉시 CONFIRMED                   | 즉시 CONFIRMED                  |
 | MEMBER     | 즉시 CONFIRMED                   | PENDING (수동 승인 필요)         |
 
-**`is_latest` 상태 전이 규칙**
-- 참가 신청 시: 기존 `is_latest=1` 행 → `is_latest=0`, 신규 행 INSERT(`is_latest=1`, status=PENDING/CONFIRMED)
-- 취소/거부 시: 해당 행 `is_latest = 0` 으로 UPDATE (참가자 목록에서 제외)
-- 참가자 목록 조회: `WHERE schedule_id=? AND is_latest=1`
+**`is_latest` 상태 전이 규칙 — 신청/승인/거부/취소 전부 새 행 INSERT**
+
+신청뿐 아니라 승인·거부·본인취소·강제취소도 전부 "기존 `is_latest=1` 행을 `is_latest=0`으로
+무효화하고 새 행을 INSERT"하는 동일한 패턴을 따른다(과거에는 승인/거부/취소가 기존 행을
+UPDATE로 덮어써서 중간 이력이 소실됐으나, 이제는 그렇지 않다). 새 컬럼이나 별도 이력
+테이블 없이, **`status` 값 자체가 그 행이 어떤 액션으로 생성됐는지를 의미**한다 —
+`PENDING`은 오직 신청(승인 대기)으로만 생성되고, `CONFIRMED`는 신청 시 즉시 확정되었거나
+승인되어 생성되며, `REJECTED`는 거부로, `CANCELLED`는 취소(본인 또는 강제)로만 생성된다.
+본인취소와 강제취소는 `updated_by`가 `user_key`(본인)와 같은지 다른지로 구분한다.
+
+- 참가자 목록(신청 탭) 조회: `WHERE schedule_id=? AND is_latest=1` (기존과 동일, PENDING/CONFIRMED만 노출)
+- 이력 조회: `WHERE schedule_id=?` (`is_latest` 조건 없이 전체 행을 `created_at` 순으로) —
+  `GET /api/groups/{groupId}/schedules/{scheduleId}/attendance/history`
+  ([API.md](API.md#출석-관리-api) 참고). 같은 사용자가 신청→승인→취소→신청→거부처럼 여러
+  사이클을 거치면 각 사이클마다 다른 `attendance_id`로 별도 행이 남아 전부 이력에 보인다.
 
 **참가 취소 규칙**
 
 | 취소 주체 | 조건 |
 |----------|------|
 | 본인 | 일정 `start_at` 이전까지 |
-| 일정 등록자 또는 MANAGER 이상 | 일정 `start_at` 이전까지 (강제 취소) |
+| MANAGER 이상 (강제 취소) | 일정 `start_at` 이전까지. **일정 등록자라도 MANAGER 이상이 아니면 강제취소 불가**(승인/거부보다 좁은 권한) |
 | 누구도 | 일정 시작 후 불가 (409) |
 
 ---

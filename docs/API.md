@@ -399,7 +399,7 @@
 
 ## 출석 관리 API
 
-> `schedule_attendance` 테이블 기반. **참가 신청**(attend/cancel/approve/reject/forceCancel)과 **출석 체크**(실제 참석 여부 확인, `actual_status`)는 별개 개념이다 — 전자는 참가 의사를 승인하는 절차, 후자는 일정 종료 후 실제로 참석했는지 기록하는 절차다. `CONFIRMED` 상태의 일정에 멤버가 참가 신청하고, 일정 등록자 또는 MANAGER 이상이 승인·거부·강제취소·출석체크를 처리한다. 자동 승인 규칙 및 `is_latest` 상태 전이 규칙은 [DATABASE.md — 출석 관리 규칙](DATABASE.md#출석-관리-규칙) 참고.
+> `schedule_attendance` 테이블 기반. **참가 신청**(attend/cancel/approve/reject/forceCancel)과 **출석 체크**(실제 참석 여부 확인, `actual_status`)는 별개 개념이다 — 전자는 참가 의사를 승인하는 절차, 후자는 일정 종료 후 실제로 참석했는지 기록하는 절차다. `CONFIRMED` 상태의 일정에 멤버가 참가 신청하고, 일정 등록자 또는 MANAGER 이상이 승인·거부·출석체크를 처리한다(단 강제취소는 MANAGER 이상만 가능, 아래 참고). 자동 승인 규칙 및 `is_latest` 상태 전이 규칙은 [DATABASE.md — 출석 관리 규칙](DATABASE.md#출석-관리-규칙) 참고.
 
 ### POST /api/groups/{groupId}/schedules/{scheduleId}/attend
 
@@ -415,6 +415,12 @@
 
 **응답**: `200 OK` — 배열, 각 항목: `attendanceId`, `scheduleId`, `userKey`, `displayName`, `status`, `actualStatus`, `processedByUserKey`, `createdAt`
 
+### GET /api/groups/{groupId}/schedules/{scheduleId}/attendance/history
+
+참가 이력(신청/승인/거부/취소) 조회. `is_latest` 조건 없이 해당 일정의 전체 행을 `created_at` 오름차순으로 반환한다 — status 값 자체가 액션을 의미한다(상세: [DATABASE.md — 출석 관리 규칙](DATABASE.md#출석-관리-규칙)).
+
+**응답**: `200 OK` — 배열, 각 항목: `attendanceId`, `userKey`, `displayName`, `status`, `actorUserKey`, `actorDisplayName`, `selfActed`(본인이 처리했는지 여부), `createdAt`
+
 ### PATCH /api/groups/{groupId}/schedules/{scheduleId}/attendance/{targetUserKey}/approve
 
 참가 승인. **권한**: 일정 등록자 또는 MANAGER 이상.
@@ -425,7 +431,7 @@
 
 ### DELETE /api/groups/{groupId}/schedules/{scheduleId}/attendance/{targetUserKey}
 
-강제 취소. **권한**: 일정 등록자 또는 MANAGER 이상.
+강제 취소. **권한**: MANAGER 이상만 가능 — 승인/거부와 달리 일정 등록자 단독 권한으로는 불가.
 
 ### PATCH /api/groups/{groupId}/schedules/{scheduleId}/attendance/{targetUserKey}/check
 

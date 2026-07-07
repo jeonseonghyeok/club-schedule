@@ -18,6 +18,7 @@ public class ScheduleAttendanceVo {
     private LocalDateTime updatedAt;
     private LocalDateTime checkedAt;
     private Long checkedByUserKey;
+    private String actorDisplayName; // 이력 조회 전용 — updated_by(작업자)의 표시 이름
 
     public enum AttendanceStatus { PENDING, CONFIRMED, REJECTED, CANCELLED }
     public enum ActualStatus     { NONE, ATTENDED, NOSHOW }

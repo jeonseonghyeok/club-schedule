@@ -6,7 +6,6 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
 import com.moyora.clubschedule.vo.ScheduleAttendanceVo;
-import com.moyora.clubschedule.vo.ScheduleAttendanceVo.AttendanceStatus;
 
 @Mapper
 public interface ScheduleAttendanceMapper {
@@ -26,14 +25,9 @@ public interface ScheduleAttendanceMapper {
             @Param("scheduleId") Long scheduleId,
             @Param("userKey")    Long userKey);
 
-    /** 새 참가 행 INSERT */
+    /** 새 참가 행 INSERT — 신청/승인/거부/취소/강제취소 전부 이 메서드로 새 행을 만든다.
+     *  status 값 자체가 이력 조회 시 어떤 액션이었는지를 의미한다. */
     int insertAttendance(ScheduleAttendanceVo vo);
-
-    /** 상태 업데이트 (approve/reject/cancel/check) */
-    int updateStatus(
-            @Param("attendanceId") Long attendanceId,
-            @Param("status")       AttendanceStatus status,
-            @Param("updatedBy")    Long updatedBy);
 
     /** 출석 체크 (actual_status UPDATE) */
     int updateActualStatus(
@@ -41,13 +35,9 @@ public interface ScheduleAttendanceMapper {
             @Param("actualStatus")  ScheduleAttendanceVo.ActualStatus actualStatus,
             @Param("updatedBy")     Long updatedBy);
 
-    /** approve/reject 시 processedByUserKey 기록 */
-    int updateProcessed(
-            @Param("attendanceId")       Long attendanceId,
-            @Param("status")             AttendanceStatus status,
-            @Param("processedByUserKey") Long processedByUserKey,
-            @Param("updatedBy")          Long updatedBy);
-
     /** attendanceId로 단건 조회 */
     ScheduleAttendanceVo selectById(@Param("attendanceId") Long attendanceId);
+
+    /** is_latest 무관 전체 이력(신청/승인/거부/취소) 시간순 조회 */
+    List<ScheduleAttendanceVo> selectHistoryByScheduleId(@Param("scheduleId") Long scheduleId);
 }

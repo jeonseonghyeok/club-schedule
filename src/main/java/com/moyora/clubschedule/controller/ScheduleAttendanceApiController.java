@@ -67,6 +67,19 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok(result);
     }
 
+    /** 참가 이력(신청/승인/거부/취소) — is_latest 무관 전체, 시간순 */
+    @GetMapping("/attendance/history")
+    public ResponseEntity<?> listHistory(
+            @PathVariable("groupId") Long groupId,
+            @PathVariable("scheduleId") Long scheduleId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userKey(userDetails) == null) return ResponseEntity.status(401).build();
+        List<ScheduleAttendanceVo> list = attendanceService.listHistory(groupId, scheduleId);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (ScheduleAttendanceVo v : list) result.add(toHistoryMap(v));
+        return ResponseEntity.ok(result);
+    }
+
     /** 참가 승인 */
     @PatchMapping("/attendance/{targetUserKey}/approve")
     public ResponseEntity<?> approve(
@@ -148,6 +161,20 @@ public class ScheduleAttendanceApiController {
         m.put("createdAt",          v.getCreatedAt() != null ? v.getCreatedAt().toString() : null);
         m.put("checkedAt",          v.getCheckedAt() != null ? v.getCheckedAt().toString() : null);
         m.put("checkedByUserKey",   v.getCheckedByUserKey());
+        return m;
+    }
+
+    /** 이력 조회 전용 — 대상자/작업자 표시 이름과 본인 여부 플래그 포함 */
+    private Map<String, Object> toHistoryMap(ScheduleAttendanceVo v) {
+        Map<String, Object> m = new HashMap<>();
+        m.put("attendanceId",      v.getAttendanceId());
+        m.put("userKey",           v.getUserKey());
+        m.put("displayName",       v.getDisplayName());
+        m.put("status",            v.getStatus() != null ? v.getStatus().name() : null);
+        m.put("actorUserKey",      v.getUpdatedBy());
+        m.put("actorDisplayName",  v.getActorDisplayName());
+        m.put("selfActed",         v.getUpdatedBy() != null && v.getUpdatedBy().equals(v.getUserKey()));
+        m.put("createdAt",         v.getCreatedAt() != null ? v.getCreatedAt().toString() : null);
         return m;
     }
 }

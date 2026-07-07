@@ -24,11 +24,10 @@
 | 관리자 모임 생성 신청 관리 | `GET/POST /admin/api/group-requests` + 승인/거부 UI ([API.md](API.md#관리자-api)) |
 | 메인화면 모임 검색 | `GET /groups/recommended?q=` + 검색 UI ([API.md](API.md#그룹-api)) |
 | 일정 수정/승인/반려/취소 API | `PATCH /api/groups/{groupId}/schedules/{scheduleId}[/approve\|/reject\|/cancel]` ([API.md](API.md#그룹-일정-api)) |
-| 참가 신청 관리 — 백엔드 | 신청·취소·승인·거부·강제취소 API 구현 ([API.md](API.md#출석-관리-api), 규칙: [DATABASE.md](DATABASE.md#출석-관리-규칙)). **출석 체크(실제 참석 확인)와는 별개 개념** — 아래 참고. **`group.html`에 참가 버튼·참가자 목록 UI는 아직 없음** — 아래 미구현 항목 참고 |
+| 출석(참가) 관리 — 백엔드 | 신청·취소·승인·거부·강제취소·출석체크 API 구현 ([API.md](API.md#출석-관리-api), 규칙: [DATABASE.md](DATABASE.md#출석-관리-규칙)) |
+| 출석(참가) 관리 — 프론트 UI | `group.html` 일정 상세 모달에 참가 신청 버튼, 참가자 명단(호버/탭 팝오버), 참가자 관리 모달(승인/거부/출석체크) 구현 |
 | 그룹 가입 요청·승인 | `POST/DELETE/GET .../join-requests`, `PATCH /groups/joins/{id}/approve\|reject` ([API.md](API.md#그룹-가입-요청-api)) |
 | 그룹 정보 수정 | `PATCH /groups/{groupId}` — 이름·설명·정원·자동승인·일정정책 ([API.md](API.md#그룹-api)) |
-| `ScheduleAttendanceApiController` 500 위험 수정 | 모든 `@PathVariable`에 이름 명시 ([기술 부채](#기술-부채)에서 제거) |
-| 출석 체크 정정 권한 통일 + 변경 이력 | `checkActual()` 권한을 `validateAttendanceManagerPermission()`(일정 생성자 또는 MANAGER 이상)으로 통일, 매 체크마다 `schedule_attendance_check_history`에 변경 전/후 값 기록 ([API.md](API.md#출석-관리-api), 스키마: [DATABASE.md](DATABASE.md#출석-체크-정정-이력)). 부수 수정: `updateActualStatus`에서 누락됐던 `checked_at` 미갱신, `selectActiveList`의 존재하지 않는 컬럼(`u.name`) 참조 SQL 오류도 함께 수정 |
 
 ---
 
@@ -36,18 +35,20 @@
 
 ### 우선순위 높음
 
-> **참가 신청**(attend/cancel/approve/reject/forceCancel)과 **출석 관리**(실제 참석 여부 체크, `actual_status`)는 서로 다른 개념이다. 전자는 "일정에 갈지 말지 신청·승인하는 절차", 후자는 "일정이 끝난 뒤 실제로 왔는지 확인·기록하는 절차"다. 혼동해서 설계하지 말 것.
+#### 1. 일정 생성자 자동 참가 등록
+- 상세 계획: [plans/schedule-creator-auto-attend.md](plans/schedule-creator-auto-attend.md)
+- 일정이 CONFIRMED 되는 시점(생성 즉시 또는 승인 시)에 생성자를 자동으로 참가자로 등록
+- 참가 신청 시 자동승인 조건(신청자 본인/관리자/리더)도 이 계획에 포함되어 `resolveInitialStatus` 확장으로 함께 처리
 
-#### 1. 출석(참가) 관리 — 프론트 UI
-- 백엔드 API는 완료([API.md](API.md#출석-관리-api)) — 남은 건 프론트뿐
-- `group.html` 일정 상세보기에 참가 신청 버튼, 참가자 목록, 승인/거부 UI 추가
-- 출석 체크 UI는 정정 권한·이력 설계가 완료된 상태([완료된 항목](#완료된-항목) 참고)이므로 바로 붙이면 됨 — 정정 시 `changeReason`을 입력받아 `PATCH .../check` 바디에 함께 전달할 것
+#### 2. 참가 신청 승인 프로세스 — 알림 연동
+- 상세 계획: [plans/attendance-approval-notifications.md](plans/attendance-approval-notifications.md)
+- 그룹 가입/생성 신청과 달리 참가 신청 승인/거부 시 신청자에게 알림이 전혀 가지 않음
 
 ---
 
 ### 우선순위 중간
 
-#### 2. 그룹 권한 관리 UI (매니저 권한 설정)
+#### 3. 그룹 권한 관리 UI (매니저 권한 설정)
 - `group_member_permission` 테이블 + `GroupMemberPermissionMapper` 조회 로직 있음
 - `group.html`에 `permissionsList` div 존재하지만 비어있음
 - **필요 API:** `PUT /api/groups/{groupId}/members/{userKey}/permissions`
@@ -57,23 +58,23 @@
 
 ### 우선순위 낮음
 
-#### 3. 일정 삭제 API
+#### 4. 일정 삭제 API
 - 삭제 vs 취소(CANCELLED) 정책 결정 필요
 - 관련 파일: `GroupScheduleService`, `GroupScheduleMapper`
 
-#### 4. 멤버 별명(닉네임) 수정
+#### 5. 멤버 별명(닉네임) 수정
 - `group_member` 테이블 별명 컬럼 없음, 정책 재검토 필요
 
-#### 5. 강퇴 목록(group_join_ban) 관리 UI
+#### 6. 강퇴 목록(group_join_ban) 관리 UI
 - `group_join_ban` 테이블 정의 완료, 관련 API·UI 없음
 
-#### 6. 내 그룹 캘린더 (main.html 개선)
+#### 7. 내 그룹 캘린더 (main.html 개선)
 - 로그인 사용자가 속한 모든 그룹 일정 통합 뷰 필요
 
-#### 7. Swagger / OpenAPI 문서 자동화
+#### 8. Swagger / OpenAPI 문서 자동화
 - springdoc-openapi 의존성 추가
 
-#### 8. 알림(Notification) 조회 및 읽음 처리
+#### 9. 알림(Notification) 조회 및 읽음 처리
 - `NotificationService.createNotification()`만 존재, 조회/읽음 API 없음
 - **필요 API:**
   - `GET /api/notifications` — 내 알림 목록 (최신순)
@@ -110,7 +111,6 @@ src/main/java/com/moyora/clubschedule/
 ├── mapper/
 │   ├── GroupScheduleMapper.java + XML
 │   ├── ScheduleAttendanceMapper.java + XML
-│   ├── ScheduleAttendanceCheckHistoryMapper.java + XML
 │   └── NotificationMapper.java + XML
 └── vo/
     └── GroupScheduleVo.java

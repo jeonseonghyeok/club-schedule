@@ -80,8 +80,8 @@ public class ScheduleAttendanceService {
             throw new IllegalStateException("이미 취소되었거나 거부된 참가 신청입니다.");
         }
 
-        attendanceMapper.updateStatus(att.getAttendanceId(), AttendanceStatus.CANCELLED, userKey);
         attendanceMapper.invalidateLatest(scheduleId, userKey);
+        insertNewRow(scheduleId, userKey, AttendanceStatus.CANCELLED, null, userKey);
     }
 
     // ── 참가자 목록 ───────────────────────────────────────────────────────────
@@ -90,6 +90,15 @@ public class ScheduleAttendanceService {
     public List<ScheduleAttendanceVo> listAttendees(Long groupId, Long scheduleId) {
         requireSchedule(scheduleId, groupId);
         return attendanceMapper.selectActiveList(scheduleId);
+    }
+
+    // ── 참가 이력(신청/승인/거부/취소) ────────────────────────────────────────────
+
+    /** is_latest 무관 전체 행을 시간순으로 반환 — status 값이 곧 액션(신청/확정/거부/취소)을 의미한다. */
+    @Transactional(readOnly = true)
+    public List<ScheduleAttendanceVo> listHistory(Long groupId, Long scheduleId) {
+        requireSchedule(scheduleId, groupId);
+        return attendanceMapper.selectHistoryByScheduleId(scheduleId);
     }
 
     // ── 승인 ──────────────────────────────────────────────────────────────────
@@ -105,9 +114,9 @@ public class ScheduleAttendanceService {
             throw new IllegalStateException("대기 중인 참가 신청만 승인할 수 있습니다.");
         }
 
-        attendanceMapper.updateProcessed(att.getAttendanceId(), AttendanceStatus.CONFIRMED,
+        attendanceMapper.invalidateLatest(scheduleId, targetUserKey);
+        return insertNewRow(scheduleId, targetUserKey, AttendanceStatus.CONFIRMED,
                 operatorUserKey, operatorUserKey);
-        return attendanceMapper.selectById(att.getAttendanceId());
     }
 
     // ── 거부 ──────────────────────────────────────────────────────────────────
@@ -123,23 +132,23 @@ public class ScheduleAttendanceService {
             throw new IllegalStateException("대기 중인 참가 신청만 거부할 수 있습니다.");
         }
 
-        attendanceMapper.updateProcessed(att.getAttendanceId(), AttendanceStatus.REJECTED,
-                operatorUserKey, operatorUserKey);
         attendanceMapper.invalidateLatest(scheduleId, targetUserKey);
+        insertNewRow(scheduleId, targetUserKey, AttendanceStatus.REJECTED, operatorUserKey, operatorUserKey);
     }
 
-    // ── 강제 취소 (관리자) ────────────────────────────────────────────────────
+    // ── 강제 취소 (매니저/리더 전용) ──────────────────────────────────────────────
 
+    /** 일정 생성자 단독 권한으로는 불가 — 매니저 이상만 강제취소할 수 있다(승인/거부보다 좁은 권한). */
     @Transactional
     public void forceCancel(Long groupId, Long scheduleId,
                              Long targetUserKey, Long operatorUserKey) {
         GroupScheduleVo schedule = requireSchedule(scheduleId, groupId);
         requireBeforeStart(schedule);
-        validateAttendanceManagerPermission(groupId, schedule, operatorUserKey);
+        requireManagerRole(groupId, operatorUserKey);
 
-        ScheduleAttendanceVo att = requireLatest(scheduleId, targetUserKey);
-        attendanceMapper.updateStatus(att.getAttendanceId(), AttendanceStatus.CANCELLED, operatorUserKey);
+        requireLatest(scheduleId, targetUserKey);
         attendanceMapper.invalidateLatest(scheduleId, targetUserKey);
+        insertNewRow(scheduleId, targetUserKey, AttendanceStatus.CANCELLED, null, operatorUserKey);
     }
 
     // ── 출석 체크 (정정 가능, 이력 기록) ──────────────────────────────────────────
@@ -184,6 +193,20 @@ public class ScheduleAttendanceService {
             throw new GroupAccessDeniedException("해당 그룹의 일정이 아닙니다.");
         }
         return s;
+    }
+
+    /** 승인/거부/취소/강제취소 공용 — 항상 새 행을 INSERT한다(호출 전에 invalidateLatest 필요). */
+    private ScheduleAttendanceVo insertNewRow(Long scheduleId, Long userKey, AttendanceStatus status,
+                                               Long processedByUserKey, Long updatedBy) {
+        ScheduleAttendanceVo vo = new ScheduleAttendanceVo();
+        vo.setScheduleId(scheduleId);
+        vo.setUserKey(userKey);
+        vo.setStatus(status);
+        vo.setActualStatus(ActualStatus.NONE);
+        vo.setProcessedByUserKey(processedByUserKey);
+        vo.setUpdatedBy(updatedBy);
+        attendanceMapper.insertAttendance(vo);
+        return attendanceMapper.selectById(vo.getAttendanceId());
     }
 
     private ScheduleAttendanceVo requireLatest(Long scheduleId, Long userKey) {

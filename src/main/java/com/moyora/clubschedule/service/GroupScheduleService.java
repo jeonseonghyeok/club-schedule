@@ -43,7 +43,13 @@ public class GroupScheduleService {
      */
     @Transactional(readOnly = true)
     public List<GroupScheduleVo> listSchedules(Long groupId, Long userKey) {
-        List<GroupScheduleVo> all = groupScheduleMapper.selectByGroupId(groupId);
+        return listSchedules(groupId, userKey, null, null);
+    }
+
+    /** from/to는 null 허용 — 둘 다 null이면 그룹의 전체 일정을 조회(관리 화면 등에서 사용) */
+    @Transactional(readOnly = true)
+    public List<GroupScheduleVo> listSchedules(Long groupId, Long userKey, LocalDateTime from, LocalDateTime to) {
+        List<GroupScheduleVo> all = groupScheduleMapper.selectByGroupId(groupId, from, to);
         if (groupManageService.isMember(groupId, userKey)) {
             return all;
         }

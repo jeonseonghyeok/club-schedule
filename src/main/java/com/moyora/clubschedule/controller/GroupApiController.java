@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moyora.clubschedule.dto.GroupScheduleCreateDto;
@@ -75,9 +76,12 @@ public class GroupApiController {
     @GetMapping("/{groupId}/schedules")
     public ResponseEntity<?> getSchedules(
             @PathVariable("groupId") Long groupId,
+            @RequestParam(value = "from", required = false) Long fromMs,
+            @RequestParam(value = "to", required = false) Long toMs,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userDetails != null ? userDetails.getUserKey() : null;
-        List<GroupScheduleVo> schedules = groupScheduleService.listSchedules(groupId, userKey);
+        List<GroupScheduleVo> schedules = groupScheduleService.listSchedules(
+                groupId, userKey, epochToLocalDateTime(fromMs), epochToLocalDateTime(toMs));
         List<Map<String,Object>> result = new ArrayList<>();
         for (GroupScheduleVo s : schedules) {
             result.add(toCalendarEvent(s));

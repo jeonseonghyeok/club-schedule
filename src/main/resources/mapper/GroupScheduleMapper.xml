@@ -39,6 +39,8 @@
             created_at, updated_at, is_completed, completed_at
         FROM group_schedule
         WHERE group_id = #{groupId}
+        <if test="from != null">AND start_at &gt;= #{from}</if>
+        <if test="to != null">AND start_at &lt;= #{to}</if>
         ORDER BY start_at ASC
     </select>
 

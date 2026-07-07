@@ -1,5 +1,6 @@
 package com.moyora.clubschedule.mapper;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
@@ -11,7 +12,11 @@ import com.moyora.clubschedule.vo.GroupScheduleVo;
 
 @Mapper
 public interface GroupScheduleMapper {
-    List<GroupScheduleVo> selectByGroupId(@Param("groupId") Long groupId);
+    /** from/to는 null 허용 — null이면 해당 경계 없이 조회(하위호환: 둘 다 null이면 전체 조회) */
+    List<GroupScheduleVo> selectByGroupId(
+            @Param("groupId") Long groupId,
+            @Param("from")    LocalDateTime from,
+            @Param("to")      LocalDateTime to);
     GroupScheduleVo selectByScheduleId(@Param("scheduleId") Long scheduleId);
     int countByGroupId(@Param("groupId") Long groupId);
     int insertSchedule(GroupScheduleCreateDto dto);

@@ -3,8 +3,8 @@ param(
 )
 
 function Get-AuthToken {
-    param([string]$BaseUrl, [string]$Username)
-    $body = '{"username":"' + $Username + '"}'
+    param([string]$BaseUrl, [long]$KakaoApiId)
+    $body = '{"kakaoApiId":' + $KakaoApiId + '}'
     try {
         $res = Invoke-WebRequest -Uri "$BaseUrl/login/test" `
                     -Method Post `
@@ -38,8 +38,9 @@ Write-Host ""
 
 for ($i = 1; $i -le 20; $i++) {
     $username = "test{0:D2}" -f $i
+    $kakaoApiId = 9900000000000 + $i
 
-    $token = Get-AuthToken -BaseUrl $BaseUrl -Username $username
+    $token = Get-AuthToken -BaseUrl $BaseUrl -KakaoApiId $kakaoApiId
     if (-not $token) {
         Write-Host "[$username] Login failed -> skip" -ForegroundColor Yellow
         $failCount++

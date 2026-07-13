@@ -19,4 +19,6 @@ public interface UserMapper {
 	List<UserVo> selectAllOrderByUserKeyDesc();
 
     UserVo selectByNickname(@Param("nickname") String nickname);
+
+    List<UserVo> selectTestAccounts();
 }

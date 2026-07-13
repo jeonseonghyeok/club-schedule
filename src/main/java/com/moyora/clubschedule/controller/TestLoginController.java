@@ -5,6 +5,7 @@ import java.util.Map;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,31 +32,34 @@ public class TestLoginController {
 
     /** 수동 로그인용 UI 페이지 */
     @GetMapping
-    public String testLoginPage() {
+    public String testLoginPage(Model model) {
         if (!testAuthUtil.isEnabled()) return "redirect:/";
+        model.addAttribute("testAccounts", userMapper.selectTestAccounts());
         return "test_login";
     }
 
     /**
      * 테스트 계정 로그인 API.
-     * Body: {"username": "test01"}
+     * Body: {"kakaoApiId": 9900000000001}
+     * 닉네임은 테스트 중 임의로 바뀔 수 있어 유니크하지 않으므로 kakaoApiId로 조회한다.
      * 성공 시 AUTH_TOKEN 쿠키를 설정하고 {userKey, nickname} 반환.
      */
     @PostMapping
     @ResponseBody
-    public ResponseEntity<?> login(@RequestBody Map<String, String> body) {
+    public ResponseEntity<?> login(@RequestBody Map<String, Object> body) {
         if (!testAuthUtil.isEnabled()) {
             return ResponseEntity.status(503).body(Map.of("message", "테스트 인증이 비활성화되어 있습니다."));
         }
 
-        String username = body.get("username");
-        if (username == null || username.isBlank()) {
-            return ResponseEntity.badRequest().body(Map.of("message", "username은 필수입니다."));
+        Object kakaoApiIdRaw = body.get("kakaoApiId");
+        if (kakaoApiIdRaw == null) {
+            return ResponseEntity.badRequest().body(Map.of("message", "kakaoApiId는 필수입니다."));
         }
+        Long kakaoApiId = Long.valueOf(kakaoApiIdRaw.toString());
 
-        UserVo user = userMapper.selectByNickname(username.trim());
+        UserVo user = userMapper.selectByKakaoApiId(kakaoApiId);
         if (user == null) {
-            return ResponseEntity.status(404).body(Map.of("message", "테스트 계정을 찾을 수 없습니다: " + username));
+            return ResponseEntity.status(404).body(Map.of("message", "테스트 계정을 찾을 수 없습니다: " + kakaoApiId));
         }
 
         String token = testAuthUtil.issueToken(user.getUserKey());

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
 <head>
 <meta charset="UTF-8">
 <title>테스트 로그인</title>
@@ -24,24 +24,17 @@
   <label for="username">테스트 계정 선택</label>
   <select id="username">
     <option value="">-- 계정 선택 --</option>
-    <script>
-      for(var i=1;i<=100;i++){
-        var n='test'+String(i).padStart(2,'0');
-        document.write('<option value="'+n+'">'+n+'</option>');
-      }
-    </script>
+    <option th:each="u : ${testAccounts}" th:value="${u.kakaoApiId}" th:text="${u.nickname}"></option>
   </select>
-  <label for="custom">직접 입력 (test01 형식)</label>
-  <input id="custom" type="text" placeholder="test01">
   <button onclick="doLogin()">로그인</button>
   <div class="msg" id="msg"></div>
 </div>
 <script>
 async function doLogin(){
-  var username=(document.getElementById('custom').value.trim()||document.getElementById('username').value).trim();
-  if(!username){showMsg('계정을 선택하거나 입력해주세요.','error');return;}
+  var kakaoApiId=document.getElementById('username').value;
+  if(!kakaoApiId){showMsg('계정을 선택해주세요.','error');return;}
   try{
-    var r=await fetch('/login/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:username})});
+    var r=await fetch('/login/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kakaoApiId:Number(kakaoApiId)})});
     var j=await r.json();
     if(r.ok){
       showMsg(j.nickname+'('+j.userKey+') 로그인 완료. 이동 중…','ok');
@@ -52,7 +45,6 @@ async function doLogin(){
   }catch(e){showMsg(e.message,'error');}
 }
 function showMsg(m,type){var el=document.getElementById('msg');el.textContent=m;el.className='msg '+type;el.style.display='block';}
-document.getElementById('custom').addEventListener('keydown',function(e){if(e.key==='Enter')doLogin();});
 </script>
 </body>
 </html>

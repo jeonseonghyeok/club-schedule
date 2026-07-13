@@ -113,9 +113,9 @@ public class GroupPermissionService {
 
     /**
      * 일정 승인/반려 권한 검증.
-     *  LEADER                             → 허용
-     *  MANAGER + MANAGE_SCHEDULE 권한     → 허용
-     *  그 외                              → AccessDenied
+     *  LEADER                                                  → 허용
+     *  MANAGER + MANAGE_SCHEDULE 권한(개인 override 또는 정책 기본값) → 허용
+     *  그 외                                                    → AccessDenied
      */
     public void validateApprovePermission(Long groupId, Long userKey) {
         GroupRole role = resolveRole(groupId, userKey);
@@ -123,7 +123,7 @@ public class GroupPermissionService {
         if (role == GroupRole.LEADER) return;
 
         if (role == GroupRole.MANAGER) {
-            if (hasPermission(groupId, userKey, PermissionType.MANAGE_SCHEDULE)) return;
+            if (resolveManagerCanManage(groupId, userKey, fetchPolicy(groupId))) return;
             throw new GroupAccessDeniedException(
                     "일정 승인/반려 권한이 없습니다. MANAGE_SCHEDULE 권한이 필요합니다.");
         }
@@ -174,7 +174,7 @@ public class GroupPermissionService {
 
         if (role == GroupRole.LEADER) return;
 
-        if (role == GroupRole.MANAGER && hasPermission(groupId, userKey, PermissionType.MANAGE_SCHEDULE)) {
+        if (role == GroupRole.MANAGER && resolveManagerCanManage(groupId, userKey, fetchPolicy(groupId))) {
             return;
         }
 

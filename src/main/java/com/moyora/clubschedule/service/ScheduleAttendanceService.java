@@ -53,18 +53,23 @@ public class ScheduleAttendanceService {
         // 이전 이력 무효화
         attendanceMapper.invalidateLatest(scheduleId, userKey);
 
-        // 역할에 따라 즉시 확정 or 대기
-        AttendanceStatus initialStatus = resolveInitialStatus(groupId, scheduleId, userKey);
+        // 신청 이력은 항상 PENDING으로 먼저 남긴다
+        ScheduleAttendanceVo pendingVo = new ScheduleAttendanceVo();
+        pendingVo.setScheduleId(scheduleId);
+        pendingVo.setUserKey(userKey);
+        pendingVo.setStatus(AttendanceStatus.PENDING);
+        pendingVo.setActualStatus(ActualStatus.NONE);
+        pendingVo.setUpdatedBy(userKey);
+        attendanceMapper.insertAttendance(pendingVo);
 
-        ScheduleAttendanceVo vo = new ScheduleAttendanceVo();
-        vo.setScheduleId(scheduleId);
-        vo.setUserKey(userKey);
-        vo.setStatus(initialStatus);
-        vo.setActualStatus(ActualStatus.NONE);
-        vo.setUpdatedBy(userKey);
-        attendanceMapper.insertAttendance(vo);
+        // 생성자/역할/정책상 즉시 자동승인 대상이면 승인 이력을 이어서 남긴다(본인 처리)
+        AttendanceStatus resolvedStatus = resolveInitialStatus(groupId, schedule, userKey);
+        if (resolvedStatus == AttendanceStatus.CONFIRMED) {
+            attendanceMapper.invalidateLatest(scheduleId, userKey);
+            return insertNewRow(scheduleId, userKey, AttendanceStatus.CONFIRMED, userKey, userKey);
+        }
 
-        return attendanceMapper.selectById(vo.getAttendanceId());
+        return attendanceMapper.selectById(pendingVo.getAttendanceId());
     }
 
     // ── 참가 취소 (본인) ──────────────────────────────────────────────────────
@@ -236,7 +241,11 @@ public class ScheduleAttendanceService {
         }
     }
 
-    private AttendanceStatus resolveInitialStatus(Long groupId, Long scheduleId, Long userKey) {
+    private AttendanceStatus resolveInitialStatus(Long groupId, GroupScheduleVo schedule, Long userKey) {
+        if (userKey.equals(schedule.getCreatedBy())) {
+            return AttendanceStatus.CONFIRMED;   // 일정 생성자 본인은 항상 자동승인
+        }
+
         String roleStr = memberMapper.selectRoleByGroupAndUser(groupId, userKey);
         GroupRole role;
         try { role = GroupRole.valueOf(roleStr.toUpperCase()); }

@@ -29,6 +29,7 @@ public class GroupScheduleService {
     private final GroupScheduleMapper        groupScheduleMapper;
     private final GroupScheduleHistoryMapper groupScheduleHistoryMapper;
     private final ScheduleAttendanceMapper   scheduleAttendanceMapper;
+    private final ScheduleAttendanceService  scheduleAttendanceService;
     private final GroupPermissionService     groupPermissionService;
     private final GroupManageService         groupManageService;
 
@@ -97,7 +98,12 @@ public class GroupScheduleService {
         dto.setStatus(initialStatus);
 
         groupScheduleMapper.insertSchedule(dto);
-        return groupScheduleMapper.selectByScheduleId(dto.getScheduleId());
+        GroupScheduleVo created = groupScheduleMapper.selectByScheduleId(dto.getScheduleId());
+
+        if (created.getStatus() == ScheduleStatus.CONFIRMED) {
+            scheduleAttendanceService.attend(dto.getGroupId(), dto.getScheduleId(), dto.getCreatedBy());
+        }
+        return created;
     }
 
     // ── 승인 / 반려 ───────────────────────────────────────────────────────────
@@ -113,6 +119,8 @@ public class GroupScheduleService {
 
         groupPermissionService.validateApprovePermission(groupId, operatorUserKey);
         groupScheduleMapper.updateScheduleStatus(scheduleId, ScheduleStatus.CONFIRMED, operatorUserKey);
+
+        scheduleAttendanceService.attend(groupId, scheduleId, schedule.getCreatedBy());
         return groupScheduleMapper.selectByScheduleId(scheduleId);
     }
 

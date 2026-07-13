@@ -36,7 +36,7 @@ club-schedule 프로젝트(Spring Boot + MyBatis)에서 그룹 일정(GroupSched
     자동 등록도 이 테이블에 정상적으로 행을 넣으면 기존 UI(참가자 명단,
     인원/정원 카운트 등)에 별도 수정 없이 그대로 반영된다.
 
-## 요구사항
+## 요구사항 (2026-07-10 최종 구현 반영)
 1. 일정이 **CONFIRMED 상태가 되는 시점**(둘 중 하나)에 일정 생성자(createdBy)를
    자동으로 참가자로 등록한다.
    - (a) 생성 즉시 CONFIRMED인 경우 → `GroupScheduleService.createSchedule()` 내부
@@ -44,43 +44,39 @@ club-schedule 프로젝트(Spring Boot + MyBatis)에서 그룹 일정(GroupSched
      `GroupScheduleService.approveSchedule()` 내부
    - **두 지점 모두 훅이 필요하다** — 한쪽만 처리하면 정책상 흔한 "승인 필요" 케이스에서
      생성자가 자동 등록되지 않는 누락이 생긴다.
-2. 등록되는 참가 status는 **항상 CONFIRMED**여야 한다. 단, 이를 별도의 하드코딩된
-   분기로 만들지 않고 **`resolveInitialStatus` 자체를 확장**해서 처리한다(사용자
-   요청에 따른 방향 전환 — [attendance-approval-notifications.md](attendance-approval-notifications.md)와
-   함께 검토하면서 결정):
+   - 훅은 별도 메서드를 새로 만들지 않고, 두 지점 모두 기존 공개 메서드
+     `scheduleAttendanceService.attend(groupId, scheduleId, createdBy)`를 그대로 호출한다
+     (아래 2번 항목 참고 — `attend()` 자체가 신청+자동승인 이력을 남기도록 바뀌었으므로
+     별도 메서드가 필요 없어졌다).
+2. **(변경) 등록되는 참가는 CONFIRMED 단일 행을 바로 INSERT하지 않는다.** 사용자 요청에 따라
+   "참가 신청(PENDING)"과 "자동 승인(CONFIRMED)" 이력이 각각 별도 행으로 남아야 한다 —
+   이는 일정 생성자뿐 아니라 LEADER/MANAGER, 정책상 자동승인되는 일반 MEMBER의 `attend()`
+   호출 전체에 동일하게 적용된다. `resolveInitialStatus`를 확장해 생성자 여부를 판별하고,
+   `attend()` 자체를 "PENDING INSERT → 자동승인 대상이면 즉시 invalidate+insertNewRow로
+   CONFIRMED 행 추가"로 재구성했다(`ScheduleAttendanceService.java` 40행대, 244행대 참고):
    ```java
    private AttendanceStatus resolveInitialStatus(Long groupId, GroupScheduleVo schedule, Long userKey) {
        if (userKey.equals(schedule.getCreatedBy())) {
            return AttendanceStatus.CONFIRMED;   // 일정 신청자(생성자) 본인은 항상 자동승인
        }
-       String roleStr = memberMapper.selectRoleByGroupAndUser(groupId, userKey);
-       GroupRole role = ...;
-       if (role == GroupRole.LEADER || role == GroupRole.MANAGER) {
-           return AttendanceStatus.CONFIRMED;   // 기존 로직 그대로
-       }
        ...
    }
    ```
+   - CONFIRMED 자동승인 행은 기존 승인/거부/취소와 동일한 `insertNewRow(...)` 헬퍼를 재사용하며,
+     `processedByUserKey = updatedBy = userKey`(본인)로 설정한다 — `processed_by_user_key`
+     컬럼 코멘트("승인/거절 처리 주체(본인 또는 관리자)")와 프론트의 `selfActed`/"처리자: 본인"
+     표시(`group.html:603`)에 이미 부합하는 값이라 UI 변경이 필요 없다.
    - 이렇게 하면 **일정 생성자가 직접 "참가 신청" 버튼을 눌러 `attend()`를 타는 경우**와
-     **이 계획의 자동 등록 훅(아래 요구사항 1)이 대신 호출하는 경우** 모두 동일한
-     하나의 규칙으로 CONFIRMED가 보장된다 — 별도의 특수 케이스 메서드를 새로 만들
-     필요가 없다.
-   - 자동 등록 훅(createSchedule/approveSchedule 내부)에서도 새 `registerCreatorAsAttendee`
-     메서드를 만들되, 내부적으로는 이 확장된 `resolveInitialStatus`를 그대로 호출해서
-     status를 결정한다(로직 중복 금지).
-   - `resolveInitialStatus`는 여전히 `private`으로 두되, 시그니처의 `scheduleId` 인자를
-     `GroupScheduleVo schedule`로 바꿔 생성자 여부를 판단할 수 있게 한다.
+     **이 계획의 자동 등록 훅(위 1번)이 대신 호출하는 경우** 모두 동일한 하나의 코드 경로로
+     "신청+자동승인 2행 이력"이 보장된다 — 별도의 특수 케이스 메서드를 새로 만들 필요가 없다.
 3. 이미 참가 이력이 있는 경우(재승인 등 예외적 상황) 중복 INSERT가 나지 않도록
-   `attend()`의 기존 관례(`selectLatest`로 확인 후 없을 때만 insert, 있으면 skip 또는
-   기존 로직 재사용)를 따른다. 단, 일반적인 생성/승인 흐름에서는 스케줄이 방금 막
-   생성/승인된 시점이라 참가 이력이 없는 것이 정상이므로 과도하게 방어적인 코드는
-   지양한다.
-4. 트랜잭션 경계: `approveSchedule()`은 이미 `@Transactional`이므로 그 안에서
-   attendance insert를 호출하면 원자성이 보장된다. `createSchedule()`에도
-   `@Transactional`이 없다면 추가해서 일정 생성과 참가 등록이 한 트랜잭션에서
-   처리되도록 한다.
+   `attend()`의 기존 관례(`selectLatest`로 확인 후 없을 때만 insert, 있으면 예외)를 그대로
+   따른다. 생성/승인 훅은 방금 막 CONFIRMED된 스케줄에 대해서만 호출되므로 참가 이력이 없는
+   것이 정상이라 별도 방어 코드는 추가하지 않았다.
+4. 트랜잭션 경계: `approveSchedule()`/`createSchedule()` 모두 이미 `@Transactional`이므로
+   그 안에서 `attend()` 호출까지 하나의 트랜잭션으로 원자성이 보장된다.
 5. REJECTED/CANCELLED로 가는 경로(rejectSchedule, cancelSchedule)는 참가 등록과
-   무관하므로 건드리지 않는다.
+   무관하므로 건드리지 않았다.
 
 ## 명시적으로 다루지 않아도 되는 것 (스코프 아님)
 - 정원(max_attendance) 초과 검증: 현재 `attend()`에도 없는 기존 공백이며, 이 작업의
@@ -107,11 +103,11 @@ club-schedule 프로젝트(Spring Boot + MyBatis)에서 그룹 일정(GroupSched
    생성자가 자동으로 포함되어 보이는지 브라우저에서 확인.
 
 ## 진행 상태
-- [ ] `resolveInitialStatus` 시그니처를 `(groupId, GroupScheduleVo schedule, userKey)`로
+- [x] `resolveInitialStatus` 시그니처를 `(groupId, GroupScheduleVo schedule, userKey)`로
       바꾸고 "생성자 본인이면 즉시 CONFIRMED" 조건 추가
-- [ ] `attend()`에서 바뀐 시그니처로 호출하도록 수정(41행에서 이미 조회한 `schedule` 전달)
-- [ ] `ScheduleAttendanceService`에 `registerCreatorAsAttendee(...)` 추가(내부적으로
-      확장된 `resolveInitialStatus` 재사용)
-- [ ] `GroupScheduleService.createSchedule()`에 자동 등록 훅 추가
-- [ ] `GroupScheduleService.approveSchedule()`에 자동 등록 훅 추가
-- [ ] 검증 항목 1~5 확인
+- [x] `attend()`를 "PENDING INSERT → 자동승인 대상이면 CONFIRMED 행 추가"로 재구성
+      (별도 `registerCreatorAsAttendee` 메서드는 만들지 않고 `attend()` 자체를 재사용)
+- [x] `GroupScheduleService`에 `ScheduleAttendanceService` 의존성 추가,
+      `createSchedule()`에 자동 등록 훅 추가(생성 즉시 CONFIRMED인 경우)
+- [x] `GroupScheduleService.approveSchedule()`에 자동 등록 훅 추가(PENDING→CONFIRMED 승인 시)
+- [ ] 검증 항목 1~5 확인 (서버 기동 후 수동/DB 확인 필요)

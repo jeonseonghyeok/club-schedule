@@ -32,6 +32,8 @@
 | 출석(참가) 관리 — 프론트 UI | `group.html` 일정 상세 모달에 참가 신청 버튼, 참가자 명단(호버/탭 팝오버), 참가자 관리 모달(승인/거부/출석체크) 구현 |
 | 그룹 가입 요청·승인 | `POST/DELETE/GET .../join-requests`, `PATCH /groups/joins/{id}/approve\|reject` ([API.md](API.md#그룹-가입-요청-api)) |
 | 그룹 정보 수정 | `PATCH /groups/{groupId}` — 이름·설명·정원·자동승인·일정정책 ([API.md](API.md#그룹-api)) |
+| 일정 생성자 자동 참가 등록 | `GroupScheduleService.createSchedule/approveSchedule`에서 CONFIRMED 시점에 `scheduleAttendanceService.attend()` 자동 호출, `resolveInitialStatus`에서 생성자 본인은 항상 CONFIRMED (상세: [plans/schedule-creator-auto-attend.md](plans/schedule-creator-auto-attend.md)) |
+| 모바일 캘린더 일자 모달 + 홈탭 스케줄 개선 | 캘린더 날짜 셀은 갯수 배지만 표시하고 클릭 시 일자별 목록 모달(+ "일정추가" 버튼)로 통일, 홈 탭 "스케줄" 위젯은 승인(CONFIRMED)된 일정만 표시하며 인원 현황·참가 신청/취소/재신청 버튼·승인 대기중 표시 추가 (상세: [plans/mobile-calendar-day-view-and-home-schedule.md](plans/mobile-calendar-day-view-and-home-schedule.md)) |
 
 ---
 
@@ -39,14 +41,20 @@
 
 ### 우선순위 높음
 
-#### 1. 일정 생성자 자동 참가 등록
-- 상세 계획: [plans/schedule-creator-auto-attend.md](plans/schedule-creator-auto-attend.md)
-- 일정이 CONFIRMED 되는 시점(생성 즉시 또는 승인 시)에 생성자를 자동으로 참가자로 등록
-- 참가 신청 시 자동승인 조건(신청자 본인/관리자/리더)도 이 계획에 포함되어 `resolveInitialStatus` 확장으로 함께 처리
-
 #### 2. 참가 신청 승인 프로세스 — 알림 연동
 - 상세 계획: [plans/attendance-approval-notifications.md](plans/attendance-approval-notifications.md)
 - 그룹 가입/생성 신청과 달리 참가 신청 승인/거부 시 신청자에게 알림이 전혀 가지 않음
+
+#### 10. 우선모임(즐겨찾기) 지정/변경/해제
+- 상세 계획: [plans/favorite-group.md](plans/favorite-group.md)
+- 사용자당 최대 1개 모임을 "우선모임"으로 지정. 모임 상세 탭 바 우측 별 버튼 토글 —
+  미지정 시 등록, 다른 그룹이 지정돼 있으면 변경 확인 후 변경, 이미 지정된 그룹이면 해제
+
+#### 11. 로그인/홈 접근 시 우선모임 자동이동
+- 상세 계획: [plans/favorite-group-auto-redirect.md](plans/favorite-group-auto-redirect.md)
+- 선행 조건: 10번(우선모임 지정 기능) 완료 후 착수
+- 로그인 직후·주소창으로 홈(`/`) 직접 접근 시 우선모임이 있으면 해당 모임 상세로 자동이동,
+  단 그룹 상세 화면의 "목록으로" 링크를 통한 이동은 자동이동 제외
 
 ---
 

@@ -78,9 +78,9 @@ public class AdminApiController {
     // 사용자 목록: 간단한 서버측 페이징 및 검색(닉네임)
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/users")
-    public ResponseEntity<?> apiUsers(@RequestParam(value = "page", required = false) Integer page,
-                                      @RequestParam(value = "size", required = false) Integer size,
-                                      @RequestParam(value = "q", required = false) String q) {
+    public ResponseEntity<?> apiUsers(@RequestParam(required = false) Integer page,
+                                      @RequestParam(required = false) Integer size,
+                                      @RequestParam(required = false) String q) {
         // If page parameter provided, use DB-level paging via UserService.findUsersPaged
         if (page != null){
             int sz = (size == null || size < 1) ? 25 : size;
@@ -107,9 +107,9 @@ public class AdminApiController {
     // 그룹 목록: 페이징 및 검색(그룹명)
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/groups")
-    public ResponseEntity<?> apiGroups(@RequestParam(value = "page", required = false) Integer page,
-                                       @RequestParam(value = "size", required = false) Integer size,
-                                       @RequestParam(value = "q", required = false) String q) {
+    public ResponseEntity<?> apiGroups(@RequestParam(required = false) Integer page,
+                                       @RequestParam(required = false) Integer size,
+                                       @RequestParam(required = false) String q) {
         if (page != null){
             int sz = (size == null || size < 1) ? 25 : size;
             int pg = Math.max(1, page);
@@ -135,10 +135,10 @@ public class AdminApiController {
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/group-requests")
     public ResponseEntity<?> apiGroupRequests(
-            @RequestParam(value = "page",   required = false) Integer page,
-            @RequestParam(value = "size",   required = false) Integer size,
-            @RequestParam(value = "status", required = false) String status,
-            @RequestParam(value = "q",      required = false) String q) {
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String q) {
 
         Map<String, Object> result = groupRequestService.getRequestsByFilters(status, q, page, size);
         int total = (int) result.get("total");
@@ -161,7 +161,7 @@ public class AdminApiController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/group-requests/{requestId}/approve")
     public ResponseEntity<?> approveGroupRequest(
-            @PathVariable("requestId") Long requestId,
+            @PathVariable Long requestId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         try {
             Long groupId = groupRequestService.approveRequest(requestId, userDetails.getUserKey());
@@ -175,7 +175,7 @@ public class AdminApiController {
     @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/group-requests/{requestId}/reject")
     public ResponseEntity<?> rejectGroupRequest(
-            @PathVariable("requestId") Long requestId,
+            @PathVariable Long requestId,
             @RequestBody Map<String, String> body,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         boolean ok = groupRequestService.rejectGroupRequest(
@@ -186,9 +186,9 @@ public class AdminApiController {
     // group-joins: 간단한 페이징
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/group-joins")
-    public ResponseEntity<?> apiGroupJoins(@RequestParam(value = "page", required = false) Integer page,
-                                           @RequestParam(value = "size", required = false) Integer size,
-                                           @RequestParam(value = "q", required = false) String q) {
+    public ResponseEntity<?> apiGroupJoins(@RequestParam(required = false) Integer page,
+                                           @RequestParam(required = false) Integer size,
+                                           @RequestParam(required = false) String q) {
         List<?> all = groupJoinRequestService.getAllPending();
         PagingResponse<?> resp = buildPagedResponse(all, page, size, q);
         return ResponseEntity.ok(resp);

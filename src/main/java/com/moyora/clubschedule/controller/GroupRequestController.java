@@ -68,7 +68,7 @@ public class GroupRequestController {
     // 사용자에 의한 신청 취소 (상태 변경 명시)
     @PatchMapping("/{requestId}/cancel")
     public ResponseEntity<?> cancelRequest(
-    		@PathVariable("requestId") Long requestId,
+    		@PathVariable Long requestId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         
         Long userKey = userDetails.getUserKey();
@@ -85,7 +85,7 @@ public class GroupRequestController {
     // 관리자 전용: 승인
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @PostMapping("/{requestId}/approve")
-    public ResponseEntity<?> approveRequest(@PathVariable("requestId") Long requestId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> approveRequest(@PathVariable Long requestId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         // 안전하게 관리자 키를 가져옴
         Long adminKey = null;
         if (userDetails != null) {
@@ -110,7 +110,7 @@ public class GroupRequestController {
     // 관리자 전용: 거부
     @PreAuthorize("hasRole('ROLE_ADMIN')")
     @PostMapping("/{requestId}/reject")
-    public ResponseEntity<?> rejectRequest(@PathVariable("requestId") Long requestId, @RequestBody Map<String, String> body, @AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> rejectRequest(@PathVariable Long requestId, @RequestBody Map<String, String> body, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long adminKey = null;
         if (userDetails != null) {
             adminKey = userDetails.getUserKey();

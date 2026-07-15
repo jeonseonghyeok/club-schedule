@@ -23,7 +23,7 @@ public class GroupViewController {
     private final GroupPermissionService groupPermissionService;
 
     @GetMapping("/groups/{groupId}")
-    public String manageView(@PathVariable("groupId") Long groupId,
+    public String manageView(@PathVariable Long groupId,
                              @AuthenticationPrincipal CustomUserDetails userDetails,
                              Model model) {
         GroupVo group = groupService.findById(groupId);

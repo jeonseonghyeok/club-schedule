@@ -45,7 +45,7 @@ public class GroupApiController {
     // ── Members ──────────────────────────────────────────────────────────────
 
     @GetMapping("/{groupId}/members")
-    public ResponseEntity<?> members(@PathVariable("groupId") Long groupId) {
+    public ResponseEntity<?> members(@PathVariable Long groupId) {
         List<GroupMemberVo> members = groupManageService.listMembers(groupId);
         List<Map<String,Object>> out = new ArrayList<>();
         for (GroupMemberVo m : members) {
@@ -62,8 +62,8 @@ public class GroupApiController {
 
     @PatchMapping("/{groupId}/members/{userKey}/ban")
     public ResponseEntity<?> banMember(
-            @PathVariable("groupId") Long groupId,
-            @PathVariable("userKey") Long userKey,
+            @PathVariable Long groupId,
+            @PathVariable Long userKey,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
         if (operator == null) return ResponseEntity.status(401).build();
@@ -75,13 +75,13 @@ public class GroupApiController {
 
     @GetMapping("/{groupId}/schedules")
     public ResponseEntity<?> getSchedules(
-            @PathVariable("groupId") Long groupId,
-            @RequestParam(value = "from", required = false) Long fromMs,
-            @RequestParam(value = "to", required = false) Long toMs,
+            @PathVariable Long groupId,
+            @RequestParam(required = false) Long from,
+            @RequestParam(required = false) Long to,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userDetails != null ? userDetails.getUserKey() : null;
         List<GroupScheduleVo> schedules = groupScheduleService.listSchedules(
-                groupId, userKey, epochToLocalDateTime(fromMs), epochToLocalDateTime(toMs));
+                groupId, userKey, epochToLocalDateTime(from), epochToLocalDateTime(to));
         List<Map<String,Object>> result = new ArrayList<>();
         for (GroupScheduleVo s : schedules) {
             result.add(toCalendarEvent(s));
@@ -91,7 +91,7 @@ public class GroupApiController {
 
     @PostMapping("/{groupId}/schedules")
     public ResponseEntity<?> createSchedule(
-            @PathVariable("groupId") Long groupId,
+            @PathVariable Long groupId,
             @RequestBody Map<String,Object> payload,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
@@ -132,8 +132,8 @@ public class GroupApiController {
 
     @PatchMapping("/{groupId}/schedules/{scheduleId}")
     public ResponseEntity<?> editSchedule(
-            @PathVariable("groupId")    Long groupId,
-            @PathVariable("scheduleId") Long scheduleId,
+            @PathVariable Long groupId,
+            @PathVariable Long scheduleId,
             @RequestBody Map<String,Object> payload,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
@@ -162,8 +162,8 @@ public class GroupApiController {
 
     @PatchMapping("/{groupId}/schedules/{scheduleId}/approve")
     public ResponseEntity<?> approveSchedule(
-            @PathVariable("groupId") Long groupId,
-            @PathVariable("scheduleId") Long scheduleId,
+            @PathVariable Long groupId,
+            @PathVariable Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
         if (operator == null) return ResponseEntity.status(401).build();
@@ -173,8 +173,8 @@ public class GroupApiController {
 
     @PatchMapping("/{groupId}/schedules/{scheduleId}/reject")
     public ResponseEntity<?> rejectSchedule(
-            @PathVariable("groupId") Long groupId,
-            @PathVariable("scheduleId") Long scheduleId,
+            @PathVariable Long groupId,
+            @PathVariable Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
         if (operator == null) return ResponseEntity.status(401).build();
@@ -184,8 +184,8 @@ public class GroupApiController {
 
     @PatchMapping("/{groupId}/schedules/{scheduleId}/cancel")
     public ResponseEntity<?> cancelSchedule(
-            @PathVariable("groupId") Long groupId,
-            @PathVariable("scheduleId") Long scheduleId,
+            @PathVariable Long groupId,
+            @PathVariable Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
         if (operator == null) return ResponseEntity.status(401).build();

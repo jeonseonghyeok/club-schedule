@@ -27,20 +27,15 @@ com.moyora.clubschedule
 ## 핵심 규칙
 
 ### 컨트롤러 파라미터 명시 (중요)
-이 프로젝트는 Gradle 빌드에 `-parameters` 컴파일러 플래그가 **없다**.
-파라미터 이름을 명시하지 않으면 런타임 500 오류가 발생한다.
+`build.gradle`에 `-parameters` 컴파일러 플래그가 추가되어 있어, 컨트롤러의 `@RequestParam`/`@PathVariable`/`@RequestHeader`는 이름을 생략한다(변수명 자체가 곧 파라미터명이 된다). 변수명은 항상 요청 파라미터명과 동일하게 짓는다 — 다른 이름을 쓰지 않으므로 `value`/`name` 속성으로 이름을 명시해야 하는 경우는 없다.
 
 ```java
-// 잘못된 예 → 500 오류
 @RequestParam(required = false) Integer page
 @PathVariable Long requestId
-
-// 올바른 예
-@RequestParam(value = "page", required = false) Integer page
-@PathVariable("requestId") Long requestId
+@RequestParam(required = false) Long from
 ```
 
-모든 `@RequestParam`, `@PathVariable`, `@RequestHeader`에 항상 이름을 명시한다.
+**주의**: 이 프로젝트는 Eclipse Buildship(Gradle 연동, `auto.sync=false`) 프로젝트라 `build.gradle`을 변경한 뒤에는 Eclipse에서 **우클릭 → Gradle → Refresh Gradle Project**를 반드시 해야 `-parameters` 플래그가 실제 컴파일에 반영된다. 새로고침 전이거나 순수 `javac`/다른 빌드 경로에서는 파라미터 이름 미명시 시 런타임 500 오류가 발생하므로, `build.gradle`을 pull 받은 후에는 항상 Gradle Refresh부터 수행한다.
 
 ### MyBatis
 - `mybatis.configuration.map-underscore-to-camel-case=true` 설정됨

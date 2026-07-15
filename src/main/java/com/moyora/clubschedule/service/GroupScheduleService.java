@@ -160,7 +160,7 @@ public class GroupScheduleService {
             int confirmed = scheduleAttendanceMapper.countConfirmedAttendees(scheduleId);
             if (dto.getMaxAttendance() < confirmed) {
                 throw new IllegalArgumentException(
-                        String.format("현재 참가 확정 인원(%d명)보다 정원이 작을 수 없습니다.", confirmed));
+                        String.format("현재 참석 확정 인원(%d명)보다 정원이 작을 수 없습니다.", confirmed));
             }
         }
 

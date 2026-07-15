@@ -17,7 +17,7 @@ public interface ScheduleAttendanceMapper {
             @Param("scheduleId") Long scheduleId,
             @Param("userKey")    Long userKey);
 
-    /** 참가자 목록 (is_latest=1, displayName JOIN) */
+    /** 참석자 목록 (is_latest=1, displayName JOIN) */
     List<ScheduleAttendanceVo> selectActiveList(@Param("scheduleId") Long scheduleId);
 
     /** 기존 is_latest=1 행을 0으로 무효화 */
@@ -25,7 +25,7 @@ public interface ScheduleAttendanceMapper {
             @Param("scheduleId") Long scheduleId,
             @Param("userKey")    Long userKey);
 
-    /** 새 참가 행 INSERT — 신청/승인/거부/취소/강제취소 전부 이 메서드로 새 행을 만든다.
+    /** 새 참석 행 INSERT — 신청/승인/거부/취소/강제취소 전부 이 메서드로 새 행을 만든다.
      *  status 값 자체가 이력 조회 시 어떤 액션이었는지를 의미한다. */
     int insertAttendance(ScheduleAttendanceVo vo);
 

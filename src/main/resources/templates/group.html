@@ -523,14 +523,14 @@ function startOfMonth(date){ const d = new Date(date); d.setHours(0,0,0,0); d.se
     }
   }
 
-  // 참가 신청/취소 (인원 행 바로 아래)
+  // 참석 신청/취소 (인원 행 바로 아래)
   if (isConfirmed && isMember) {
     const attendBtnRow = document.createElement('div');
     attendBtnRow.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
     const attBtn = document.createElement('button');
     attBtn.className = 'btn'; attBtn.disabled = true;
     attBtn.style.cssText = 'font-size:13px;width:100%;background:#94a3b8;color:#fff;font-weight:700;border:none;border-radius:8px;padding:8px 0;cursor:default;';
-    attBtn.textContent = '참가 신청';
+    attBtn.textContent = '참석 신청';
     attendBtnRow.appendChild(attBtn);
     wrap.appendChild(attendBtnRow);
     loadMyAttendance(ev, attendBtnRow, attBtn);
@@ -576,46 +576,61 @@ function startOfMonth(date){ const d = new Date(date); d.setHours(0,0,0,0); d.se
   window.openCommonModal({title:ev.title||'일정',content:wrap,size:'md'});
 }
 
-// 내 참가 상태에 따라 상단 참가 버튼(attBtn)을 갱신하고, 필요 시 안내 문구/취소 버튼을 추가
-async function loadMyAttendance(ev, containerEl, attBtn) {
+// 내 참석 상태에 따라 상단 참석 버튼(attBtn)을 갱신하고, 필요 시 안내 문구/취소 버튼을 추가
+// onSuccess 생략 시(상세 모달 호출부) 기존처럼 모달을 닫고 완료 토스트를 띄운다.
+// opts.compact === true면 홈탭 카드용 좁은 알약형 버튼/배지 스타일을 사용한다.
+async function loadMyAttendance(ev, containerEl, attBtn, onSuccess, opts) {
+  const compact = !!(opts && opts.compact);
+  const applyBtnStyle = (bg, color, border) => {
+    attBtn.style.cssText = compact
+      ? 'font-size:12px;padding:6px 14px;border-radius:999px;font-weight:700;white-space:nowrap;cursor:pointer;background:'+bg+';color:'+color+';border:'+(border||'none')+';'
+      : 'font-size:13px;width:100%;font-weight:700;border-radius:8px;padding:8px 0;cursor:pointer;background:'+bg+';color:'+color+';border:'+(border||'none')+';';
+  };
+  const defaultOnSuccess = (msg, color) => {
+    window.closeCommonModal && window.closeCommonModal();
+    const sd = document.createElement('div'); sd.style.cssText = 'padding:8px 0;color:' + color + ';'; sd.textContent = msg;
+    window.openCommonModal({ title: '완료', content: sd, size: 'sm' });
+  };
   try {
     const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance', { credentials: 'same-origin' });
     const list = res.ok ? await res.json() : [];
     const myAtt = list.find(a => String(a.userKey) === String(currentUserKey));
     if (!myAtt || myAtt.status === 'REJECTED' || myAtt.status === 'CANCELLED') {
       const isRejected = !!myAtt && myAtt.status === 'REJECTED';
-      attBtn.disabled = false; attBtn.style.cursor = 'pointer';
-      attBtn.style.background = isRejected ? '#dc2626' : '#2563eb';
-      attBtn.textContent = isRejected ? '참가 재신청' : '참가 신청';
+      attBtn.disabled = false;
+      applyBtnStyle(isRejected ? '#dc2626' : '#2563eb', '#fff');
+      attBtn.textContent = isRejected ? '참석 재신청' : '참석 신청';
       attBtn.onclick = async () => {
         const originalLabel = attBtn.textContent;
         attBtn.disabled = true; attBtn.textContent = '처리 중...';
         try {
           const r = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attend', { method: 'POST', credentials: 'same-origin' });
-          if (r.ok) { window.closeCommonModal && window.closeCommonModal(); const sd = document.createElement('div'); sd.style.cssText = 'padding:8px 0;color:#166534;'; sd.textContent = '참가 신청이 완료되었습니다.'; window.openCommonModal({ title: '완료', content: sd, size: 'sm' }); }
+          if (r.ok) { (onSuccess || (() => defaultOnSuccess('참석 신청이 완료되었습니다.', '#166534')))(); }
           else { const j = await r.json().catch(() => ({})); attBtn.disabled = false; attBtn.textContent = originalLabel; alert(j.message || '신청 실패'); }
         } catch (e) { attBtn.disabled = false; attBtn.textContent = originalLabel; alert(e.message); }
       };
     } else if (myAtt.status === 'PENDING' || myAtt.status === 'CONFIRMED') {
       if (myAtt.status === 'PENDING') {
-        const msg = document.createElement('div'); msg.style.cssText = 'font-size:12px;color:#854d0e;background:#fef9c3;border-radius:6px;padding:6px 10px;'; msg.textContent = '참가 신청 승인 대기 중입니다.';
+        const msg = document.createElement('div');
+        if (compact) { msg.style.cssText = 'font-size:11px;color:#854d0e;background:#fef9c3;border-radius:999px;padding:2px 8px;white-space:nowrap;'; msg.textContent = '대기중'; }
+        else { msg.style.cssText = 'font-size:12px;color:#854d0e;background:#fef9c3;border-radius:6px;padding:6px 10px;'; msg.textContent = '참석 신청 승인 대기 중입니다.'; }
         containerEl.insertBefore(msg, attBtn);
       }
       attBtn.disabled = false;
-      attBtn.style.cssText = 'font-size:13px;width:100%;background:#fff1f2;color:#be123c;font-weight:700;border:1px solid #fecaca;border-radius:8px;padding:8px 0;cursor:pointer;';
-      attBtn.textContent = '참가 취소';
+      applyBtnStyle('#fff1f2', '#be123c', '1px solid #fecaca');
+      attBtn.textContent = '참석 취소';
       attBtn.onclick = async () => {
-        if (!confirm('참가를 취소하시겠습니까?')) return;
+        if (!confirm('참석를 취소하시겠습니까?')) return;
         attBtn.disabled = true;
         try {
           const r = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attend', { method: 'DELETE', credentials: 'same-origin' });
-          if (r.ok) { window.closeCommonModal && window.closeCommonModal(); const sd = document.createElement('div'); sd.style.cssText = 'padding:8px 0;color:#64748b;'; sd.textContent = '참가 취소되었습니다.'; window.openCommonModal({ title: '완료', content: sd, size: 'sm' }); }
+          if (r.ok) { (onSuccess || (() => defaultOnSuccess('참석 취소되었습니다.', '#64748b')))(); }
           else { const j = await r.json().catch(() => ({})); attBtn.disabled = false; alert(j.message || '취소 실패'); }
         } catch (e) { attBtn.disabled = false; alert(e.message); }
       };
     }
   } catch (e) {
-    const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '참가 상태를 불러오지 못했습니다.';
+    const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '참석 상태를 불러오지 못했습니다.';
     containerEl.appendChild(errDiv);
   }
 }
@@ -642,7 +657,7 @@ function attachRosterPopover(triggerEl, anchorEl, scheduleId) {
       const rows = list.filter(a => a.status === 'CONFIRMED' || a.status === 'PENDING');
       b.innerHTML = '';
       if (rows.length === 0) {
-        const em = document.createElement('div'); em.style.cssText = 'font-size:12px;color:#94a3b8;'; em.textContent = '참가자가 없습니다.'; b.appendChild(em);
+        const em = document.createElement('div'); em.style.cssText = 'font-size:12px;color:#94a3b8;'; em.textContent = '참석자가 없습니다.'; b.appendChild(em);
       } else {
         rows.forEach(a => {
           const row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0;';
@@ -674,7 +689,7 @@ function attachRosterPopover(triggerEl, anchorEl, scheduleId) {
   });
 }
 
-// '참가자 관리' 모달: 출석 체크 / 참가자 개별 승인·거부 등 관리자 전용 기능
+// '참석자 관리' 모달: 출석 체크 / 참석자 개별 승인·거부 등 관리자 전용 기능
 function openAttendeeManageModal(ev) {
   const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
 
@@ -713,7 +728,7 @@ function openAttendeeManageModal(ev) {
       const pending = list.filter(a => a.status === 'PENDING');
       const confirmed = list.filter(a => a.status === 'CONFIRMED');
       if (pending.length === 0 && confirmed.length === 0) {
-        const em = document.createElement('div'); em.style.cssText = 'font-size:13px;color:#94a3b8;'; em.textContent = '참가자가 없습니다.'; contentApply.appendChild(em);
+        const em = document.createElement('div'); em.style.cssText = 'font-size:13px;color:#94a3b8;'; em.textContent = '참석자가 없습니다.'; contentApply.appendChild(em);
         return;
       }
       if (pending.length > 0) {
@@ -726,7 +741,7 @@ function openAttendeeManageModal(ev) {
       }
     } catch (e) {
       contentApply.innerHTML = '';
-      const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '참가자 정보를 불러오지 못했습니다.'; contentApply.appendChild(errDiv);
+      const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '참석자 정보를 불러오지 못했습니다.'; contentApply.appendChild(errDiv);
     }
   }
 
@@ -833,7 +848,7 @@ function openAttendeeManageModal(ev) {
             };
             const rejB = document.createElement('button'); rejB.className = 'tab'; rejB.style.cssText = 'padding:2px 8px;font-size:11px;background:#fee2e2;color:#991b1b;'; rejB.textContent = '거부';
             rejB.onclick = async () => {
-              if (!confirm('참가를 거부하시겠습니까?')) return;
+              if (!confirm('참석를 거부하시겠습니까?')) return;
               rejB.disabled = true;
               try {
                 const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey + '/reject', { method: 'PATCH', credentials: 'same-origin' });
@@ -847,7 +862,7 @@ function openAttendeeManageModal(ev) {
           if (canManageSchedule && a.status === 'CONFIRMED') {
             const cancelB = document.createElement('button'); cancelB.className = 'tab'; cancelB.style.cssText = 'padding:2px 8px;font-size:11px;background:#fff1f2;color:#be123c;margin-left:auto;'; cancelB.textContent = '취소';
             cancelB.onclick = async () => {
-              if (!confirm('이 참가자의 참가를 취소하시겠습니까?')) return;
+              if (!confirm('이 참석자의 참석를 취소하시겠습니까?')) return;
               cancelB.disabled = true;
               try {
                 const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey, { method: 'DELETE', credentials: 'same-origin' });
@@ -861,7 +876,7 @@ function openAttendeeManageModal(ev) {
   }
 
   loadApplyTab();
-  window.openCommonModal({ title: '참가자 관리', content: wrap, size: 'md' });
+  window.openCommonModal({ title: '참석자 관리', content: wrap, size: 'md' });
 }
 
 function getCookie(name) {
@@ -1079,16 +1094,66 @@ function createDateTimeField() {
              });
          };
 
-        // 최근 일정 목록 갱신
+        // "오늘" / "N일 후" 상대 날짜 표기
+        function formatRelativeDay(ms){
+            const now = new Date(); const start = new Date(ms);
+            const a = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            const b = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            const diff = Math.round((b-a)/86400000);
+            return diff<=0 ? '오늘' : diff+'일 후';
+        }
+        // "오전/오후 H시M분" 시간 표기 (분이 0이면 생략)
+        function formatAmPmTime(ms){
+            const d = new Date(ms); let h = d.getHours(); const m = d.getMinutes();
+            const ap = h<12 ? '오전' : '오후'; h = h%12; if (h===0) h = 12;
+            return ap+' '+h+'시'+(m>0 ? (m+'분') : '');
+        }
+        // 일정 카드 공용 라벨-값 한 줄 (시작시간/모임장소/참석인원 등, 홈탭·일자 모달 공용)
+        function mkInfoLine(label, value){
+            const line = document.createElement('div'); line.style.cssText='display:flex;gap:6px;font-size:12px;line-height:1.5;';
+            const lb = document.createElement('span'); lb.style.cssText='color:#94a3b8;flex-shrink:0;width:52px;'; lb.textContent = label;
+            const v = document.createElement('span'); v.style.cssText='color:#334155;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'; v.textContent = value;
+            line.appendChild(lb); line.appendChild(v); return line;
+        }
+        // 상태별 좌측 border 색상 (승인/대기/거부/취소)
+        const STATUS_BORDER_COLOR = { PENDING:'#eab308', CONFIRMED:'#22c55e', REJECTED:'#ef4444', CANCELLED:'#94a3b8' };
+
+        // 최근 일정 목록 갱신 (승인된 일정만, 인원 현황 + 참석 신청/취소/재신청 버튼을 일정 우측에 컴팩트하게 표시)
         function updateRecentSchedules(){
             if (!recentEl) return; recentEl.innerHTML = '';
             const now = Date.now();
-            const upcoming = (calendarEvents || []).filter(ev => ev.start && ev.start >= now).sort((a,b)=>a.start-b.start).slice(0,3);
+            const upcoming = (calendarEvents || []).filter(ev => ev.start && ev.start >= now && ev.status === 'CONFIRMED').sort((a,b)=>a.start-b.start).slice(0,3);
             if (upcoming.length === 0){ recentEl.innerHTML = '<div class="muted">임박한 일정이 없습니다.</div>'; return; }
             upcoming.forEach(ev=>{
-                const row = document.createElement('div'); row.style.padding='8px'; row.style.borderBottom='1px solid #f0f0f0'; row.style.cursor='pointer';
-                const when = new Date(ev.start).toLocaleString(); row.innerHTML = '<div style="font-weight:700">'+(ev.title||'일정')+'</div><div style="color:#64748b">'+when+'</div>';
+                const row = document.createElement('div'); row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;';
+                const capValue = ev.maxAttendance > 0 ? `${ev.confirmedCount||0}/${ev.maxAttendance}명` : `${ev.confirmedCount||0}명 / 제한없음`;
+                const dayLabel = formatRelativeDay(ev.start);
+                const info = document.createElement('div'); info.style.cssText='min-width:0;flex:1;display:flex;flex-direction:column;gap:2px;';
+
+                const titleRow = document.createElement('div'); titleRow.style.cssText='display:flex;align-items:center;gap:6px;';
+                const dayBadge = document.createElement('span'); dayBadge.style.cssText = 'flex-shrink:0;font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;' + (dayLabel==='오늘' ? 'background:#2563eb;color:#fff;' : 'background:#eff6ff;color:#1d4ed8;'); dayBadge.textContent = dayLabel;
+                const title = document.createElement('span'); title.style.cssText='font-weight:700;font-size:14px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;'; title.textContent = ev.title||'일정';
+                titleRow.appendChild(dayBadge); titleRow.appendChild(title);
+                info.appendChild(titleRow);
+
+                info.appendChild(mkInfoLine('시작시간', formatAmPmTime(ev.start)));
+                info.appendChild(mkInfoLine('모임장소', ev.locationName || '-'));
+                info.appendChild(mkInfoLine('참석인원', capValue));
+
+                row.appendChild(info);
                 row.addEventListener('click', ()=> openEventDetail(ev));
+                if (isMember) {
+                    const side = document.createElement('div');
+                    side.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;';
+                    side.addEventListener('click', e => e.stopPropagation());
+                    const attBtn = document.createElement('button');
+                    attBtn.disabled = true;
+                    attBtn.style.cssText = 'font-size:12px;padding:6px 14px;border-radius:999px;border:none;background:#94a3b8;color:#fff;font-weight:700;cursor:default;white-space:nowrap;';
+                    attBtn.textContent = '참석 신청';
+                    side.appendChild(attBtn);
+                    row.appendChild(side);
+                    loadMyAttendance(ev, side, attBtn, () => updateRecentSchedules(), { compact: true });
+                }
                 recentEl.appendChild(row);
             });
         }
@@ -1109,12 +1174,10 @@ function createDateTimeField() {
             const firstDayWeek = monthStart.getDay(); const startDate = new Date(monthStart); startDate.setDate(startDate.getDate() - firstDayWeek);
             const _dk=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); const eventsByDate = {}; const _filtered=(calendarEvents||[]).filter(ev=>scheduleFilter==='ALL'||ev.status===scheduleFilter); _filtered.forEach(ev=>{ if (!ev.start) return; const d=new Date(ev.start); const key=_dk(d); if (!eventsByDate[key]) eventsByDate[key]=[]; eventsByDate[key].push(ev); });
             const todayStr=_dk(new Date());
-            for (let i=0;i<42;i++){ const cellDate = new Date(startDate); cellDate.setDate(cellDate.getDate()+i); const dateKey=_dk(cellDate); const isCurrentMonth = cellDate.getMonth()===month; const isToday = dateKey===todayStr; const cell = document.createElement('div'); cell.className = `min-height-[110px] p-2 bg-white flex flex-col gap-1 transition-colors hover:bg-slate-50 cursor-pointer ${!isCurrentMonth? 'bg-slate-50/50 text-slate-300':'text-slate-700'}`; const cellHeader = document.createElement('div'); cellHeader.className='flex justify-between items-start'; const dayNum = document.createElement('span'); dayNum.className = `inline-flex items-center justify-center w-7 h-7 text-sm font-semibold rounded-full ${isToday ? 'bg-blue-600 text-white' : ''}`; dayNum.textContent = cellDate.getDate(); cellHeader.appendChild(dayNum);
-                 cell.appendChild(cellHeader);
-                const evs = eventsByDate[dateKey] || []; const evContainer = document.createElement('div'); evContainer.className='flex flex-col gap-1 mt-1 overflow-hidden'; evs.slice(0,3).forEach(it=>{ const itEl = document.createElement('div'); const _sc=it.status==='PENDING'?'bg-yellow-50 text-yellow-700 border-yellow-100':it.status==='REJECTED'?'bg-red-50 text-red-600 border-red-100':it.status==='CANCELLED'?'bg-gray-50 text-gray-400 border-gray-200':'bg-blue-50 text-blue-700 border-blue-100'; itEl.className='text-[10px] sm:text-xs p-1 px-1.5 rounded border truncate font-medium '+_sc; itEl.textContent = it.title; itEl.onclick = (e)=>{ e.stopPropagation(); openEventDetail(it); }; evContainer.appendChild(itEl); }); if (evs.length>3){ const more = document.createElement('div'); more.className='text-[10px] text-slate-400 pl-1 font-medium'; more.textContent = `+ ${evs.length-3}개 더보기`; evContainer.appendChild(more); }
-                cell.appendChild(evContainer);
-                // 날짜 클릭: 등록 권한 있으면 일정 등록, 없고 이벤트 있으면 일별 보기
-                cell.onclick = ()=>{ if(canCreateSchedule){ window.openCreateEventModal(cellDate); } else if(evs.length>0){ openDayView(cellDate,evs); } };
+            for (let i=0;i<42;i++){ const cellDate = new Date(startDate); cellDate.setDate(cellDate.getDate()+i); const dateKey=_dk(cellDate); const isCurrentMonth = cellDate.getMonth()===month; const isToday = dateKey===todayStr; const cell = document.createElement('div'); cell.className = `min-h-[52px] sm:min-h-[76px] p-1 sm:p-2 bg-white flex flex-col gap-0.5 overflow-hidden transition-colors hover:bg-slate-50 cursor-pointer ${!isCurrentMonth? 'bg-slate-50/50 text-slate-300':'text-slate-700'}`; const dayNum = document.createElement('span'); dayNum.className = `inline-flex items-center justify-center w-5 h-5 sm:w-7 sm:h-7 text-xs sm:text-sm font-semibold rounded-full flex-shrink-0 ${isToday ? 'bg-blue-600 text-white' : ''}`; dayNum.textContent = cellDate.getDate(); cell.appendChild(dayNum);
+                const evs = eventsByDate[dateKey] || []; if (evs.length>0){ const _has=s=>evs.some(it=>it.status===s); const _top=_has('PENDING')?'PENDING':_has('CONFIRMED')?'CONFIRMED':_has('REJECTED')?'REJECTED':'CANCELLED'; const _sc=_top==='PENDING'?'bg-yellow-50 text-yellow-700 border-yellow-100':_top==='REJECTED'?'bg-red-50 text-red-600 border-red-100':_top==='CANCELLED'?'bg-gray-50 text-gray-400 border-gray-200':'bg-blue-50 text-blue-700 border-blue-100'; const countBadge = document.createElement('span'); countBadge.className='inline-block self-start px-1 py-0.5 rounded border text-[9px] sm:text-xs font-semibold whitespace-nowrap '+_sc; countBadge.textContent = (evs.length>99 ? '99+' : String(evs.length))+'건'; cell.appendChild(countBadge); }
+                // 날짜 클릭: 항상 일자별 목록 모달을 연다(빈 날짜 포함) — 일정 등록은 모달 내 "일정추가" 버튼으로
+                cell.onclick = ()=>{ openDayView(cellDate, evs); };
                 grid.appendChild(cell);
             }
             cal.appendChild(grid);
@@ -1147,7 +1210,49 @@ async function loadSchedules(){ const cal = document.getElementById('calendarFul
             });
         }); actions.appendChild(banBtn); div.appendChild(left); div.appendChild(actions); return div; }
 
-        function openDayView(date, evs){ const dayList = document.getElementById('calendarDayList'); if(!dayList) return; dayList.innerHTML=''; const h = document.createElement('div'); h.textContent = date.getFullYear()+'-'+(date.getMonth()+1)+'-'+date.getDate(); h.style.fontWeight='700'; h.style.marginBottom='8px'; dayList.appendChild(h); if(!evs||evs.length===0){ const p = document.createElement('div'); p.textContent='해당일의 일정이 없습니다.'; dayList.appendChild(p); return; } evs.forEach(it=>{ const row = document.createElement('div'); row.style.padding='8px'; row.style.border='1px solid #eee'; row.style.borderRadius='8px'; row.style.marginBottom='6px'; row.textContent = (new Date(it.start)).toLocaleString() + ' — ' + it.title; dayList.appendChild(row); }); }
+        function openDayView(date, evs){
+          const wrap = document.createElement('div'); wrap.style.cssText='display:flex;flex-direction:column;gap:8px;';
+          const sorted = (evs||[]).slice().sort((a,b)=>(a.start||0)-(b.start||0));
+          if (sorted.length===0){
+            const em = document.createElement('div'); em.style.cssText='color:#94a3b8;font-size:14px;padding:8px 0;'; em.textContent='이 날짜에 등록된 일정이 없습니다.'; wrap.appendChild(em);
+          } else {
+            sorted.forEach(it=>{
+              const row = document.createElement('div');
+              row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid #e2e8f0;border-left-color:'+(STATUS_BORDER_COLOR[it.status]||'#94a3b8')+';border-radius:8px;cursor:pointer;';
+              const capValue = it.maxAttendance > 0 ? `${it.confirmedCount||0}/${it.maxAttendance}명` : `${it.confirmedCount||0}명 / 제한없음`;
+              const info = document.createElement('div'); info.style.cssText='min-width:0;flex:1;display:flex;flex-direction:column;gap:2px;';
+              const title = document.createElement('div'); title.style.cssText='font-weight:700;font-size:14px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'; title.textContent = it.title||'일정';
+              info.appendChild(title);
+              info.appendChild(mkInfoLine('시작시간', it.start ? formatAmPmTime(it.start) : '-'));
+              info.appendChild(mkInfoLine('모임장소', it.locationName || '-'));
+              info.appendChild(mkInfoLine('참석인원', capValue));
+              row.appendChild(info);
+              row.onclick = ()=>{ window.closeCommonModal && window.closeCommonModal(); openEventDetail(it); };
+
+              if (it.status === 'CONFIRMED' && isMember) {
+                const side = document.createElement('div');
+                side.style.cssText = 'display:flex;flex-direction:column;align-items:flex-end;gap:4px;flex-shrink:0;';
+                side.addEventListener('click', e => e.stopPropagation());
+                const attBtn = document.createElement('button');
+                attBtn.disabled = true;
+                attBtn.style.cssText = 'font-size:12px;padding:6px 14px;border-radius:999px;border:none;background:#94a3b8;color:#fff;font-weight:700;cursor:default;white-space:nowrap;';
+                attBtn.textContent = '참석 신청';
+                side.appendChild(attBtn);
+                row.appendChild(side);
+                loadMyAttendance(it, side, attBtn, () => openDayView(date, evs), { compact: true });
+              }
+
+              wrap.appendChild(row);
+            });
+          }
+          if (canCreateSchedule){
+            const addBtn = document.createElement('button'); addBtn.className='btn'; addBtn.style.cssText='margin-top:4px;width:100%;background:#2563eb;color:#fff;font-weight:700;border:none;border-radius:8px;padding:10px 0;cursor:pointer;'; addBtn.textContent='일정추가';
+            addBtn.onclick = ()=>{ window.closeCommonModal && window.closeCommonModal(); window.openCreateEventModal(date); };
+            wrap.appendChild(addBtn);
+          }
+          const _y=date.getFullYear(), _m=String(date.getMonth()+1).padStart(2,'0'), _d=String(date.getDate()).padStart(2,'0');
+          window.openCommonModal({ title: _y+'-'+_m+'-'+_d+' 일정', content: wrap, size:'sm' });
+        }
 
         // 외부에서 사용하는 함수 노출
         function openEditModal(scheduleId) {

@@ -30,7 +30,7 @@ public class ScheduleAttendanceApiController {
 
     private final ScheduleAttendanceService attendanceService;
 
-    /** 참가 신청 */
+    /** 참석 신청 */
     @PostMapping("/attend")
     public ResponseEntity<?> attend(
             @PathVariable Long groupId,
@@ -42,7 +42,7 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok(toMap(result));
     }
 
-    /** 참가 취소 (본인) */
+    /** 참석 취소 (본인) */
     @DeleteMapping("/attend")
     public ResponseEntity<?> cancelAttend(
             @PathVariable Long groupId,
@@ -54,7 +54,7 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok().build();
     }
 
-    /** 참가자 목록 */
+    /** 참석자 목록 */
     @GetMapping("/attendance")
     public ResponseEntity<?> listAttendees(
             @PathVariable Long groupId,
@@ -67,7 +67,7 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok(result);
     }
 
-    /** 참가 이력(신청/승인/거부/취소) — is_latest 무관 전체, 시간순 */
+    /** 참석 이력(신청/승인/거부/취소) — is_latest 무관 전체, 시간순 */
     @GetMapping("/attendance/history")
     public ResponseEntity<?> listHistory(
             @PathVariable Long groupId,
@@ -80,7 +80,7 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok(result);
     }
 
-    /** 참가 승인 */
+    /** 참석 승인 */
     @PatchMapping("/attendance/{targetUserKey}/approve")
     public ResponseEntity<?> approve(
             @PathVariable Long groupId,
@@ -93,7 +93,7 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok(toMap(result));
     }
 
-    /** 참가 거부 */
+    /** 참석 거부 */
     @PatchMapping("/attendance/{targetUserKey}/reject")
     public ResponseEntity<?> reject(
             @PathVariable Long groupId,

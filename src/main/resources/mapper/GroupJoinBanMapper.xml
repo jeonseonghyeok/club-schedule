@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.moyora.clubschedule.mapper.GroupJoinBanMapper">
+
+    <resultMap id="banRM" type="com.moyora.clubschedule.vo.GroupJoinBanVo">
+        <id     property="groupId"           column="group_id"/>
+        <id     property="userKey"           column="user_key"/>
+        <result property="bannedAt"          column="banned_at"/>
+        <result property="bannedByUserKey"   column="banned_by_user_key"/>
+        <result property="reason"            column="reason"/>
+        <result property="active"            column="active"/>
+        <result property="unbannedAt"        column="unbanned_at"/>
+        <result property="unbannedByUserKey" column="unbanned_by_user_key"/>
+    </resultMap>
+
+    <select id="selectByGroupAndUser" resultMap="banRM">
+        SELECT * FROM group_join_ban WHERE group_id = #{groupId} AND user_key = #{userKey}
+    </select>
+
+    <select id="selectByGroup" resultMap="banRM">
+        SELECT * FROM group_join_ban WHERE group_id = #{groupId} ORDER BY banned_at DESC
+    </select>
+
+    <insert id="upsertBan" parameterType="com.moyora.clubschedule.vo.GroupJoinBanVo">
+        INSERT INTO group_join_ban (group_id, user_key, banned_at, banned_by_user_key, reason, active, unbanned_at, unbanned_by_user_key)
+        VALUES (#{groupId}, #{userKey}, NOW(), #{bannedByUserKey}, #{reason}, 1, NULL, NULL)
+        ON DUPLICATE KEY UPDATE
+            banned_at = NOW(),
+            banned_by_user_key = #{bannedByUserKey},
+            reason = #{reason},
+            active = 1,
+            unbanned_at = NULL,
+            unbanned_by_user_key = NULL
+    </insert>
+
+    <update id="deactivateBan">
+        UPDATE group_join_ban
+        SET active = 0, unbanned_at = NOW(), unbanned_by_user_key = #{operatorUserKey}
+        WHERE group_id = #{groupId} AND user_key = #{userKey} AND active = 1
+    </update>
+
+</mapper>

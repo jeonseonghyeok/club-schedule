@@ -11,6 +11,7 @@ import java.util.Map;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -55,6 +56,8 @@ public class GroupApiController {
             map.put("role",        m.getRole());
             map.put("status",      m.getStatus());
             map.put("joinedAt",    m.getJoinedAt() != null ? m.getJoinedAt().toString() : null);
+            map.put("banned",     Boolean.TRUE.equals(m.getBanned()));
+            map.put("banReason",  m.getBanReason());
             out.add(map);
         }
         return ResponseEntity.ok(out);
@@ -64,10 +67,24 @@ public class GroupApiController {
     public ResponseEntity<?> banMember(
             @PathVariable Long groupId,
             @PathVariable Long userKey,
+            @RequestBody(required = false) Map<String, Object> payload,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
         if (operator == null) return ResponseEntity.status(401).build();
-        boolean ok = groupManageService.banMember(groupId, userKey, operator);
+        Object reasonObj = payload != null ? payload.get("reason") : null;
+        String reason = reasonObj != null ? reasonObj.toString() : null;
+        boolean ok = groupManageService.banMember(groupId, userKey, operator, reason);
+        return ok ? ResponseEntity.ok().build() : ResponseEntity.status(403).build();
+    }
+
+    @DeleteMapping("/{groupId}/members/{userKey}/ban")
+    public ResponseEntity<?> unbanMember(
+            @PathVariable Long groupId,
+            @PathVariable Long userKey,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long operator = userDetails != null ? userDetails.getUserKey() : null;
+        if (operator == null) return ResponseEntity.status(401).build();
+        boolean ok = groupManageService.unbanMember(groupId, userKey, operator);
         return ok ? ResponseEntity.ok().build() : ResponseEntity.status(403).build();
     }
 

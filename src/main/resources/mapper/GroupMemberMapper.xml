@@ -42,7 +42,7 @@
         SELECT role FROM group_member WHERE group_id = #{groupId} AND user_key = #{userKey} AND status = 'ACTIVE' LIMIT 1
     </select>
 
-    <!-- 새로 추가: 특정 그룹의 모든 멤버 조회 (상태 포함, 닉네임 JOIN) -->
+    <!-- 새로 추가: 특정 그룹의 모든 멤버 조회 (상태 포함, 닉네임 JOIN, 밴 여부 포함) -->
     <select id="selectMembersByGroup" resultType="com.moyora.clubschedule.vo.GroupMemberVo" parameterType="map">
         SELECT gm.group_id  AS groupId,
                gm.user_key  AS userKey,
@@ -50,9 +50,12 @@
                gm.role,
                gm.status,
                gm.joined_at AS joinedAt,
-               gm.left_at   AS leftAt
+               gm.left_at   AS leftAt,
+               (gb.user_key IS NOT NULL AND gb.active = 1) AS banned,
+               gb.reason    AS banReason
         FROM group_member gm
         LEFT JOIN `user` u ON u.user_key = gm.user_key
+        LEFT JOIN group_join_ban gb ON gb.group_id = gm.group_id AND gb.user_key = gm.user_key
         WHERE gm.group_id = #{groupId}
         ORDER BY gm.joined_at DESC
     </select>
@@ -60,6 +63,21 @@
     <!-- 새로 추가: 특정 멤버의 상태 업데이트 (예: KICKED, WITHDRAWN) -->
     <update id="updateMemberStatus" parameterType="map">
         UPDATE group_member SET status = #{status}, left_at = NOW() WHERE group_id = #{groupId} AND user_key = #{userKey}
+    </update>
+
+    <!-- 상태 무관 기존 행 조회 (재가입 판단용) -->
+    <select id="selectMemberAnyStatus" resultType="com.moyora.clubschedule.vo.GroupMemberVo">
+        SELECT group_id AS groupId, user_key AS userKey, role, status,
+               joined_at AS joinedAt, left_at AS leftAt
+        FROM group_member
+        WHERE group_id = #{groupId} AND user_key = #{userKey}
+    </select>
+
+    <!-- 재가입 승인 시 기존 행 재활성화 — joined_at은 유지, status/left_at만 갱신 -->
+    <update id="reactivateMember">
+        UPDATE group_member
+        SET status = 'ACTIVE', left_at = NULL
+        WHERE group_id = #{groupId} AND user_key = #{userKey}
     </update>
 
 </mapper>

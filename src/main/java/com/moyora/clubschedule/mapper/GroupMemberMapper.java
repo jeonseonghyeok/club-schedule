@@ -15,6 +15,12 @@ public interface GroupMemberMapper {
     int getGroupCapacity(@Param("groupId") Long groupId);
     int countByGroupAndUser(@Param("groupId") Long groupId, @Param("userKey") Long userKey);
 
+    // 상태 무관(ACTIVE/WITHDRAWN/KICKED) 기존 행 조회 — 재가입 시 INSERT vs UPDATE 판단용
+    GroupMemberVo selectMemberAnyStatus(@Param("groupId") Long groupId, @Param("userKey") Long userKey);
+
+    // 재가입 승인 시 기존 행 재활성화 — joined_at은 건드리지 않고 status/left_at만 갱신
+    int reactivateMember(@Param("groupId") Long groupId, @Param("userKey") Long userKey);
+
     // 새로 추가: 사용자가 속한 그룹 목록 조회 (ACTIVE 상태)
     List<GroupVo> selectGroupsByUser(@Param("userKey") Long userKey);
 

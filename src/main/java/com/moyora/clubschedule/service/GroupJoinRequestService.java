@@ -7,6 +7,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.moyora.clubschedule.exception.AlreadyMemberException;
 import com.moyora.clubschedule.exception.DuplicateJoinRequestException;
+import com.moyora.clubschedule.exception.GroupAccessDeniedException;
 import com.moyora.clubschedule.mapper.GroupJoinRequestMapper;
 import com.moyora.clubschedule.mapper.GroupMemberMapper;
 import com.moyora.clubschedule.mapper.GroupMapper;
@@ -24,6 +25,7 @@ public class GroupJoinRequestService {
     private final NotificationService notificationService;
     private final GroupMemberMapper groupMemberMapper;
     private final GroupMapper groupMapper;
+    private final GroupManageService groupManageService;
 
     public Long requestJoin(Long groupId, Long userKey) {
         // 1) 이미 ACTIVE 멤버인지 확인
@@ -32,7 +34,12 @@ public class GroupJoinRequestService {
             throw new AlreadyMemberException("이미 해당 그룹의 멤버입니다.");
         }
 
-        // 2) 이미 PENDING 상태의 신청이 있는지 확인
+        // 2) 차단된 사용자인지 확인(강퇴 이력 또는 명시적 벤 처리)
+        if (groupManageService.isBanned(groupId, userKey)) {
+            throw new GroupAccessDeniedException("이 모임에서 차단된 사용자입니다.");
+        }
+
+        // 3) 이미 PENDING 상태의 신청이 있는지 확인
         int pendingCount = mapper.countPendingByGroupAndUser(groupId, userKey);
         if (pendingCount > 0) {
             throw new DuplicateJoinRequestException("이미 해당 그룹에 대한 가입 요청이 대기중입니다.");
@@ -88,6 +95,11 @@ public class GroupJoinRequestService {
             throw new RuntimeException("이미 해당 그룹의 멤버입니다.");
         }
 
+        // 차단된 사용자인지 방어적으로 재확인(신청 이후 벤 처리됐을 수 있음)
+        if (groupManageService.isBanned(groupId, requester)) {
+            throw new GroupAccessDeniedException("이 모임에서 차단된 사용자입니다.");
+        }
+
         // 2) 그룹 용량 체크
         int capacity = groupMemberMapper.getGroupCapacity(groupId);
         int current = groupMemberMapper.countActiveMembers(groupId);
@@ -99,15 +111,24 @@ public class GroupJoinRequestService {
         int updated = mapper.updateStatusToApproved(requestId, operatorUserKey);
         if (updated <= 0) throw new RuntimeException("요청 상태를 승인으로 변경할 수 없습니다.");
 
-        // 4) group_member에 레코드 추가
-        GroupMemberVo gm = new GroupMemberVo();
-        gm.setGroupId(groupId);
-        gm.setUserKey(requester);
-        gm.setRole("MEMBER");
-        gm.setStatus("ACTIVE");
-        int inserted = groupMemberMapper.insertGroupMember(gm);
-        if (inserted <= 0) {
-            throw new RuntimeException("그룹 멤버 추가에 실패했습니다.");
+        // 4) group_member에 레코드 추가 — 탈퇴/강퇴 이력(같은 PK 행)이 있으면 재활성화(UPDATE),
+        //    없으면 신규 INSERT. 재활성화 시 joined_at은 최초 가입일 그대로 유지한다.
+        GroupMemberVo existing = groupMemberMapper.selectMemberAnyStatus(groupId, requester);
+        if (existing != null) {
+            int reactivated = groupMemberMapper.reactivateMember(groupId, requester);
+            if (reactivated <= 0) {
+                throw new RuntimeException("그룹 멤버 재활성화에 실패했습니다.");
+            }
+        } else {
+            GroupMemberVo gm = new GroupMemberVo();
+            gm.setGroupId(groupId);
+            gm.setUserKey(requester);
+            gm.setRole("MEMBER");
+            gm.setStatus("ACTIVE");
+            int inserted = groupMemberMapper.insertGroupMember(gm);
+            if (inserted <= 0) {
+                throw new RuntimeException("그룹 멤버 추가에 실패했습니다.");
+            }
         }
 
         // 5) 알림 생성

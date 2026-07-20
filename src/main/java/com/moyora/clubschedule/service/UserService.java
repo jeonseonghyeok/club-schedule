@@ -48,4 +48,8 @@ public class UserService {
     public int countUsersFiltered(String q){
         return pagingMapper.countUsersFiltered(q);
     }
+
+    public void updateFavoriteGroup(Long userKey, Long groupId) {
+        userMapper.updateFavoriteGroup(userKey, groupId);
+    }
 }

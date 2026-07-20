@@ -5,6 +5,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.util.KakaoTokenUtil;
@@ -24,18 +25,24 @@ public class MainController {
     private final UserService userService;
 
     @GetMapping("/")
-    public String main(@AuthenticationPrincipal CustomUserDetails userDetails, Model model, HttpServletRequest request) {
+    public String main(@AuthenticationPrincipal CustomUserDetails userDetails, Model model,
+                        HttpServletRequest request, @RequestParam(required = false) Integer list) {
+        Long userKey = null;
+
         if (userDetails != null) {
-            model.addAttribute("userKey", userDetails.getUserKey());
+            userKey = userDetails.getUserKey();
+            model.addAttribute("userKey", userKey);
             model.addAttribute("roles", userDetails.getAuthorities());
             boolean isAdmin = userDetails.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
             model.addAttribute("isAdmin", isAdmin);
-            return "main";
-        }
+        } else {
+            Cookie[] cookies = request.getCookies();
+            if (cookies == null) {
+                // 쿠키가 없는 경우 로그인 콜백 페이지로 리다이렉트하여 클라이언트에서 인증 상태를 확인하도록 유도
+                return "redirect:/login/kakao/login_callback";
+            }
 
-        Cookie[] cookies = request.getCookies();
-        if (cookies != null) {
             for (Cookie c : cookies) {
                 if ("AUTH_TOKEN".equals(c.getName())) {
                     String token = c.getValue();
@@ -50,8 +57,9 @@ public class MainController {
                     Long kakaoApiId = kakaoTokenUtil.validateAndGetUserId(token);
                     if (kakaoApiId != null) {
                         // Map kakaoApiId to internal userKey
-                        Long userKey = userService.findUserKeyByKakaoApiId(kakaoApiId);
-                        if (userKey != null) {
+                        Long resolvedUserKey = userService.findUserKeyByKakaoApiId(kakaoApiId);
+                        if (resolvedUserKey != null) {
+                            userKey = resolvedUserKey;
                             UserVo uv = userService.getUserByUserKey(userKey);
                             model.addAttribute("userKey", userKey);
                             java.util.List<org.springframework.security.core.authority.SimpleGrantedAuthority> auths = new java.util.ArrayList<>();
@@ -68,9 +76,13 @@ public class MainController {
                 }
             }
         }
-        else {
-            // 쿠키가 없는 경우 로그인 콜백 페이지로 리다이렉트하여 클라이언트에서 인증 상태를 확인하도록 유도
-            return "redirect:/login/kakao/login_callback";
+
+        if (userKey != null && list == null) {
+            UserVo user = userService.getUserByUserKey(userKey);
+            Long favoriteGroupId = (user != null) ? user.getFavoriteGroupId() : null;
+            if (favoriteGroupId != null) {
+                return "redirect:/groups/" + favoriteGroupId;
+            }
         }
 
         return "main";

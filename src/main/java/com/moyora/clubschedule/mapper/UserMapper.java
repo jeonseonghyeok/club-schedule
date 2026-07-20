@@ -21,4 +21,6 @@ public interface UserMapper {
     UserVo selectByNickname(@Param("nickname") String nickname);
 
     List<UserVo> selectTestAccounts();
+
+    int updateFavoriteGroup(@Param("userKey") Long userKey, @Param("groupId") Long groupId);
 }

@@ -113,10 +113,12 @@
 4. 비회원(그룹 미가입) 계정으로 그룹 상세 페이지 접근 시 별 버튼이 보이지 않는지 확인.
 
 ## 진행 상태
-- [ ] `docs/migration_v5.sql` 작성 및 적용(`user.favorite_group_id` 컬럼 + FK)
-- [ ] `UserVo` — `favoriteGroupId` 필드 추가
-- [ ] `UserMapper.xml`/`UserMapper.java` — 컬럼 반영 + `updateFavoriteGroup` 추가
-- [ ] `GroupController` — `PUT`/`DELETE /groups/{groupId}/favorite`
-- [ ] `GroupViewController` — `isFavoriteGroup`/`hasFavoriteGroup` 모델 추가
-- [ ] `group.html` — 별 버튼 마크업 + 토글 JS(등록/변경 확인/해체 메시지 분기)
-- [ ] 검증 방법 1~4 확인
+- [x] `docs/migration_v5.sql` 작성 및 적용(`user.favorite_group_id` 컬럼 + FK) — 적용 확인 후 파일 삭제
+- [x] `UserVo` — `favoriteGroupId` 필드 추가
+- [x] `UserMapper.xml`/`UserMapper.java` — 컬럼 반영 + `updateFavoriteGroup` 추가
+- [x] `GroupController` — `PUT`/`DELETE /groups/{groupId}/favorite`
+- [x] `GroupViewController` — `isFavoriteGroup`/`hasFavoriteGroup` 모델 추가
+- [x] `group.html` — 별 버튼 마크업 + 토글 JS(등록/변경 확인/해체 메시지 분기)
+- [x] 검증 방법 1~4 확인 — API 레벨(curl): 등록(200, DB 반영)/변경(200, DB 반영)/해체(200, DB NULL)/비회원 PUT(403)/비로그인 PUT(401)/비내즐겨찾기 DELETE(200, no-op) 모두 기대대로 동작.
+  Playwright 브라우저 검증(하르온/9900000000004, 그룹2·3 멤버, 그룹1 비회원)도 완료:
+  그룹2에서 별 클릭 → ☆→★ + "우선모임으로 등록되었습니다." / 그룹3에서 클릭 → `confirm("우선모임을 변경하시겠습니까?")` 다이얼로그 → 동의 시 ★ + "우선모임이 변경되었습니다." / 취소 시 아이콘·DB 그대로 유지 / 이미 즐겨찾기인 그룹에서 클릭 → confirm 없이 바로 해체 + "우선모임이 해체되었습니다." / 비회원 그룹(1)에는 별 버튼 자체가 렌더링되지 않음. 테스트로 만든 즐겨찾기 상태는 검증 후 정리(NULL)함

@@ -10,7 +10,9 @@ import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupManageService;
 import com.moyora.clubschedule.service.GroupPermissionService;
 import com.moyora.clubschedule.service.GroupService;
+import com.moyora.clubschedule.service.UserService;
 import com.moyora.clubschedule.vo.GroupVo;
+import com.moyora.clubschedule.vo.UserVo;
 
 import lombok.RequiredArgsConstructor;
 
@@ -21,6 +23,7 @@ public class GroupViewController {
     private final GroupService           groupService;
     private final GroupManageService     groupManageService;
     private final GroupPermissionService groupPermissionService;
+    private final UserService            userService;
 
     @GetMapping("/groups/{groupId}")
     public String manageView(@PathVariable Long groupId,
@@ -40,6 +43,14 @@ public class GroupViewController {
                 ? new GroupPermissionService.SchedulePermissions(true, false, true)
                 : groupPermissionService.resolveSchedulePermissions(groupId, userKey);
 
+        Long favoriteGroupId = null;
+        if (userKey != null) {
+            UserVo user = userService.getUserByUserKey(userKey);
+            favoriteGroupId = (user != null) ? user.getFavoriteGroupId() : null;
+        }
+        boolean isFavoriteGroup  = groupId.equals(favoriteGroupId);
+        boolean hasFavoriteGroup = favoriteGroupId != null;
+
         model.addAttribute("group",               group);
         model.addAttribute("isLeader",            isLeader);
         model.addAttribute("isManager",           isManager);
@@ -49,6 +60,8 @@ public class GroupViewController {
         model.addAttribute("createNeedsApproval", sp.isCreateNeedsApproval());
         model.addAttribute("canManageSchedule",   sp.isCanManage());
         model.addAttribute("visibilityType",      groupPermissionService.resolveVisibilityType(groupId).name());
+        model.addAttribute("isFavoriteGroup",     isFavoriteGroup);
+        model.addAttribute("hasFavoriteGroup",    hasFavoriteGroup);
 
         return "group";
     }

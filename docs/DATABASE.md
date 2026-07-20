@@ -11,7 +11,7 @@
   - Boolean -> TINYINT(1)
   - java.time.LocalDateTime / java.util.Date -> DATETIME
 - 문서에 포함된 CREATE TABLE 문은 제공하신 MariaDB 쿼리를 그대로 사용했습니다. 필요한 경우 제약이나 인덱스를 더 보강할 수 있습니다.
-- 아래 스키마는 [`migration_v2.sql`](migration_v2.sql)(처리자 컬럼 표준화 + `group_schedule_history` 신설), [`migration_v3.sql`](migration_v3.sql)(`schedule_attendance_check_history` 신설) 적용 이후 기준입니다. 코드(`ScheduleAttendanceVo` 등)도 이 컬럼명을 사용합니다.
+- 아래 스키마는 [`migration_v2.sql`](migration_v2.sql)(처리자 컬럼 표준화 + `group_schedule_history` 신설), migration_v4(처리자/기록 관련 컬럼 정리), [`migration_v5.sql`](migration_v5.sql)(`user.favorite_group_id` 신설 — 우선모임/즐겨찾기), [`migration_v6.sql`](migration_v6.sql)(`group_join_request`에 `(group_id,user_key)` 조회 인덱스 추가), migration_v7(`group_join_ban`에 `active`/`unbanned_at`/`unbanned_by_user_key` 추가 — 벤 해제 시 행을 삭제하지 않고 이력 보존), migration_v8(`notification`에 `(user_key,created_at)` 조회 인덱스 추가) 적용 이후 기준입니다. 코드(`ScheduleAttendanceVo` 등)도 이 컬럼명을 사용합니다. (`migration_v3.sql`은 `schedule_attendance_check_history` 테이블 신설을 위한 것이었으나 실제 DB에 적용된 적이 없고, 이 테이블에 의존하던 기능도 제거되어 더 이상 유효하지 않다. 참고로 `group_join_request.uniq_group_user` UNIQUE 제약도 문서에는 있었지만 실제 DB에는 처음부터 존재한 적이 없었다 — 재가입 시 재신청이 막히는 문제 자체가 없었음을 확인했다.)
 
 ---
 
@@ -29,7 +29,8 @@ CREATE TABLE `notification` (
   `content` text DEFAULT NULL,
   `is_read` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`notification_id`)
+  PRIMARY KEY (`notification_id`),
+  KEY `idx_user_created` (`user_key`,`created_at`) COMMENT 'migration_v8: 내 알림 최신순 조회 / 안읽음 COUNT용'
 ) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -42,8 +43,11 @@ CREATE TABLE `user` (
   `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '가입일시',
   `referrer_url` varchar(100) DEFAULT NULL COMMENT '유입 경로 URL',
   `system_role` enum('USER','ADMIN') NOT NULL DEFAULT 'USER' COMMENT '시스템 내 역할',
+  `favorite_group_id` bigint(20) unsigned NULL COMMENT '우선모임(즐겨찾기) 그룹 키 — migration_v5',
   PRIMARY KEY (`user_key`),
-  UNIQUE KEY `user_unique` (`kakao_api_id`)
+  UNIQUE KEY `user_unique` (`kakao_api_id`),
+  KEY `idx_favorite_group` (`favorite_group_id`),
+  CONSTRAINT `fk_user_favorite_group` FOREIGN KEY (`favorite_group_id`) REFERENCES `group` (`group_id`) ON DELETE SET NULL
 ) ENGINE=InnoDB AUTO_INCREMENT=1000005 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
@@ -94,6 +98,9 @@ CREATE TABLE `group_join_ban` (
   `banned_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '금지 일시',
   `banned_by_user_key` bigint(20) unsigned DEFAULT NULL COMMENT '밴 처리한 사용자 키',
   `reason` text DEFAULT NULL COMMENT '금지 사유',
+  `active` tinyint(1) NOT NULL DEFAULT 1 COMMENT 'migration_v7: 현재 차단 유효 여부(해제 시 0, 행은 삭제하지 않고 이력 보존)',
+  `unbanned_at` datetime DEFAULT NULL COMMENT 'migration_v7: 벤 해제 일시',
+  `unbanned_by_user_key` bigint(20) unsigned DEFAULT NULL COMMENT 'migration_v7: 벤 해제 처리자',
   PRIMARY KEY (`group_id`,`user_key`),
   KEY `fk_ban_user` (`user_key`),
   KEY `fk_ban_operator` (`banned_by_user_key`),
@@ -115,7 +122,7 @@ CREATE TABLE `group_join_request` (
   `reject_reason` text DEFAULT NULL COMMENT '거절 사유',
   `updated_by` bigint(20) unsigned DEFAULT NULL COMMENT '가입 승인/거부 처리자 (자동 승인 시 NULL) — migration_v2 추가',
   PRIMARY KEY (`request_id`),
-  UNIQUE KEY `uniq_group_user` (`group_id`,`user_key`),
+  KEY `idx_group_user` (`group_id`,`user_key`) COMMENT 'migration_v6: 조회 성능용 — UNIQUE 제약은 처음부터 없었음',
   KEY `fk_joinreq_user` (`user_key`),
   CONSTRAINT `fk_joinreq_group` FOREIGN KEY (`group_id`) REFERENCES `group` (`group_id`) ON DELETE CASCADE,
   CONSTRAINT `fk_joinreq_user` FOREIGN KEY (`user_key`) REFERENCES `user` (`user_key`) ON DELETE CASCADE
@@ -253,28 +260,6 @@ CREATE TABLE `group_schedule_history` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
--- club_schedule.schedule_attendance_check_history definition (migration_v3 신규 테이블)
--- 출석 체크(actual_status) 정정 이력. 매 체크/재체크마다 변경 전후 값을 기록
-
-CREATE TABLE `schedule_attendance_check_history` (
-  `history_id`             bigint(20) unsigned NOT NULL AUTO_INCREMENT,
-  `attendance_id`          bigint(20) unsigned NOT NULL COMMENT '대상 참가 신청 키',
-  `schedule_id`            bigint(20) unsigned NOT NULL COMMENT '스케줄 키 (조회 편의용 비정규화)',
-  `user_key`               bigint(20) unsigned NOT NULL COMMENT '출석 체크 대상 유저 키',
-  `previous_actual_status` enum('NONE','ATTENDED','NOSHOW') NOT NULL COMMENT '변경 전 값',
-  `new_actual_status`      enum('NONE','ATTENDED','NOSHOW') NOT NULL COMMENT '변경 후 값',
-  `changed_by`             bigint(20) unsigned NOT NULL COMMENT '정정 처리자 (일정 생성자/매니저/리더)',
-  `change_reason`          varchar(500)         DEFAULT NULL COMMENT '정정 사유 (최초 체크 시 NULL 허용)',
-  `changed_at`             datetime NOT NULL DEFAULT current_timestamp(),
-  PRIMARY KEY (`history_id`),
-  KEY `idx_check_history_attendance` (`attendance_id`),
-  CONSTRAINT `fk_check_history_attendance` FOREIGN KEY (`attendance_id`)
-    REFERENCES `schedule_attendance` (`attendance_id`) ON DELETE CASCADE,
-  CONSTRAINT `fk_check_history_changer` FOREIGN KEY (`changed_by`)
-    REFERENCES `user` (`user_key`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-
-
 ---
 
 ## 역할 구조 및 일정 권한 검증 규칙
@@ -322,9 +307,9 @@ CREATE TABLE `schedule_attendance_check_history` (
 
 ---
 
-## 출석 관리 규칙
+## 참가 관리 규칙
 
-`schedule_attendance` 테이블 기반. API는 [API.md — 출석 관리 API](API.md#출석-관리-api) 참고.
+`schedule_attendance` 테이블 기반. API는 [API.md — 참석 관리 API](API.md#참석-관리-api) 참고.
 
 **참가신청 자동 승인 규칙** (`group_schedule_policy.requires_attendance_approval` 기준)
 
@@ -347,7 +332,7 @@ UPDATE로 덮어써서 중간 이력이 소실됐으나, 이제는 그렇지 않
 - 참가자 목록(신청 탭) 조회: `WHERE schedule_id=? AND is_latest=1` (기존과 동일, PENDING/CONFIRMED만 노출)
 - 이력 조회: `WHERE schedule_id=?` (`is_latest` 조건 없이 전체 행을 `created_at` 순으로) —
   `GET /api/groups/{groupId}/schedules/{scheduleId}/attendance/history`
-  ([API.md](API.md#출석-관리-api) 참고). 같은 사용자가 신청→승인→취소→신청→거부처럼 여러
+  ([API.md](API.md#참석-관리-api) 참고). 같은 사용자가 신청→승인→취소→신청→거부처럼 여러
   사이클을 거치면 각 사이클마다 다른 `attendance_id`로 별도 행이 남아 전부 이력에 보인다.
 
 **참가 취소 규칙**
@@ -360,13 +345,58 @@ UPDATE로 덮어써서 중간 이력이 소실됐으나, 이제는 그렇지 않
 
 ---
 
-## 출석 체크 정정 이력
+## 참석 체크
 
-`schedule_attendance_check_history` 테이블 기반 (`migration_v3.sql`). API는 [API.md — 출석 관리 API](API.md#출석-관리-api)의 `PATCH .../check` 참고.
+API는 [API.md — 참석 관리 API](API.md#참석-관리-api)의 `PATCH .../check` 참고.
 
-- **정정 가능**: 출석 체크(`actual_status`)는 최초 체크 이후에도 재호출로 정정할 수 있다. 매 호출마다 변경 전/후 값을 이 테이블에 스냅샷으로 남긴다.
-- **권한**: 참가 승인/거부/강제취소와 동일하게 **일정 생성자 또는 MANAGER 이상**(LEADER 포함)이면 허용. `schedule_attendance`의 `checked_by_user_key`/`checked_at`은 최신 값만 반영하고, 과거 값과 변경자·변경사유 이력은 이 테이블에서 조회한다.
-- `group_schedule_history`(일정 수정 이력)와 동일한 스냅샷 패턴을 따른다.
+- **정정 가능**: 참석 체크(`actual_status`)는 최초 체크 이후에도 재호출로 정정할 수 있다. `schedule_attendance`의 `actual_status`/`checked_by_user_key`/`checked_at`은 항상 최신 값만 반영하며, 별도 변경 이력 테이블은 두지 않는다(과거 체크-정정 이력을 조회하는 화면이 없어 불필요한 복잡도로 판단).
+- **권한**: 참가 승인/거부/강제취소와 동일하게 **일정 생성자 또는 MANAGER 이상**(LEADER 포함)이면 허용.
+- **시점 제약**: 일정 `start_at` 이후에만 가능하다(그 전에는 `PATCH .../check` 호출이 거부됨).
+- 신청 이력이 없는 미신청자를 관리자가 대신 참가 확정시키는 기능은 두지 않는다 — 참가는
+  예외 없이 본인 신청(`attend()`) → 승인(`approveAttendance()`)을 거쳐야 하며, 참석 체크는
+  그렇게 확정된 참가자에 대해서만 가능하다("참가는 항상 본인 의사에서 시작된다"는 이
+  프로젝트의 기존 원칙, [plans/schedule-creator-auto-attend.md](plans/schedule-creator-auto-attend.md)
+  참고).
+
+---
+
+## 회원 상태 및 차단(벤) 규칙
+
+`group_member.status`(`ACTIVE`/`WITHDRAWN`/`KICKED`)와 `group_join_ban` 테이블 기반이지만,
+**둘은 서로 다른 축이다** — `status`는 "현재/과거 멤버십 상태"의 이력이고, `group_join_ban`의
+`active` 플래그는 "지금 재가입이 막혀 있는가"만을 뜻한다. 벤 해제를 해도 `status`는 바뀌지
+않는다(예: `KICKED`로 남아 있다가 실제 재가입이 승인되는 순간에야 `ACTIVE`로 바뀐다).
+API는 [API.md — 그룹 멤버 API](API.md#그룹-멤버-api) 참고. 관리 탭의 "회원 관리" 카드가 이
+세 상태를 탭으로 구분해 인라인으로 보여준다(일반회원/탈퇴회원/내보내기 — 별도 페이지가 아님).
+
+- **차단 판정**: `GroupManageService.isBanned(groupId, userKey)`는 오직 `group_join_ban`에
+  `active=1`인 행이 있는지만 확인한다(`group_member.status`는 더 이상 판단 근거로 쓰지
+  않는다 — KICKED 상태여도 벤이 해제되면 재가입 신청이 가능해야 하기 때문). 가입 신청
+  (`requestJoin`)과 승인(`approveJoin`) 양쪽에서 이 체크를 거친다.
+- **내보내기 대상 제한**: `banMember`는 대상 `role`이 `MEMBER`가 아니면(즉 `LEADER`/
+  `MANAGER`) 무조건 거부한다 — 모임리더는 어떤 경우에도 내보내기 대상이 될 수 없고,
+  매니저끼리(혹은 리더가 매니저를) 내보내는 것도 허용하지 않는다. 프론트에서도 role이
+  `MEMBER`인 경우에만 "내보내기"/"벤 처리" 버튼을 노출하지만, 백엔드에서도 동일하게
+  강제해 API 직접 호출을 통한 우회를 막는다.
+- **"내보내기"(ACTIVE → 차단)**: `banMember`가 `status`를 `KICKED`로 바꾸고 동시에
+  `group_join_ban`을 upsert(active=1)한다.
+- **"벤 처리"(WITHDRAWN 유지 + 차단)**: 이미 자진 탈퇴(`WITHDRAWN`)한 회원은 기본적으로
+  재가입이 자유롭다. 관리자가 명시적으로 `banMember`를 호출하면 `status`는 `WITHDRAWN`
+  그대로 두고 `group_join_ban`만 upsert해 재가입만 막는다.
+- **"벤 해제"**: `unbanMember`가 `group_join_ban` 행을 **삭제하지 않고** `active=0`으로
+  비활성화하며 `unbanned_at`/`unbanned_by_user_key`를 기록한다(누가 벤을 걸고 누가
+  해제했는지 이력을 남기기 위함, migration_v7). `group_member.status`는 건드리지 않는다 —
+  예를 들어 `KICKED` 상태였던 회원을 벤 해제해도 `status`는 여전히 `KICKED`로 남으며,
+  재가입 신청이 가능해질 뿐이다. 실제로 `ACTIVE`로 되돌아가는 것은 재가입 승인 시점뿐이다.
+- **재가입 데이터 처리**: `group_member`의 PK가 `(group_id,user_key)` 복합키라 탈퇴/강퇴
+  이력이 있는 유저는 새 행을 INSERT할 수 없다. `approveJoin`은 승인 직전에 기존 행
+  존재 여부를 확인해, 있으면 `reactivateMember`(status=ACTIVE, left_at=NULL)로 **UPDATE**
+  하고 없으면 기존처럼 INSERT한다. **`joined_at`은 재가입 시에도 갱신하지 않고 최초
+  가입일을 그대로 유지**한다(재가입했다고 가입일이 바뀌는 건 부적절하다는 판단). 대신
+  `group_join_request`는 애초에 `UNIQUE(group_id,user_key)` 제약이 없어(문서 오류였음,
+  위 참고) 신청 사이클마다 새 행이 그대로 쌓이므로 가입→탈퇴→재신청→재승인 이력을 그대로
+  조회할 수 있다(별도 이력 테이블을 신설하지 않음).
+- **본인 탈퇴(WITHDRAWN 전이) API는 아직 없다** — 이번 작업 범위 밖(로드맵 9번 참고).
 
 ---
 

@@ -65,13 +65,19 @@
      확장한다. 필요해지면 별도 계획으로 분리.
 
 ## 명시적으로 다루지 않아도 되는 것 (스코프 아님)
-- 알림 조회/읽음 API 자체 구현 — [ROADMAP.md](../ROADMAP.md) 9번 항목으로 이미 별도
-  등록되어 있음. 이 계획은 "알림 생성"까지만 다룬다.
-- `forceCancel()`, `checkActual()`(출석 체크)에 대한 알림 — 요청받은 범위(승인 프로세스)
-  밖이므로 제외.
+- `forceCancel()`에 대한 알림 — 관리자의 강제 조치이며 요청받은 범위(승인 프로세스) 밖.
 - [schedule-creator-auto-attend.md](schedule-creator-auto-attend.md)(일정 생성자
   자동 참가 등록)와는 독립적인 계획이다. 순서 의존성 없음 — 어느 쪽을 먼저 구현해도
   무방하다.
+
+## 후속 상황 (2026-07-20)
+아래 항목은 모두 "개인 알림 센터" 작업(별도 요청: 가입/일정신청/참가신청/출석처리 알림
++ 조회 UI 통합)으로 이 계획을 흡수해 함께 구현되었다.
+- ~~알림 조회/읽음 API 자체 구현 — [ROADMAP.md](../ROADMAP.md) 9번 항목으로 별도 등록~~
+  → `NotificationApiController` 신규 구현으로 완료(`GET /api/notifications` 등).
+- ~~`checkActual()`(출석 체크)에 대한 알림 — 스코프 아님~~ → 요청 범위가 넓어지며
+  포함됨. `ATTENDED`/`NOSHOW` 판정 시 `category=NOTICE`로 알림 전송(정정으로 `NONE`
+  복귀 시에는 전송 안 함).
 
 ## 검증 방법
 1. 일반 MEMBER가 CONFIRMED 일정에 참가 신청(PENDING) → 관리자가 "관리" 모달에서
@@ -83,7 +89,9 @@
 4. 그룹 가입 요청 승인/거부 알림 흐름이 이번 변경으로 회귀 없이 그대로 동작하는지 확인.
 
 ## 진행 상태
-- [ ] `ScheduleAttendanceService`에 `NotificationService` 주입
-- [ ] `approveAttendance()`/`rejectAttendance()`에 알림 생성 추가
-- [ ] (선택) `pendingCount` 필드 추가 + "관리" 링크 배지 UI
-- [ ] 검증 항목 1~4 확인
+- [x] `ScheduleAttendanceService`에 `NotificationService` 주입
+- [x] `approveAttendance()`/`rejectAttendance()`에 알림 생성 추가
+- [x] `checkActual()`에도 알림 생성 추가(범위 확장, 위 "후속 상황" 참고)
+- [ ] (선택, 미착수) `pendingCount` 필드 추가 + "관리" 링크 배지 UI — 알림 조회 UI가
+      생겨 우선순위가 낮아짐, 필요시 별도 진행
+- [x] 검증 항목 1~4 확인 (개인 알림 센터 작업의 Playwright 검증에 포함)

@@ -11,8 +11,9 @@
 - [모임 생성 신청 API](#모임-생성-신청-api)
 - [그룹 가입 요청 API](#그룹-가입-요청-api)
 - [그룹 일정 API](#그룹-일정-api)
-- [출석 관리 API](#출석-관리-api)
+- [참석 관리 API](#참석-관리-api)
 - [그룹 멤버 API](#그룹-멤버-api)
+- [알림 API](#알림-api)
 - [에러 코드](#에러-코드)
 - [알려진 이슈](#알려진-이슈)
 - [보안 주의사항](#보안-주의사항)
@@ -198,11 +199,12 @@
 
 ### POST /groups/{groupId}/join-requests
 
-가입 신청.
+가입 신청. 이미 멤버이거나, PENDING 신청이 이미 있거나, 이 그룹에서 차단된 사용자면
+거부된다(차단 판정 규칙: [DATABASE.md — 회원 상태 및 차단(벤) 규칙](DATABASE.md#회원-상태-및-차단벤-규칙)).
 
 **권한**: 로그인 필요
 
-**응답**: `200 OK` — `{"requestId": Long}`
+**응답**: `200 OK` — `{"requestId": Long}` / `403 Forbidden` — 차단된 사용자
 
 ### DELETE /groups/{groupId}/join-requests/{requestId}
 
@@ -397,9 +399,9 @@
 
 ---
 
-## 출석 관리 API
+## 참석 관리 API
 
-> `schedule_attendance` 테이블 기반. **참가 신청**(attend/cancel/approve/reject/forceCancel)과 **출석 체크**(실제 참석 여부 확인, `actual_status`)는 별개 개념이다 — 전자는 참가 의사를 승인하는 절차, 후자는 일정 종료 후 실제로 참석했는지 기록하는 절차다. `CONFIRMED` 상태의 일정에 멤버가 참가 신청하고, 일정 등록자 또는 MANAGER 이상이 승인·거부·출석체크를 처리한다(단 강제취소는 MANAGER 이상만 가능, 아래 참고). 자동 승인 규칙 및 `is_latest` 상태 전이 규칙은 [DATABASE.md — 출석 관리 규칙](DATABASE.md#출석-관리-규칙) 참고.
+> `schedule_attendance` 테이블 기반. **참가 신청**(attend/cancel/approve/reject/forceCancel)과 **참석 체크**(실제 참석 여부 확인, `actual_status`)는 별개 개념이다 — 전자는 참가 의사를 승인하는 절차, 후자는 일정 시작 이후 실제로 참석했는지 기록하는 절차다. `CONFIRMED` 상태의 일정에 멤버가 참가 신청하고, 일정 등록자 또는 MANAGER 이상이 승인·거부·참석확인을 처리한다(단 강제취소는 MANAGER 이상만 가능, 아래 참고). 자동 승인 규칙 및 `is_latest` 상태 전이 규칙은 [DATABASE.md — 참가 관리 규칙](DATABASE.md#참가-관리-규칙) 참고.
 
 ### POST /api/groups/{groupId}/schedules/{scheduleId}/attend
 
@@ -417,7 +419,7 @@
 
 ### GET /api/groups/{groupId}/schedules/{scheduleId}/attendance/history
 
-참가 이력(신청/승인/거부/취소) 조회. `is_latest` 조건 없이 해당 일정의 전체 행을 `created_at` 오름차순으로 반환한다 — status 값 자체가 액션을 의미한다(상세: [DATABASE.md — 출석 관리 규칙](DATABASE.md#출석-관리-규칙)).
+참가 이력(신청/승인/거부/취소) 조회. `is_latest` 조건 없이 해당 일정의 전체 행을 `created_at` 오름차순으로 반환한다 — status 값 자체가 액션을 의미한다(상세: [DATABASE.md — 참가 관리 규칙](DATABASE.md#참가-관리-규칙)).
 
 **응답**: `200 OK` — 배열, 각 항목: `attendanceId`, `userKey`, `displayName`, `status`, `actorUserKey`, `actorDisplayName`, `selfActed`(본인이 처리했는지 여부), `createdAt`
 
@@ -435,16 +437,15 @@
 
 ### PATCH /api/groups/{groupId}/schedules/{scheduleId}/attendance/{targetUserKey}/check
 
-출석 체크(실제 참석 여부 확인). **정정 가능** — 최초 체크 후에도 재호출로 값을 바꿀 수 있으며, 매 호출마다 변경 전/후 값이 `schedule_attendance_check_history`에 기록된다 (설계: [DATABASE.md — 출석 체크 정정 이력](DATABASE.md#출석-체크-정정-이력)).
+참석 체크(실제 참석 여부 확인). **정정 가능** — 최초 체크 후에도 재호출로 값을 바꿀 수 있으며, `schedule_attendance`의 `actual_status`/`checked_by_user_key`/`checked_at`이 최신 값으로 갱신된다(별도 이력 테이블 없음).
 
-**권한**: 일정 등록자 또는 MANAGER 이상 (승인/거부/강제취소와 동일 규칙).
+**권한**: 일정 등록자 또는 MANAGER 이상 (승인/거부/강제취소와 동일 규칙). **일정 `start_at` 이후에만 가능**(그 전 호출 시 오류).
 
 **요청 바디**
 
 | 필드 | 타입 | 필수 | 설명 |
 |------|------|------|------|
 | `actualStatus` | String | N | `ATTENDED` \| `NOSHOW` (미지정 시 기본 `ATTENDED`) |
-| `changeReason` | String | N | 정정 사유. 최초 체크 시 생략 가능, 재정정 시 남겨두는 것을 권장 |
 
 ---
 
@@ -465,20 +466,120 @@
     "displayName": "홍길동",
     "role": "LEADER",
     "status": "ACTIVE",
-    "joinedAt": "2025-01-01T12:00:00"
+    "joinedAt": "2025-01-01T12:00:00",
+    "banned": false,
+    "banReason": null
   }
 ]
 ```
 
 > `displayName`은 `GroupMemberMapper.xml`의 JOIN으로 `user.nickname`을 채워서 반환합니다.
+> `banned`는 `group_join_ban`에 `active=1`인 행이 있는지 여부, `banReason`은 그 사유입니다
+> (상세: [DATABASE.md — 회원 상태 및 차단(벤) 규칙](DATABASE.md#회원-상태-및-차단벤-규칙)).
+> `status`가 `ACTIVE`/`WITHDRAWN`/`KICKED`인 회원을 그룹 상세 화면의 관리 탭 "회원 관리"
+> 카드(별도 페이지 아님)에서 각각 "일반회원"/"탈퇴회원"/"내보내기" 탭으로 구분해서 보여주며,
+> 내보내기/벤 처리 버튼은 `role`이 `MEMBER`인 대상에게만 노출됩니다(리더/매니저는 대상 불가).
 
 ### PATCH /api/groups/{groupId}/members/{userKey}/ban
 
-멤버 강제 탈퇴(KICKED) 처리.
+멤버 차단 처리 — 대상 `role`이 `MEMBER`가 아니면(`LEADER`/`MANAGER`) `403`으로 거부한다
+(모임리더는 절대 대상이 될 수 없고, 매니저끼리도 서로 내보낼 수 없음). 대상이 `ACTIVE`면
+`status`를 `KICKED`로 바꾸고, 이미 `WITHDRAWN`(자진 탈퇴)이면 `status`는 그대로 두고
+재가입만 막는다(`group_join_ban` upsert, `active=1`). 어느 경우든 차단된 사용자는 이후
+가입 신청(`POST .../join-requests`)이 거부된다.
 
-**권한**: 인증 + 리더 또는 부방장
+**권한**: 인증 + 리더 또는 매니저, 대상 role이 MEMBER일 것
+
+**요청 바디**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `reason` | String | N | 차단 사유 |
+
+**응답**: `200 OK` (성공) / `401` (미인증) / `403` (권한 없음 또는 대상이 리더/매니저)
+
+### DELETE /api/groups/{groupId}/members/{userKey}/ban
+
+벤 해제 — `group_join_ban` 행을 삭제하지 않고 `active=0`으로 비활성화하며
+`unbanned_at`/`unbanned_by_user_key`를 기록한다(누가 걸고 누가 해제했는지 이력 보존).
+`group_member.status`는 변경하지 않는다 — `KICKED` 상태였던 회원을 벤 해제해도 `status`는
+그대로 `KICKED`로 남고, 재가입 신청이 가능해질 뿐이다(실제 `ACTIVE` 복귀는 재가입 승인
+시점에만 이뤄짐).
+
+**권한**: 인증 + 리더 또는 매니저
 
 **응답**: `200 OK` (성공) / `401` (미인증) / `403` (권한 없음)
+
+---
+
+## 알림 API
+
+개인(userKey) 단위로 전송되는 알림. 그룹 가입 승인/거부, 일정 신청 승인/거부, 일정참가 신청
+승인/거부, 출석처리 결과(출석/결석)에서 발생한다. 생성 로직은 `NotificationService.
+createNotification()` — 각 도메인 서비스(`GroupJoinRequestService`, `GroupRequestService`,
+`GroupScheduleService`, `ScheduleAttendanceService`)의 승인/거부/출석체크 메서드 내부에서
+직접 호출한다(전용 이벤트 버스 없음).
+
+### GET /api/notifications
+
+내 알림 목록 조회 — 최신순, 페이지네이션 없이 최근 N건(기본 20건, 최대 30건).
+
+**권한**: 인증 필요
+
+**쿼리 파라미터**
+
+| 필드 | 타입 | 필수 | 설명 |
+|------|------|------|------|
+| `limit` | int | N | 조회 건수 (기본 20, 1~30로 clamp) |
+
+**응답**: `200 OK`
+
+```json
+[
+  {
+    "notificationId": 12,
+    "sourceTable": "SCHEDULE",
+    "sourceId": 5,
+    "category": "APPROVE",
+    "title": "일정 신청이 승인되었습니다",
+    "content": "정기모임 일정이 승인되었습니다.",
+    "isRead": false,
+    "createdAt": "2026-07-20T10:00:00Z",
+    "groupId": 3,
+    "targetUrl": "/groups/3"
+  }
+]
+```
+
+> `groupId`/`targetUrl`은 `source_table`+`source_id`를 `group_join_request`/`group_schedule`과
+> LEFT JOIN해 서버가 resolve한다(`GROUP_JOIN_REQUEST`→가입요청의 group_id, `SCHEDULE`→일정의
+> group_id). `GROUP_CREATE_REQUEST`는 아직 그룹이 없는 신청 단계라 `groupId`/`targetUrl`이
+> 모두 `null`이며, 프론트는 이 경우 클릭 시 이동 없이 읽음 처리만 한다. v1 범위에서는 일정
+> 상세 모달로의 딥링크는 지원하지 않고 그룹 페이지(`/groups/{groupId}`)까지만 이동한다.
+
+### GET /api/notifications/unread-count
+
+안 읽은 알림 수 — 헤더 벨 배지용.
+
+**권한**: 인증 필요
+
+**응답**: `200 OK` `{"count": 3}`
+
+### PATCH /api/notifications/{notificationId}/read
+
+알림 단건 읽음 처리. 본인 소유 알림만 갱신되도록 SQL에서 `user_key`까지 함께 조건에 건다.
+
+**권한**: 인증 필요
+
+**응답**: `200 OK` (본인 소유가 아니거나 존재하지 않으면 0행 갱신, 그래도 `200 OK` — 멱등 처리)
+
+### PATCH /api/notifications/read-all
+
+내 안 읽은 알림 전체 읽음 처리.
+
+**권한**: 인증 필요
+
+**응답**: `200 OK` `{"updated": 5}`
 
 ---
 

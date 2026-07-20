@@ -56,9 +56,10 @@
 <header style="padding:20px 0;">
     <div style="max-width:980px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:16px;">
         <div style="font-weight:700;font-size:1.125rem;">Club Schedule</div>
-        <div style="margin-left:auto;"></div>
+        <div style="margin-left:auto;"><span th:replace="~{fragments :: notifBell}"></span></div>
     </div>
 </header>
+<script th:src="@{/js/notifications.js}"></script>
 
 <div class="container" th:attr="data-group-id=${group.groupId}, data-is-member=${isMember}, data-can-create-schedule=${canCreateSchedule}, data-create-needs-approval=${createNeedsApproval}, data-can-manage-schedule=${canManageSchedule}, data-current-user-key=${currentUserKey}">
     <div class="card">
@@ -68,7 +69,7 @@
 <!--                <div style="color:#64748b; margin-top:6px;" class="member-meta">그룹 ID: <span th:text="${group.groupId}">1</span></div>-->
             </div>
             <div style="display:flex; gap:8px; align-items:center;">
-                <a th:href="@{/}" class="tab">목록으로</a>
+                <a th:href="@{/(list=1)}" class="tab">목록으로</a>
             </div>
         </div>
     </div>
@@ -81,6 +82,12 @@
                 <div id="tabManage" class="tab" th:if="${isManager}">관리</div>
             </div>
             <div id="joinAction" th:if="${!isMember}"></div>
+            <button id="favoriteBtn" type="button" th:if="${isMember}"
+                    th:attr="data-favorite=${isFavoriteGroup},data-has-favorite=${hasFavoriteGroup}"
+                    title="우선모임"
+                    style="background:none;border:none;font-size:22px;line-height:1;cursor:pointer;padding:4px 8px;color:#f59e0b;">
+                <span th:text="${isFavoriteGroup} ? '★' : '☆'">☆</span>
+            </button>
         </div>
 
         <div th:if="${!isMember}">
@@ -125,17 +132,29 @@
 		
 		<!--관리탭-->
         <div id="contentManage" style="display:none;" th:if="${isManager}">
+            <!-- 상단: 처리가 필요한 승인 대기 건만 모아 보여주는 위젯 2개 -->
             <div class="card" style="margin-bottom:12px;" th:if="${isLeader}">
-                <div class="section-title">가입 요청 관리</div>
+                <div class="section-title">가입 요청</div>
                 <div class="members-list" id="joinRequestsList">
+                    <div class="muted">로딩 중...</div>
+                </div>
+            </div>
+
+            <div class="card" style="margin-bottom:12px;">
+                <div class="section-title">일정 승인요청</div>
+                <div class="members-list" id="pendingScheduleList">
                     <div class="muted">로딩 중...</div>
                 </div>
             </div>
 
             <div class="card">
                 <div class="section-title">회원 관리</div>
-                <div class="members-list" id="membersList">
-                    <!-- Member items will be rendered here -->
+                <div style="display:flex;gap:8px;margin-bottom:12px;">
+                    <button type="button" id="memTabActive" class="tab active">일반회원</button>
+                    <button type="button" id="memTabWithdrawn" class="tab">탈퇴회원</button>
+                    <button type="button" id="memTabKicked" class="tab">내보내기</button>
+                </div>
+                <div class="members-list" id="membersManageList">
                     <div class="muted">로딩 중...</div>
                 </div>
             </div>
@@ -266,9 +285,40 @@
             if (tab === tabManage) cManage.style.display = 'block';
         }
 
+        const favoriteBtn = document.getElementById('favoriteBtn');
+        if (favoriteBtn) {
+            favoriteBtn.addEventListener('click', async () => {
+                const isFavorite = favoriteBtn.dataset.favorite === 'true';
+                const hasFavorite = favoriteBtn.dataset.hasFavorite === 'true';
+                const setIcon = (fav) => { favoriteBtn.dataset.favorite = fav ? 'true' : 'false'; favoriteBtn.querySelector('span').textContent = fav ? '★' : '☆'; };
+                const toast = (msg) => window.openCommonModal({ title:'완료', content: '<div>'+msg+'</div>', size:'sm' });
+                try {
+                    if (isFavorite) {
+                        const r = await fetch('/groups/'+groupId+'/favorite', { method:'DELETE' });
+                        if (!r.ok) throw new Error('failed');
+                        setIcon(false); favoriteBtn.dataset.hasFavorite = 'false';
+                        toast('우선모임이 해체되었습니다.');
+                    } else if (!hasFavorite) {
+                        const r = await fetch('/groups/'+groupId+'/favorite', { method:'PUT' });
+                        if (!r.ok) throw new Error('failed');
+                        setIcon(true); favoriteBtn.dataset.hasFavorite = 'true';
+                        toast('우선모임으로 등록되었습니다.');
+                    } else {
+                        if (!confirm('우선모임을 변경하시겠습니까?')) return;
+                        const r = await fetch('/groups/'+groupId+'/favorite', { method:'PUT' });
+                        if (!r.ok) throw new Error('failed');
+                        setIcon(true); favoriteBtn.dataset.hasFavorite = 'true';
+                        toast('우선모임이 변경되었습니다.');
+                    }
+                } catch (e) {
+                    window.openCommonModal({ title:'오류', content:'<div>요청 처리에 실패했습니다.</div>', size:'sm' });
+                }
+            });
+        }
+
         if (tabHome) tabHome.addEventListener('click', () => activateTab(tabHome));
         if (tabSchedule) tabSchedule.addEventListener('click', () => { activateTab(tabSchedule); loadSchedules(); });
-        if (tabManage) tabManage.addEventListener('click', () => { activateTab(tabManage); loadMembers(); loadSchedulesForManage(); loadJoinRequests(); });
+        if (tabManage) tabManage.addEventListener('click', () => { activateTab(tabManage); loadSchedulesForManage(); loadJoinRequests(); loadPendingScheduleList(); loadMembersManage(); });
 
         try { activateTab(tabHome); setTimeout(() => loadSchedules(), 0); } catch(e) { activateTab(tabHome); }
 
@@ -403,7 +453,7 @@
                         const body = await res.json().catch(() => ({}));
                         if (!res.ok) throw new Error(body.error || '승인 실패');
                         window.closeCommonModal && window.closeCommonModal();
-                        loadJoinRequests(); loadMembers();
+                        loadJoinRequests();
                     } catch (e) { yesBtn.disabled = false; window.openCommonModal({ title: '오류', content: '<div>' + (e.message || '승인 실패') + '</div>', size: 'sm' }); }
                 }, { tone: 'info', confirmLabel: '예, 승인' });
             });
@@ -438,11 +488,151 @@
             window.openCommonModal({ title: '가입 요청 거부', content: con, size: 'sm', backdropClose: false });
         }
 
+        // 관리 탭 상단 "일정 승인요청" 위젯 — 전체 일정 중 PENDING만 골라 간단히 승인/반려만 제공
+        // (수정/취소 등 나머지 관리 기능은 하단 "일정 관리" 카드에서 그대로 처리)
+        async function loadPendingScheduleList(){
+            const el = document.getElementById('pendingScheduleList');
+            if (!el) return;
+            el.innerHTML = '<div class="muted">로딩 중...</div>';
+            try {
+                const data = await getSchedules({ all: true });
+                const pending = (Array.isArray(data) ? data : []).filter(ev => ev.status === 'PENDING');
+                el.innerHTML = '';
+                if (pending.length === 0) { el.innerHTML = '<div class="muted">승인 대기 중인 일정이 없습니다.</div>'; return; }
+                pending.forEach(ev => {
+                    const item = document.createElement('div'); item.className = 'member-item';
+                    const left = document.createElement('div');
+                    left.innerHTML = '<div style="font-weight:700">' + (ev.title || '일정') + '</div><div class="member-meta">' + new Date(ev.start).toLocaleString() + '</div>';
+                    const btns = document.createElement('div'); btns.style.display = 'flex'; btns.style.gap = '4px';
+                    const ab = document.createElement('button'); ab.textContent = '승인'; ab.className = 'tab'; ab.style.background = '#dcfce7'; ab.style.color = '#166534';
+                    ab.onclick = () => { performAction(ev.id, 'approve', { btnEl: ab, originalText: '승인', successMsg: '일정이 승인되었습니다.' }); };
+                    const rb = document.createElement('button'); rb.textContent = '반려'; rb.className = 'tab'; rb.style.background = '#fee2e2'; rb.style.color = '#991b1b';
+                    rb.onclick = () => { confirmAndAct(ev.id, 'reject', { label: '거부', warningMsg: '이 일정을 거부하시겠습니까? 거부 후에는 되돌릴 수 없습니다.' }); };
+                    btns.appendChild(ab); btns.appendChild(rb);
+                    item.appendChild(left); item.appendChild(btns);
+                    el.appendChild(item);
+                });
+            } catch (e) { el.innerHTML = '<div class="muted">일정을 불러오지 못했습니다.</div>'; }
+        }
+
+        // 관리 탭 "회원 관리" — 일반회원/탈퇴회원/내보내기 상태 필터 (별도 페이지 대신 인라인 탭)
+        let membersManageData = [];
+        let membersManageStatus = 'ACTIVE';
+        const memTabActive = document.getElementById('memTabActive');
+        const memTabWithdrawn = document.getElementById('memTabWithdrawn');
+        const memTabKicked = document.getElementById('memTabKicked');
+        const memTabs = [memTabActive, memTabWithdrawn, memTabKicked];
+        const memStatusMap = { memTabActive: 'ACTIVE', memTabWithdrawn: 'WITHDRAWN', memTabKicked: 'KICKED' };
+        function activateMemberTab(tab) {
+            memTabs.forEach(t => { if (t) t.classList.remove('active'); });
+            tab.classList.add('active');
+            membersManageStatus = memStatusMap[tab.id];
+            renderMembersManageList();
+        }
+        if (memTabActive) memTabActive.addEventListener('click', () => activateMemberTab(memTabActive));
+        if (memTabWithdrawn) memTabWithdrawn.addEventListener('click', () => activateMemberTab(memTabWithdrawn));
+        if (memTabKicked) memTabKicked.addEventListener('click', () => activateMemberTab(memTabKicked));
+
+        function openMemberReasonModal(title, confirmLabel, onConfirm) {
+            const con = document.createElement('div'); con.style.cssText = 'display:flex;flex-direction:column;gap:12px;';
+            const lbl = document.createElement('label'); lbl.style.cssText = 'display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px;'; lbl.textContent = '사유(선택)';
+            const ta = document.createElement('textarea'); ta.style.cssText = 'width:100%;min-height:70px;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-top:4px;resize:vertical;'; ta.placeholder = '사유를 입력해주세요(선택)';
+            lbl.appendChild(ta); con.appendChild(lbl);
+            const bRow = document.createElement('div'); bRow.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;';
+            const cancelBtn = document.createElement('button'); cancelBtn.className = 'tab'; cancelBtn.textContent = '취소'; cancelBtn.onclick = () => window.closeCommonModal();
+            const confirmBtn = document.createElement('button'); confirmBtn.className = 'tab'; confirmBtn.style.cssText = 'background:#dc2626;border:1px solid #dc2626;color:#fff;'; confirmBtn.textContent = confirmLabel;
+            confirmBtn.onclick = () => onConfirm(ta.value.trim(), confirmBtn);
+            bRow.appendChild(cancelBtn); bRow.appendChild(confirmBtn); con.appendChild(bRow);
+            window.openCommonModal({ title: title, content: con, size: 'sm' });
+        }
+
+        function renderMemberRow(m) {
+            const div = document.createElement('div'); div.className = 'member-item';
+            const left = document.createElement('div');
+            const nameLine = document.createElement('div'); nameLine.style.fontWeight = '700';
+            nameLine.textContent = (m.displayName || ('사용자 #' + m.userKey)) + ' (' + (m.role || 'MEMBER') + ')';
+            if (m.banned) { const badge = document.createElement('span'); badge.style.cssText = 'display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;background:#fee2e2;color:#991b1b;'; badge.textContent = '차단됨'; nameLine.appendChild(badge); }
+            const meta = document.createElement('div'); meta.className = 'member-meta';
+            meta.textContent = (m.joinedAt ? '가입일 ' + new Date(m.joinedAt).toLocaleDateString() : '-') + (m.banReason ? ' · 차단 사유: ' + m.banReason : '');
+            left.appendChild(nameLine); left.appendChild(meta);
+            div.appendChild(left);
+
+            const actions = document.createElement('div'); actions.style.cssText = 'display:flex;gap:6px;';
+
+            if (m.status === 'ACTIVE' && m.role === 'MEMBER') {
+                const banBtn = document.createElement('button'); banBtn.className = 'tab'; banBtn.style.cssText = 'background:#fff1f2;color:#981b1b;'; banBtn.textContent = '내보내기';
+                banBtn.onclick = () => openMemberReasonModal('회원 내보내기', '내보내기', async (reason, btn) => {
+                    btn.disabled = true;
+                    try {
+                        const res = await fetch('/api/groups/' + groupId + '/members/' + m.userKey + '/ban', {
+                            method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ reason: reason || null })
+                        });
+                        if (!res.ok) throw new Error('실패');
+                        window.closeCommonModal();
+                        loadMembersManage();
+                    } catch (e) { btn.disabled = false; window.openCommonModal({ title:'오류', content:'<div>내보내기 처리에 실패했습니다.</div>', size:'sm' }); }
+                });
+                actions.appendChild(banBtn);
+            } else if (m.status === 'WITHDRAWN' || m.status === 'KICKED') {
+                if (m.banned) {
+                    const unbanBtn = document.createElement('button'); unbanBtn.className = 'tab'; unbanBtn.style.cssText = 'background:#eff6ff;color:#1d4ed8;'; unbanBtn.textContent = '벤 해제';
+                    unbanBtn.onclick = async () => {
+                        unbanBtn.disabled = true;
+                        try {
+                            const res = await fetch('/api/groups/' + groupId + '/members/' + m.userKey + '/ban', { method: 'DELETE', credentials: 'same-origin' });
+                            if (!res.ok) throw new Error('실패');
+                            loadMembersManage();
+                        } catch (e) { unbanBtn.disabled = false; window.openCommonModal({ title:'오류', content:'<div>벤 해제에 실패했습니다.</div>', size:'sm' }); }
+                    };
+                    actions.appendChild(unbanBtn);
+                } else if (m.role === 'MEMBER') {
+                    const banBtn = document.createElement('button'); banBtn.className = 'tab'; banBtn.style.cssText = 'background:#fff1f2;color:#981b1b;'; banBtn.textContent = '벤 처리';
+                    banBtn.onclick = () => openMemberReasonModal('벤 처리 (재가입 차단)', '벤 처리', async (reason, btn) => {
+                        btn.disabled = true;
+                        try {
+                            const res = await fetch('/api/groups/' + groupId + '/members/' + m.userKey + '/ban', {
+                                method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ reason: reason || null })
+                            });
+                            if (!res.ok) throw new Error('실패');
+                            window.closeCommonModal();
+                            loadMembersManage();
+                        } catch (e) { btn.disabled = false; window.openCommonModal({ title:'오류', content:'<div>벤 처리에 실패했습니다.</div>', size:'sm' }); }
+                    });
+                    actions.appendChild(banBtn);
+                }
+            }
+
+            div.appendChild(actions);
+            return div;
+        }
+
+        function renderMembersManageList() {
+            const el = document.getElementById('membersManageList');
+            if (!el) return;
+            el.innerHTML = '';
+            const filtered = membersManageData.filter(m => (m.status || 'ACTIVE') === membersManageStatus);
+            if (filtered.length === 0) { el.innerHTML = '<div class="muted">해당 상태의 회원이 없습니다.</div>'; return; }
+            filtered.forEach(m => el.appendChild(renderMemberRow(m)));
+        }
+
+        async function loadMembersManage() {
+            const el = document.getElementById('membersManageList');
+            if (!el) return;
+            el.innerHTML = '<div class="muted">로딩 중...</div>';
+            try {
+                const res = await fetch('/api/groups/' + groupId + '/members', { credentials: 'same-origin' });
+                if (!res.ok) throw new Error('실패');
+                membersManageData = await res.json();
+                renderMembersManageList();
+            } catch (e) { el.innerHTML = '<div class="muted">회원 목록을 불러오지 못했습니다.</div>'; }
+        }
+
         // 우측 상단 '일정등록' 버튼 클릭 연결(템플릿에서 isMember 조건으로 렌더링됨)
         const globalAddBtn = document.getElementById('globalAddEventBtn');
         if (globalAddBtn) globalAddBtn.addEventListener('click', () => { window.openCreateEventModal(new Date()); });
 		
-            const membersList = document.getElementById('membersList');
             const schedulesList = document.getElementById('schedulesList');
             const recentEl = document.getElementById('recentSchedules');
             const permissionsList = document.getElementById('permissionsList');
@@ -503,7 +693,7 @@ function startOfMonth(date){ const d = new Date(date); d.setHours(0,0,0,0); d.se
 
   // 인원/최대인원: 승인(CONFIRMED)된 인원만 기준으로 카운트
   const isConfirmed = ev.status === 'CONFIRMED';
-  const capLabel = '참석인원';
+  const capLabel = '참가인원';
   const capValue = ev.maxAttendance > 0 ? `${ev.confirmedCount||0}/${ev.maxAttendance}명` : `${ev.confirmedCount||0}명 / 제한없음`;
   const capRow = mkR(capLabel, capValue);
   if (capRow) {
@@ -523,14 +713,14 @@ function startOfMonth(date){ const d = new Date(date); d.setHours(0,0,0,0); d.se
     }
   }
 
-  // 참석 신청/취소 (인원 행 바로 아래)
+  // 참가 신청/취소 (인원 행 바로 아래)
   if (isConfirmed && isMember) {
     const attendBtnRow = document.createElement('div');
     attendBtnRow.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
     const attBtn = document.createElement('button');
     attBtn.className = 'btn'; attBtn.disabled = true;
     attBtn.style.cssText = 'font-size:13px;width:100%;background:#94a3b8;color:#fff;font-weight:700;border:none;border-radius:8px;padding:8px 0;cursor:default;';
-    attBtn.textContent = '참석 신청';
+    attBtn.textContent = '참가 신청';
     attendBtnRow.appendChild(attBtn);
     wrap.appendChild(attendBtnRow);
     loadMyAttendance(ev, attendBtnRow, attBtn);
@@ -576,7 +766,7 @@ function startOfMonth(date){ const d = new Date(date); d.setHours(0,0,0,0); d.se
   window.openCommonModal({title:ev.title||'일정',content:wrap,size:'md'});
 }
 
-// 내 참석 상태에 따라 상단 참석 버튼(attBtn)을 갱신하고, 필요 시 안내 문구/취소 버튼을 추가
+// 내 참가 상태에 따라 상단 참가 버튼(attBtn)을 갱신하고, 필요 시 안내 문구/취소 버튼을 추가
 // onSuccess 생략 시(상세 모달 호출부) 기존처럼 모달을 닫고 완료 토스트를 띄운다.
 // opts.compact === true면 홈탭 카드용 좁은 알약형 버튼/배지 스타일을 사용한다.
 async function loadMyAttendance(ev, containerEl, attBtn, onSuccess, opts) {
@@ -599,13 +789,13 @@ async function loadMyAttendance(ev, containerEl, attBtn, onSuccess, opts) {
       const isRejected = !!myAtt && myAtt.status === 'REJECTED';
       attBtn.disabled = false;
       applyBtnStyle(isRejected ? '#dc2626' : '#2563eb', '#fff');
-      attBtn.textContent = isRejected ? '참석 재신청' : '참석 신청';
+      attBtn.textContent = isRejected ? '참가 재신청' : '참가 신청';
       attBtn.onclick = async () => {
         const originalLabel = attBtn.textContent;
         attBtn.disabled = true; attBtn.textContent = '처리 중...';
         try {
           const r = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attend', { method: 'POST', credentials: 'same-origin' });
-          if (r.ok) { (onSuccess || (() => defaultOnSuccess('참석 신청이 완료되었습니다.', '#166534')))(); }
+          if (r.ok) { (onSuccess || (() => defaultOnSuccess('참가 신청이 완료되었습니다.', '#166534')))(); }
           else { const j = await r.json().catch(() => ({})); attBtn.disabled = false; attBtn.textContent = originalLabel; alert(j.message || '신청 실패'); }
         } catch (e) { attBtn.disabled = false; attBtn.textContent = originalLabel; alert(e.message); }
       };
@@ -613,24 +803,24 @@ async function loadMyAttendance(ev, containerEl, attBtn, onSuccess, opts) {
       if (myAtt.status === 'PENDING') {
         const msg = document.createElement('div');
         if (compact) { msg.style.cssText = 'font-size:11px;color:#854d0e;background:#fef9c3;border-radius:999px;padding:2px 8px;white-space:nowrap;'; msg.textContent = '대기중'; }
-        else { msg.style.cssText = 'font-size:12px;color:#854d0e;background:#fef9c3;border-radius:6px;padding:6px 10px;'; msg.textContent = '참석 신청 승인 대기 중입니다.'; }
+        else { msg.style.cssText = 'font-size:12px;color:#854d0e;background:#fef9c3;border-radius:6px;padding:6px 10px;'; msg.textContent = '참가 신청 승인 대기 중입니다.'; }
         containerEl.insertBefore(msg, attBtn);
       }
       attBtn.disabled = false;
       applyBtnStyle('#fff1f2', '#be123c', '1px solid #fecaca');
-      attBtn.textContent = '참석 취소';
+      attBtn.textContent = '참가 취소';
       attBtn.onclick = async () => {
-        if (!confirm('참석를 취소하시겠습니까?')) return;
+        if (!confirm('참가를 취소하시겠습니까?')) return;
         attBtn.disabled = true;
         try {
           const r = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attend', { method: 'DELETE', credentials: 'same-origin' });
-          if (r.ok) { (onSuccess || (() => defaultOnSuccess('참석 취소되었습니다.', '#64748b')))(); }
+          if (r.ok) { (onSuccess || (() => defaultOnSuccess('참가 취소되었습니다.', '#64748b')))(); }
           else { const j = await r.json().catch(() => ({})); attBtn.disabled = false; alert(j.message || '취소 실패'); }
         } catch (e) { attBtn.disabled = false; alert(e.message); }
       };
     }
   } catch (e) {
-    const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '참석 상태를 불러오지 못했습니다.';
+    const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '참가 상태를 불러오지 못했습니다.';
     containerEl.appendChild(errDiv);
   }
 }
@@ -657,7 +847,7 @@ function attachRosterPopover(triggerEl, anchorEl, scheduleId) {
       const rows = list.filter(a => a.status === 'CONFIRMED' || a.status === 'PENDING');
       b.innerHTML = '';
       if (rows.length === 0) {
-        const em = document.createElement('div'); em.style.cssText = 'font-size:12px;color:#94a3b8;'; em.textContent = '참석자가 없습니다.'; b.appendChild(em);
+        const em = document.createElement('div'); em.style.cssText = 'font-size:12px;color:#94a3b8;'; em.textContent = '참가자가 없습니다.'; b.appendChild(em);
       } else {
         rows.forEach(a => {
           const row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0;';
@@ -689,35 +879,38 @@ function attachRosterPopover(triggerEl, anchorEl, scheduleId) {
   });
 }
 
-// '참석자 관리' 모달: 출석 체크 / 참석자 개별 승인·거부 등 관리자 전용 기능
+// '참가자 관리' 모달: 참가자 개별 승인·거부(신청) / 참석확인(체크인, 보기·수정) / 신청 이력
 function openAttendeeManageModal(ev) {
   const wrap = document.createElement('div'); wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
 
-  // 신청/이력 탭 헤더 (페이지 레벨 activateTab과 동일한 방식을 모달 스코프로 축소)
+  // 신청/참석확인 탭 헤더 (페이지 레벨 activateTab과 동일한 방식을 모달 스코프로 축소)
   const tabRow = document.createElement('div'); tabRow.style.cssText = 'display:flex;gap:6px;border-bottom:1px solid #e2e8f0;padding-bottom:8px;';
   const tabApply = document.createElement('div'); tabApply.className = 'tab active'; tabApply.textContent = '신청';
-  const tabHistory = document.createElement('div'); tabHistory.className = 'tab'; tabHistory.textContent = '이력';
-  tabRow.appendChild(tabApply); tabRow.appendChild(tabHistory);
+  const tabCheck = document.createElement('div'); tabCheck.className = 'tab'; tabCheck.textContent = '참석확인';
+  tabRow.appendChild(tabApply); tabRow.appendChild(tabCheck);
   wrap.appendChild(tabRow);
 
   const contentApply = document.createElement('div'); contentApply.style.cssText = 'display:flex;flex-direction:column;gap:6px;min-height:20px;';
-  const contentHistory = document.createElement('div'); contentHistory.style.cssText = 'display:none;flex-direction:column;gap:2px;min-height:20px;';
-  wrap.appendChild(contentApply); wrap.appendChild(contentHistory);
+  const contentCheck = document.createElement('div'); contentCheck.style.cssText = 'display:none;flex-direction:column;gap:6px;min-height:20px;';
+  wrap.appendChild(contentApply); wrap.appendChild(contentCheck);
 
-  let historyLoaded = false;
+  let checkLoaded = false;
   function activateLocalTab(tab) {
-    [tabApply, tabHistory].forEach(t => t.classList.remove('active'));
+    [tabApply, tabCheck].forEach(t => t.classList.remove('active'));
     tab.classList.add('active');
     contentApply.style.display = (tab === tabApply) ? 'flex' : 'none';
-    contentHistory.style.display = (tab === tabHistory) ? 'flex' : 'none';
-    if (tab === tabHistory && !historyLoaded) { historyLoaded = true; loadHistoryTab(); }
+    contentCheck.style.display = (tab === tabCheck) ? 'flex' : 'none';
+    if (tab === tabCheck && !checkLoaded) { checkLoaded = true; loadCheckTab(); }
   }
   tabApply.onclick = () => activateLocalTab(tabApply);
-  tabHistory.onclick = () => activateLocalTab(tabHistory);
+  tabCheck.onclick = () => activateLocalTab(tabCheck);
 
-  const sC = { PENDING: 'background:#fef9c3;color:#854d0e;', CONFIRMED: 'background:#dcfce7;color:#166534;', REJECTED: 'background:#fee2e2;color:#991b1b;', CANCELLED: 'background:#f1f5f9;color:#64748b;' };
-  const sL = { PENDING: '대기', CONFIRMED: '확정', REJECTED: '거부', CANCELLED: '취소' };
+  const hC = { PENDING: 'background:#fef9c3;color:#854d0e;', CONFIRMED: 'background:#dcfce7;color:#166534;', REJECTED: 'background:#fee2e2;color:#991b1b;', CANCELLED: 'background:#f1f5f9;color:#64748b;' };
   const hL = { PENDING: '신청', CONFIRMED: '승인', REJECTED: '거부', CANCELLED: '취소' };
+  const aC = { NONE: 'background:#f1f5f9;color:#64748b;', ATTENDED: 'background:#dcfce7;color:#166534;', NOSHOW: 'background:#fee2e2;color:#991b1b;' };
+  const aL = { NONE: '미체크', ATTENDED: '참석', NOSHOW: '불참' };
+
+  // ── "신청" 탭: 목록 / 이력 두 하위 뷰를 같은 컨테이너 안에서 토글 ──────────────────
 
   async function loadApplyTab() {
     contentApply.innerHTML = '<div class="muted">불러오는 중...</div>';
@@ -725,10 +918,18 @@ function openAttendeeManageModal(ev) {
       const r = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance', { credentials: 'same-origin' });
       const list = r.ok ? await r.json() : [];
       contentApply.innerHTML = '';
+
+      const headerRow = document.createElement('div'); headerRow.style.cssText = 'display:flex;justify-content:flex-end;';
+      const historyLink = document.createElement('span'); historyLink.textContent = '이력보기';
+      historyLink.style.cssText = 'color:#2563eb;font-weight:600;font-size:12px;cursor:pointer;';
+      historyLink.onclick = () => loadHistoryView();
+      headerRow.appendChild(historyLink);
+      contentApply.appendChild(headerRow);
+
       const pending = list.filter(a => a.status === 'PENDING');
       const confirmed = list.filter(a => a.status === 'CONFIRMED');
       if (pending.length === 0 && confirmed.length === 0) {
-        const em = document.createElement('div'); em.style.cssText = 'font-size:13px;color:#94a3b8;'; em.textContent = '참석자가 없습니다.'; contentApply.appendChild(em);
+        const em = document.createElement('div'); em.style.cssText = 'font-size:13px;color:#94a3b8;'; em.textContent = '참가자가 없습니다.'; contentApply.appendChild(em);
         return;
       }
       if (pending.length > 0) {
@@ -736,147 +937,287 @@ function openAttendeeManageModal(ev) {
         pending.forEach(a => contentApply.appendChild(renderApplyRow(a)));
       }
       if (confirmed.length > 0) {
-        const h2 = document.createElement('div'); h2.style.cssText = 'font-size:12px;font-weight:700;color:#166534;margin-top:10px;'; h2.textContent = '확정'; contentApply.appendChild(h2);
+        const h2 = document.createElement('div'); h2.style.cssText = 'font-size:12px;font-weight:700;color:#166534;margin-top:10px;'; h2.textContent = '승인 완료'; contentApply.appendChild(h2);
         confirmed.forEach(a => contentApply.appendChild(renderApplyRow(a)));
       }
     } catch (e) {
       contentApply.innerHTML = '';
-      const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '참석자 정보를 불러오지 못했습니다.'; contentApply.appendChild(errDiv);
+      const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '참가자 정보를 불러오지 못했습니다.'; contentApply.appendChild(errDiv);
     }
   }
 
-  async function loadHistoryTab() {
-    contentHistory.innerHTML = '<div class="muted">불러오는 중...</div>';
+  async function loadHistoryView() {
+    contentApply.innerHTML = '<div class="muted">불러오는 중...</div>';
     try {
       const r = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/history', { credentials: 'same-origin' });
       const list = r.ok ? await r.json() : [];
-      contentHistory.innerHTML = '';
+      contentApply.innerHTML = '';
+
+      const backLink = document.createElement('div'); backLink.textContent = '← 신청 목록';
+      backLink.style.cssText = 'color:#2563eb;font-weight:600;font-size:12px;cursor:pointer;margin-bottom:4px;';
+      backLink.onclick = () => loadApplyTab();
+      contentApply.appendChild(backLink);
+
       if (list.length === 0) {
-        const em = document.createElement('div'); em.style.cssText = 'font-size:13px;color:#94a3b8;'; em.textContent = '이력이 없습니다.'; contentHistory.appendChild(em);
+        const em = document.createElement('div'); em.style.cssText = 'font-size:13px;color:#94a3b8;'; em.textContent = '이력이 없습니다.'; contentApply.appendChild(em);
         return;
       }
-      list.forEach(h => {
-        const row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:12px;padding:5px 0;border-bottom:1px solid #f1f5f9;flex-wrap:wrap;';
-        const when = document.createElement('span'); when.style.cssText = 'color:#94a3b8;min-width:130px;'; when.textContent = h.createdAt ? new Date(h.createdAt).toLocaleString() : '-';
-        const badge = document.createElement('span'); badge.style.cssText = (sC[h.status] || '') + 'padding:1px 8px;border-radius:999px;font-weight:600;'; badge.textContent = hL[h.status] || h.status;
-        const target = document.createElement('span'); target.textContent = h.displayName || '(알 수 없음)';
-        const actor = document.createElement('span'); actor.style.cssText = 'color:#64748b;margin-left:auto;'; actor.textContent = '처리자: ' + (h.selfActed ? '본인' : (h.actorDisplayName || '-'));
-        row.appendChild(when); row.appendChild(badge); row.appendChild(target); row.appendChild(actor);
-        contentHistory.appendChild(row);
-      });
+
+      const filterRow = document.createElement('div'); filterRow.style.cssText = 'display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap;';
+      const selStyle = 'font-size:12px;padding:4px 6px;border:1px solid #e2e8f0;border-radius:6px;background:#fff;';
+      const statusSel = document.createElement('select'); statusSel.style.cssText = selStyle;
+      statusSel.innerHTML = '<option value="">상태 전체</option>' + Object.keys(hL).map(k => '<option value="' + k + '">' + hL[k] + '</option>').join('');
+      const targetNames = Array.from(new Set(list.map(h => h.displayName || '(알 수 없음)')));
+      const targetSel = document.createElement('select'); targetSel.style.cssText = selStyle;
+      targetSel.innerHTML = '<option value="">대상 전체</option>' + targetNames.map(n => '<option value="' + n + '">' + n + '</option>').join('');
+      filterRow.appendChild(statusSel); filterRow.appendChild(targetSel);
+      contentApply.appendChild(filterRow);
+
+      const scrollWrap = document.createElement('div'); scrollWrap.style.cssText = 'max-height:320px;overflow-y:auto;border:1px solid #f1f5f9;border-radius:8px;';
+      const table = document.createElement('table'); table.style.cssText = 'width:100%;border-collapse:collapse;font-size:12px;';
+      const thead = document.createElement('thead');
+      thead.innerHTML = '<tr style="position:sticky;top:0;background:#fff;border-bottom:1px solid #e2e8f0;">'
+        + '<th style="text-align:left;padding:6px 8px;">시각</th>'
+        + '<th style="text-align:left;padding:6px 8px;">상태</th>'
+        + '<th style="text-align:left;padding:6px 8px;">대상</th>'
+        + '<th style="text-align:left;padding:6px 8px;">처리자</th></tr>';
+      table.appendChild(thead);
+      const tbody = document.createElement('tbody');
+      table.appendChild(tbody);
+      scrollWrap.appendChild(table);
+      contentApply.appendChild(scrollWrap);
+
+      function renderRows() {
+        tbody.innerHTML = '';
+        const filtered = list.filter(h =>
+          (!statusSel.value || h.status === statusSel.value) &&
+          (!targetSel.value || (h.displayName || '(알 수 없음)') === targetSel.value)
+        );
+        if (filtered.length === 0) {
+          const tr = document.createElement('tr');
+          tr.innerHTML = '<td colspan="4" style="padding:12px;text-align:center;color:#94a3b8;">조건에 맞는 이력이 없습니다.</td>';
+          tbody.appendChild(tr);
+          return;
+        }
+        filtered.forEach(h => {
+          const tr = document.createElement('tr'); tr.style.cssText = 'border-bottom:1px solid #f1f5f9;';
+          const tdWhen = document.createElement('td'); tdWhen.style.cssText = 'padding:5px 8px;color:#94a3b8;white-space:nowrap;'; tdWhen.textContent = h.createdAt ? new Date(h.createdAt).toLocaleString() : '-';
+          const tdStatus = document.createElement('td'); tdStatus.style.cssText = 'padding:5px 8px;';
+          const badge = document.createElement('span'); badge.style.cssText = (hC[h.status] || '') + 'padding:1px 8px;border-radius:999px;font-weight:600;'; badge.textContent = hL[h.status] || h.status;
+          tdStatus.appendChild(badge);
+          const tdTarget = document.createElement('td'); tdTarget.style.cssText = 'padding:5px 8px;'; tdTarget.textContent = h.displayName || '(알 수 없음)';
+          const tdActor = document.createElement('td'); tdActor.style.cssText = 'padding:5px 8px;color:#64748b;'; tdActor.textContent = h.actorDisplayName || '-';
+          tr.appendChild(tdWhen); tr.appendChild(tdStatus); tr.appendChild(tdTarget); tr.appendChild(tdActor);
+          tbody.appendChild(tr);
+        });
+      }
+      statusSel.onchange = renderRows;
+      targetSel.onchange = renderRows;
+      renderRows();
     } catch (e) {
-      contentHistory.innerHTML = '';
-      const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '이력을 불러오지 못했습니다.'; contentHistory.appendChild(errDiv);
+      contentApply.innerHTML = '';
+      const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '이력을 불러오지 못했습니다.'; contentApply.appendChild(errDiv);
     }
   }
 
   function renderApplyRow(a) {
-          const row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;';
-          const ns = document.createElement('span'); ns.textContent = a.displayName || '(알 수 없음)';
-          const sb = document.createElement('span'); sb.style.cssText = (sC[a.status] || '') + ' padding:1px 6px;border-radius:999px;font-size:11px;'; sb.textContent = sL[a.status] || a.status;
-          row.appendChild(ns); row.appendChild(sb);
-          const canMgr = canManageSchedule || String(ev.createdBy) === String(currentUserKey);
-          const aC = { NONE: 'background:#f1f5f9;color:#64748b;', ATTENDED: 'background:#dcfce7;color:#166534;', NOSHOW: 'background:#fee2e2;color:#991b1b;' };
-          const aL = { NONE: '미체크', ATTENDED: '출석', NOSHOW: '불참' };
-          if (a.status === 'CONFIRMED') {
-            const curActual = a.actualStatus || 'NONE';
-            const ab = document.createElement('span'); ab.style.cssText = (aC[curActual] || aC.NONE) + ' padding:1px 6px;border-radius:999px;font-size:11px;'; ab.textContent = aL[curActual] || curActual;
-            row.appendChild(ab);
-            if (a.checkedAt) {
-              const ct = document.createElement('span'); ct.style.cssText = 'color:#94a3b8;font-size:11px;'; ct.textContent = new Date(a.checkedAt).toLocaleString();
-              row.appendChild(ct);
-            }
-            if (canMgr) {
-              const doCheck = async (actualStatus, changeReason, btnEl) => {
-                if (btnEl) btnEl.disabled = true;
-                try {
-                  const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey + '/check', { method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ actualStatus: actualStatus, changeReason: changeReason }) });
-                  if (!res.ok) { const j = await res.json().catch(() => ({})); throw new Error(j.message || '출석 체크 실패'); }
-                  const updated = await res.json();
-                  a.actualStatus = updated.actualStatus; a.checkedAt = updated.checkedAt;
-                  ab.style.cssText = (aC[a.actualStatus] || aC.NONE) + ' padding:1px 6px;border-radius:999px;font-size:11px;';
-                  ab.textContent = aL[a.actualStatus] || a.actualStatus;
-                  window.closeCommonModal && window.closeCommonModal();
-                } catch (e) {
-                  if (btnEl) btnEl.disabled = false;
-                  window.openCommonModal({ title: '오류', content: '<div>' + (e.message || '출석 체크 실패') + '</div>', size: 'sm' });
-                }
-              };
-              if (curActual === 'NONE') {
-                const okB = document.createElement('button'); okB.className = 'tab'; okB.style.cssText = 'padding:2px 8px;font-size:11px;background:#dcfce7;color:#166534;'; okB.textContent = '출석'; okB.onclick = () => doCheck('ATTENDED', null, okB);
-                const nsB = document.createElement('button'); nsB.className = 'tab'; nsB.style.cssText = 'padding:2px 8px;font-size:11px;background:#fee2e2;color:#991b1b;margin-left:auto;'; nsB.textContent = '불참'; nsB.onclick = () => doCheck('NOSHOW', null, nsB);
-                row.appendChild(okB); row.appendChild(nsB);
-              } else {
-                const fixB = document.createElement('button'); fixB.className = 'tab'; fixB.style.cssText = 'padding:2px 8px;font-size:11px;background:#eff6ff;color:#1d4ed8;margin-left:auto;'; fixB.textContent = '정정';
-                fixB.onclick = () => {
-                  const con = document.createElement('div'); con.style.cssText = 'display:flex;flex-direction:column;gap:12px;';
-                  const lbl = document.createElement('div'); lbl.style.cssText = 'font-weight:600;font-size:14px;'; lbl.textContent = '출석 상태 정정'; con.appendChild(lbl);
-                  const btnRow = document.createElement('div'); btnRow.style.cssText = 'display:flex;gap:8px;';
-                  let selected = curActual === 'ATTENDED' ? 'NOSHOW' : 'ATTENDED';
-                  const attB = document.createElement('button'); attB.className = 'tab'; attB.textContent = '출석';
-                  const nsB2 = document.createElement('button'); nsB2.className = 'tab'; nsB2.textContent = '불참';
-                  const markSel = () => {
-                    attB.style.cssText = 'padding:6px 14px;font-size:13px;' + (selected === 'ATTENDED' ? 'background:#166534;color:#fff;' : 'background:#f1f5f9;color:#334155;');
-                    nsB2.style.cssText = 'padding:6px 14px;font-size:13px;' + (selected === 'NOSHOW' ? 'background:#991b1b;color:#fff;' : 'background:#f1f5f9;color:#334155;');
-                  };
-                  attB.onclick = () => { selected = 'ATTENDED'; markSel(); };
-                  nsB2.onclick = () => { selected = 'NOSHOW'; markSel(); };
-                  markSel();
-                  btnRow.appendChild(attB); btnRow.appendChild(nsB2); con.appendChild(btnRow);
-                  const reasonLabel = document.createElement('label'); reasonLabel.style.cssText = 'display:flex;flex-direction:column;gap:4px;font-size:13px;color:#475569;'; reasonLabel.textContent = '정정 사유(선택)';
-                  const reasonTa = document.createElement('textarea'); reasonTa.style.cssText = 'width:100%;min-height:60px;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-top:4px;resize:vertical;'; reasonTa.placeholder = '정정 사유를 입력해주세요(선택)';
-                  reasonLabel.appendChild(reasonTa); con.appendChild(reasonLabel);
-                  const bRow = document.createElement('div'); bRow.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;';
-                  const cancelBtn = document.createElement('button'); cancelBtn.className = 'tab'; cancelBtn.textContent = '닫기'; cancelBtn.onclick = () => window.closeCommonModal && window.closeCommonModal();
-                  const confirmBtn = document.createElement('button'); confirmBtn.className = 'tab'; confirmBtn.style.cssText = 'background:#2563eb;border:1px solid #2563eb;color:#fff;'; confirmBtn.textContent = '정정 확인'; confirmBtn.onclick = () => doCheck(selected, reasonTa.value.trim() || null, confirmBtn);
-                  bRow.appendChild(cancelBtn); bRow.appendChild(confirmBtn); con.appendChild(bRow);
-                  window.openCommonModal({ title: '출석 정정', content: con, size: 'sm', backdropClose: false });
-                };
-                row.appendChild(fixB);
-              }
-            }
+    const row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;';
+    const ns = document.createElement('span'); ns.textContent = a.displayName || '(알 수 없음)';
+    row.appendChild(ns);
+    const canMgr = canManageSchedule || String(ev.createdBy) === String(currentUserKey);
+    if (canMgr && a.status === 'PENDING') {
+      const appB = document.createElement('button'); appB.className = 'tab'; appB.style.cssText = 'padding:2px 8px;font-size:11px;background:#dcfce7;color:#166534;margin-left:auto;'; appB.textContent = '승인';
+      appB.onclick = async () => {
+        appB.disabled = true;
+        try {
+          const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey + '/approve', { method: 'PATCH', credentials: 'same-origin' });
+          if (res.ok) { loadApplyTab(); }
+          else { const j = await res.json().catch(() => ({})); appB.disabled = false; alert(j.message || '승인 실패'); }
+        } catch (e) { appB.disabled = false; alert(e.message); }
+      };
+      const rejB = document.createElement('button'); rejB.className = 'tab'; rejB.style.cssText = 'padding:2px 8px;font-size:11px;background:#fee2e2;color:#991b1b;'; rejB.textContent = '거부';
+      rejB.onclick = async () => {
+        if (!confirm('참가를 거부하시겠습니까?')) return;
+        rejB.disabled = true;
+        try {
+          const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey + '/reject', { method: 'PATCH', credentials: 'same-origin' });
+          if (res.ok) { loadApplyTab(); }
+          else { const j = await res.json().catch(() => ({})); rejB.disabled = false; alert(j.message || '거부 실패'); }
+        } catch (e) { rejB.disabled = false; alert(e.message); }
+      };
+      row.appendChild(appB); row.appendChild(rejB);
+    }
+    // 취소(강제취소): 매니저/리더 전용 — 일정 생성자 단독 권한으로는 불가(승인/거부보다 좁은 권한)
+    if (canManageSchedule && a.status === 'CONFIRMED') {
+      const cancelB = document.createElement('button'); cancelB.className = 'tab'; cancelB.style.cssText = 'padding:2px 8px;font-size:11px;background:#fff1f2;color:#be123c;margin-left:auto;'; cancelB.textContent = '취소';
+      cancelB.onclick = async () => {
+        if (!confirm('이 참가자의 참가를 취소하시겠습니까?')) return;
+        cancelB.disabled = true;
+        try {
+          const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey, { method: 'DELETE', credentials: 'same-origin' });
+          if (res.ok) { loadApplyTab(); }
+          else { const j = await res.json().catch(() => ({})); cancelB.disabled = false; alert(j.message || '취소 실패'); }
+        } catch (e) { cancelB.disabled = false; alert(e.message); }
+      };
+      row.appendChild(cancelB);
+    }
+    return row;
+  }
+
+  // ── "참석확인" 탭: 보기 모드(기본) / 수정 모드 ─────────────────────────────────
+
+  async function loadCheckTab() {
+    contentCheck.innerHTML = '<div class="muted">불러오는 중...</div>';
+    try {
+      const r = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance', { credentials: 'same-origin' });
+      const attList = r.ok ? await r.json() : [];
+      renderCheckView(attList);
+    } catch (e) {
+      contentCheck.innerHTML = '';
+      const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '참석확인 정보를 불러오지 못했습니다.'; contentCheck.appendChild(errDiv);
+    }
+  }
+
+  function summaryText(confirmed, counts) {
+    return '참가자 ' + confirmed.length + '명 / 참석 ' + counts.ATTENDED + '명 / 불참 ' + counts.NOSHOW + '명 / 체크누락 ' + counts.NONE + '명';
+  }
+
+  function renderCheckView(attList) {
+    contentCheck.innerHTML = '';
+    const confirmed = attList.filter(a => a.status === 'CONFIRMED');
+    const canMgr = canManageSchedule || String(ev.createdBy) === String(currentUserKey);
+    const canEdit = canMgr && ev.start && Date.now() >= ev.start;
+
+    const headerRow = document.createElement('div'); headerRow.style.cssText = 'display:flex;justify-content:flex-end;';
+    const editBtn = document.createElement('span'); editBtn.textContent = '수정';
+    editBtn.style.cssText = 'font-weight:600;font-size:12px;' + (canEdit ? 'color:#2563eb;cursor:pointer;' : 'color:#cbd5e1;cursor:default;');
+    if (canEdit) editBtn.onclick = () => renderCheckEdit(attList);
+    else editBtn.title = '일정 시작 이후부터 참석 등록이 가능합니다.';
+    headerRow.appendChild(editBtn);
+    contentCheck.appendChild(headerRow);
+
+    if (!canMgr) return;
+
+    if (!canEdit) {
+      const notice = document.createElement('div'); notice.style.cssText = 'font-size:12px;color:#94a3b8;'; notice.textContent = '일정 시작 이후부터 참석 등록이 가능합니다.'; contentCheck.appendChild(notice);
+    }
+
+    if (confirmed.length === 0) {
+      const em = document.createElement('div'); em.style.cssText = 'font-size:13px;color:#94a3b8;'; em.textContent = '확정된 참가자가 없습니다.'; contentCheck.appendChild(em);
+      return;
+    }
+
+    const groups = { NONE: [], ATTENDED: [], NOSHOW: [] };
+    confirmed.forEach(a => { const s = a.actualStatus || 'NONE'; (groups[s] || groups.NONE).push(a); });
+    const summary = document.createElement('div'); summary.style.cssText = 'font-size:12px;color:#475569;margin-top:6px;';
+    summary.textContent = summaryText(confirmed, { ATTENDED: groups.ATTENDED.length, NOSHOW: groups.NOSHOW.length, NONE: groups.NONE.length });
+    contentCheck.appendChild(summary);
+
+    const groupColor = { NONE: '#64748b', ATTENDED: '#166534', NOSHOW: '#991b1b' };
+    Object.keys(groups).forEach(status => {
+      const list = groups[status];
+      if (list.length === 0) return;
+      const h = document.createElement('div'); h.style.cssText = 'font-size:12px;font-weight:700;color:' + groupColor[status] + ';margin-top:10px;'; h.textContent = aL[status]; contentCheck.appendChild(h);
+      list.forEach(a => {
+        const row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;';
+        const ns = document.createElement('span'); ns.textContent = a.displayName || '(알 수 없음)';
+        row.appendChild(ns);
+        contentCheck.appendChild(row);
+      });
+    });
+  }
+
+  function renderCheckEdit(attList) {
+    contentCheck.innerHTML = '';
+    const confirmed = attList.filter(a => a.status === 'CONFIRMED');
+
+    if (confirmed.length === 0) {
+      const em = document.createElement('div'); em.style.cssText = 'font-size:13px;color:#94a3b8;'; em.textContent = '확정된 참가자가 없습니다.'; contentCheck.appendChild(em);
+      const backRow = document.createElement('div'); backRow.style.cssText = 'display:flex;justify-content:flex-end;margin-top:12px;';
+      const backBtn = document.createElement('button'); backBtn.className = 'tab'; backBtn.textContent = '취소'; backBtn.onclick = () => renderCheckView(attList);
+      backRow.appendChild(backBtn); contentCheck.appendChild(backRow);
+      return;
+    }
+
+    const radios = new Map();
+    const summary = document.createElement('div'); summary.style.cssText = 'font-size:12px;color:#475569;margin-bottom:6px;';
+    contentCheck.appendChild(summary);
+
+    function updateSummary() {
+      const counts = { ATTENDED: 0, NOSHOW: 0, NONE: 0 };
+      radios.forEach(r => { if (r.attended.checked) counts.ATTENDED++; else if (r.noshow.checked) counts.NOSHOW++; else counts.NONE++; });
+      summary.textContent = summaryText(confirmed, counts);
+    }
+
+    const bulkRow = document.createElement('div'); bulkRow.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:6px;';
+    const allBtn = document.createElement('button'); allBtn.className = 'tab'; allBtn.style.cssText = 'padding:4px 10px;font-size:12px;'; allBtn.textContent = '전체 참석';
+    allBtn.onclick = () => { radios.forEach(r => { r.attended.checked = true; }); updateSummary(); };
+    bulkRow.appendChild(allBtn);
+    contentCheck.appendChild(bulkRow);
+
+    const tableWrap = document.createElement('div'); tableWrap.style.cssText = 'overflow-x:auto;';
+    const table = document.createElement('table'); table.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
+    const thead = document.createElement('thead');
+    thead.innerHTML = '<tr style="border-bottom:1px solid #e2e8f0;">'
+      + '<th style="text-align:left;padding:6px 4px;">이름</th>'
+      + '<th style="padding:6px 4px;">참석</th>'
+      + '<th style="padding:6px 4px;">불참</th></tr>';
+    table.appendChild(thead);
+    const tbody = document.createElement('tbody');
+    confirmed.forEach(a => {
+      const tr = document.createElement('tr'); tr.style.cssText = 'border-bottom:1px solid #f1f5f9;';
+      const tdName = document.createElement('td'); tdName.style.cssText = 'padding:6px 4px;'; tdName.textContent = a.displayName || '(알 수 없음)';
+      const tdAtt = document.createElement('td'); tdAtt.style.cssText = 'text-align:center;padding:6px 4px;';
+      const radAtt = document.createElement('input'); radAtt.type = 'radio'; radAtt.name = 'att_' + a.userKey; radAtt.checked = (a.actualStatus || 'NONE') !== 'NOSHOW'; radAtt.onchange = updateSummary;
+      tdAtt.appendChild(radAtt);
+      const tdNo = document.createElement('td'); tdNo.style.cssText = 'text-align:center;padding:6px 4px;';
+      const radNo = document.createElement('input'); radNo.type = 'radio'; radNo.name = 'att_' + a.userKey; radNo.checked = a.actualStatus === 'NOSHOW'; radNo.onchange = updateSummary;
+      tdNo.appendChild(radNo);
+      tr.appendChild(tdName); tr.appendChild(tdAtt); tr.appendChild(tdNo);
+      tbody.appendChild(tr);
+      radios.set(a.userKey, { attended: radAtt, noshow: radNo });
+    });
+    table.appendChild(tbody);
+    tableWrap.appendChild(table);
+    contentCheck.appendChild(tableWrap);
+    updateSummary();
+
+    const btnRow = document.createElement('div'); btnRow.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin-top:12px;';
+    const cancelBtn = document.createElement('button'); cancelBtn.className = 'tab'; cancelBtn.textContent = '취소';
+    cancelBtn.onclick = () => renderCheckView(attList);
+    const saveBtn = document.createElement('button'); saveBtn.className = 'tab'; saveBtn.style.cssText = 'background:#2563eb;border:1px solid #2563eb;color:#fff;'; saveBtn.textContent = '저장';
+    saveBtn.onclick = async () => {
+      saveBtn.disabled = true; cancelBtn.disabled = true;
+      try {
+        const calls = [];
+        confirmed.forEach(a => {
+          const desired = radios.get(a.userKey).attended.checked ? 'ATTENDED' : 'NOSHOW';
+          if (desired !== a.actualStatus) {
+            calls.push(fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey + '/check', {
+              method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ actualStatus: desired })
+            }));
           }
-          if (canMgr && a.status === 'PENDING') {
-            const appB = document.createElement('button'); appB.className = 'tab'; appB.style.cssText = 'padding:2px 8px;font-size:11px;background:#dcfce7;color:#166534;margin-left:auto;'; appB.textContent = '승인';
-            appB.onclick = async () => {
-              appB.disabled = true;
-              try {
-                const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey + '/approve', { method: 'PATCH', credentials: 'same-origin' });
-                if (res.ok) { loadApplyTab(); }
-                else { const j = await res.json().catch(() => ({})); appB.disabled = false; alert(j.message || '승인 실패'); }
-              } catch (e) { appB.disabled = false; alert(e.message); }
-            };
-            const rejB = document.createElement('button'); rejB.className = 'tab'; rejB.style.cssText = 'padding:2px 8px;font-size:11px;background:#fee2e2;color:#991b1b;'; rejB.textContent = '거부';
-            rejB.onclick = async () => {
-              if (!confirm('참석를 거부하시겠습니까?')) return;
-              rejB.disabled = true;
-              try {
-                const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey + '/reject', { method: 'PATCH', credentials: 'same-origin' });
-                if (res.ok) { loadApplyTab(); }
-                else { const j = await res.json().catch(() => ({})); rejB.disabled = false; alert(j.message || '거부 실패'); }
-              } catch (e) { rejB.disabled = false; alert(e.message); }
-            };
-            row.appendChild(appB); row.appendChild(rejB);
-          }
-          // 취소(강제취소): 매니저/리더 전용 — 일정 생성자 단독 권한으로는 불가(승인/거부보다 좁은 권한)
-          if (canManageSchedule && a.status === 'CONFIRMED') {
-            const cancelB = document.createElement('button'); cancelB.className = 'tab'; cancelB.style.cssText = 'padding:2px 8px;font-size:11px;background:#fff1f2;color:#be123c;margin-left:auto;'; cancelB.textContent = '취소';
-            cancelB.onclick = async () => {
-              if (!confirm('이 참석자의 참석를 취소하시겠습니까?')) return;
-              cancelB.disabled = true;
-              try {
-                const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey, { method: 'DELETE', credentials: 'same-origin' });
-                if (res.ok) { loadApplyTab(); }
-                else { const j = await res.json().catch(() => ({})); cancelB.disabled = false; alert(j.message || '취소 실패'); }
-              } catch (e) { cancelB.disabled = false; alert(e.message); }
-            };
-            row.appendChild(cancelB);
-          }
-          return row;
+        });
+        const results = await Promise.all(calls);
+        const failed = results.find(r => !r.ok);
+        if (failed) {
+          const j = await failed.json().catch(() => ({}));
+          throw new Error(j.message || '저장 실패');
+        }
+        loadCheckTab();
+        loadApplyTab();
+      } catch (e) {
+        saveBtn.disabled = false; cancelBtn.disabled = false;
+        window.openCommonModal({ title: '오류', content: '<div>' + (e.message || '저장 실패') + '</div>', size: 'sm' });
+      }
+    };
+    btnRow.appendChild(cancelBtn); btnRow.appendChild(saveBtn);
+    contentCheck.appendChild(btnRow);
   }
 
   loadApplyTab();
-  window.openCommonModal({ title: '참석자 관리', content: wrap, size: 'md' });
+  window.openCommonModal({ title: '참가자 관리', content: wrap, size: 'md' });
 }
 
 function getCookie(name) {
@@ -1108,7 +1449,7 @@ function createDateTimeField() {
             const ap = h<12 ? '오전' : '오후'; h = h%12; if (h===0) h = 12;
             return ap+' '+h+'시'+(m>0 ? (m+'분') : '');
         }
-        // 일정 카드 공용 라벨-값 한 줄 (시작시간/모임장소/참석인원 등, 홈탭·일자 모달 공용)
+        // 일정 카드 공용 라벨-값 한 줄 (시작시간/모임장소/참가인원 등, 홈탭·일자 모달 공용)
         function mkInfoLine(label, value){
             const line = document.createElement('div'); line.style.cssText='display:flex;gap:6px;font-size:12px;line-height:1.5;';
             const lb = document.createElement('span'); lb.style.cssText='color:#94a3b8;flex-shrink:0;width:52px;'; lb.textContent = label;
@@ -1118,7 +1459,7 @@ function createDateTimeField() {
         // 상태별 좌측 border 색상 (승인/대기/거부/취소)
         const STATUS_BORDER_COLOR = { PENDING:'#eab308', CONFIRMED:'#22c55e', REJECTED:'#ef4444', CANCELLED:'#94a3b8' };
 
-        // 최근 일정 목록 갱신 (승인된 일정만, 인원 현황 + 참석 신청/취소/재신청 버튼을 일정 우측에 컴팩트하게 표시)
+        // 최근 일정 목록 갱신 (승인된 일정만, 인원 현황 + 참가 신청/취소/재신청 버튼을 일정 우측에 컴팩트하게 표시)
         function updateRecentSchedules(){
             if (!recentEl) return; recentEl.innerHTML = '';
             const now = Date.now();
@@ -1138,7 +1479,7 @@ function createDateTimeField() {
 
                 info.appendChild(mkInfoLine('시작시간', formatAmPmTime(ev.start)));
                 info.appendChild(mkInfoLine('모임장소', ev.locationName || '-'));
-                info.appendChild(mkInfoLine('참석인원', capValue));
+                info.appendChild(mkInfoLine('참가인원', capValue));
 
                 row.appendChild(info);
                 row.addEventListener('click', ()=> openEventDetail(ev));
@@ -1149,7 +1490,7 @@ function createDateTimeField() {
                     const attBtn = document.createElement('button');
                     attBtn.disabled = true;
                     attBtn.style.cssText = 'font-size:12px;padding:6px 14px;border-radius:999px;border:none;background:#94a3b8;color:#fff;font-weight:700;cursor:default;white-space:nowrap;';
-                    attBtn.textContent = '참석 신청';
+                    attBtn.textContent = '참가 신청';
                     side.appendChild(attBtn);
                     row.appendChild(side);
                     loadMyAttendance(ev, side, attBtn, () => updateRecentSchedules(), { compact: true });
@@ -1183,8 +1524,6 @@ function createDateTimeField() {
             cal.appendChild(grid);
         }
 
-        async function loadMembers(){ if (!membersList) return; membersList.innerHTML = '<div class="muted">멤버 목록을 불러오는 중...</div>'; try{ const res = await fetch('/api/groups/'+groupId+'/members'); if(!res.ok) throw new Error('Failed'); const data = await res.json(); membersList.innerHTML=''; if(!Array.isArray(data)||data.length===0){ membersList.innerHTML='<div class="muted">멤버가 없습니다.</div>'; return; } data.forEach(m=> membersList.appendChild(renderMember(m))); }catch(e){ membersList.innerHTML='<div class="muted">멤버를 불러오지 못했습니다.</div>'; } }
-
         function setScheduleFilter(status){
   scheduleFilter=status;
   const _sel=document.getElementById('scheduleFilterSelect');
@@ -1194,21 +1533,6 @@ function createDateTimeField() {
 async function loadSchedules(){ const cal = document.getElementById('calendarFull'); if (!cal) return; cal.textContent='일정을 불러오는 중...'; calendarEvents = await getSchedules(); renderCalendar(); updateRecentSchedules(); }
 
         async function loadSchedulesForManage(){ const el = document.getElementById('schedulesList'); if(!el) return; el.innerHTML = '<div class="muted">일정 목록을 불러오는 중...</div>'; try{ const data = await getSchedules({ all: true }); el.innerHTML=''; if(!Array.isArray(data)||data.length===0){ el.innerHTML='<div class="muted">일정이 없습니다.</div>'; return; } data.forEach(ev=>{ const item=document.createElement('div'); item.className='member-item'; const sMap={'PENDING':'🟡 승인대기','CONFIRMED':'🟢 승인','REJECTED':'🔴 반려','CANCELLED':'⚫ 취소'}; const left=document.createElement('div'); left.innerHTML='<div style="font-weight:700">'+(ev.title||'일정')+'</div><div class="member-meta">'+new Date(ev.start).toLocaleString()+' &middot; '+(sMap[ev.status]||ev.status||'-')+'</div>'; const btns=document.createElement('div'); btns.style.display='flex'; btns.style.gap='4px'; if(canManageSchedule&&(ev.status==='PENDING'||ev.status==='CONFIRMED')){ const edb=document.createElement('button'); edb.textContent='수정'; edb.className='tab'; edb.style.background='#eff6ff'; edb.style.color='#1d4ed8'; edb.onclick=()=>openEditModal(ev.id); btns.appendChild(edb); } if(canManageSchedule&&ev.status==='PENDING'){ const ab=document.createElement('button'); ab.textContent='승인'; ab.className='tab'; ab.style.background='#dcfce7'; ab.style.color='#166534'; ab.onclick=()=>{performAction(ev.id,'approve',{btnEl:ab,originalText:'승인',successMsg:'일정이 승인되었습니다.'});}; const rb=document.createElement('button'); rb.textContent='반려'; rb.className='tab'; rb.style.background='#fee2e2'; rb.style.color='#991b1b'; rb.onclick=()=>{confirmAndAct(ev.id,'reject',{label:'거부',warningMsg:'이 일정을 거부하시겠습니까? 거부 후에는 되돌릴 수 없습니다.'});}; btns.appendChild(ab); btns.appendChild(rb); } if(canManageSchedule&&(ev.status==='PENDING'||ev.status==='CONFIRMED')){ const cb=document.createElement('button'); cb.textContent='취소'; cb.className='tab'; cb.style.background='#fff1f2'; cb.style.color='#be123c'; cb.onclick=()=>{confirmAndAct(ev.id,'cancel',{label:'취소',warningMsg:'이 일정을 취소하시겠습니까? 취소 후에는 복구할 수 없습니다.'});}; btns.appendChild(cb); } item.appendChild(left); item.appendChild(btns); el.appendChild(item); }); }catch(e){ el.innerHTML = '<div class="muted">일정을 불러오지 못했습니다.</div>'; } }
-
-        function renderMember(m){ const div = document.createElement('div'); div.className='member-item'; const left = document.createElement('div'); left.innerHTML = '<div style="font-weight:700">'+(m.displayName||m.userKey)+'</div><div class="member-meta">'+(m.status||'ACTIVE')+' • '+(m.joinedAt?new Date(m.joinedAt).toLocaleString():'-')+'</div>'; const actions = document.createElement('div'); const banBtn = document.createElement('button'); banBtn.textContent='차단(Ban)'; banBtn.className='btn secondary'; banBtn.style.marginLeft='8px'; banBtn.addEventListener('click', async ()=>{
-            // 모달로 차단 확인을 띄우고, 확인 시 API 호출
-            const content = document.createElement('div');
-            const p = document.createElement('div'); p.textContent = '정말 차단하시겠습니까?'; p.style.marginBottom='12px';
-            const btns = document.createElement('div'); btns.style.display='flex'; btns.style.justifyContent='flex-end'; btns.style.gap='8px';
-            const ok = document.createElement('button'); ok.textContent='차단'; ok.className='btn danger';
-            const cancel = document.createElement('button'); cancel.textContent='취소'; cancel.className='tab';
-            btns.appendChild(cancel); btns.appendChild(ok); content.appendChild(p); content.appendChild(btns);
-            window.openCommonModal({ title: '멤버 차단', content: content, size: 'sm', backdropClose: false, onClose: null });
-            cancel.addEventListener('click', ()=> window.closeCommonModal());
-            ok.addEventListener('click', async ()=>{
-                try{ const r = await fetch('/api/groups/'+groupId+'/members/'+m.userKey+'/ban', { method:'PATCH' }); if(!r.ok) throw new Error('ban failed'); window.closeCommonModal(); window.openCommonModal({ title:'완료', content:'<div>차단되었습니다.</div>', size:'sm' }); loadMembers(); }catch(ex){ window.openCommonModal({ title:'오류', content:'<div>차단 요청 실패</div>', size:'sm' }); }
-            });
-        }); actions.appendChild(banBtn); div.appendChild(left); div.appendChild(actions); return div; }
 
         function openDayView(date, evs){
           const wrap = document.createElement('div'); wrap.style.cssText='display:flex;flex-direction:column;gap:8px;';
@@ -1225,7 +1549,7 @@ async function loadSchedules(){ const cal = document.getElementById('calendarFul
               info.appendChild(title);
               info.appendChild(mkInfoLine('시작시간', it.start ? formatAmPmTime(it.start) : '-'));
               info.appendChild(mkInfoLine('모임장소', it.locationName || '-'));
-              info.appendChild(mkInfoLine('참석인원', capValue));
+              info.appendChild(mkInfoLine('참가인원', capValue));
               row.appendChild(info);
               row.onclick = ()=>{ window.closeCommonModal && window.closeCommonModal(); openEventDetail(it); };
 
@@ -1236,7 +1560,7 @@ async function loadSchedules(){ const cal = document.getElementById('calendarFul
                 const attBtn = document.createElement('button');
                 attBtn.disabled = true;
                 attBtn.style.cssText = 'font-size:12px;padding:6px 14px;border-radius:999px;border:none;background:#94a3b8;color:#fff;font-weight:700;cursor:default;white-space:nowrap;';
-                attBtn.textContent = '참석 신청';
+                attBtn.textContent = '참가 신청';
                 side.appendChild(attBtn);
                 row.appendChild(side);
                 loadMyAttendance(it, side, attBtn, () => openDayView(date, evs), { compact: true });
@@ -1347,7 +1671,7 @@ async function loadSchedules(){ const cal = document.getElementById('calendarFul
     }catch(err){_showErr(err.message||'수정 중 오류가 발생했습니다.');}
   });
 }
-async function scheduleAction(scheduleId,action){ try{ const r=await fetch('/api/groups/'+groupId+'/schedules/'+scheduleId+'/'+action,{method:'PATCH',credentials:'same-origin'}); if(!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(j.message||action+' 실패'); } calendarEvents=await fetchSchedulesRaw(); renderCalendar(); loadSchedulesForManage(); }catch(e){ window.openCommonModal({title:'오류',content:'<div>'+e.message+'</div>',size:'sm'}); } }async function performAction(scheduleId,action,opts){ const {reason,btnEl,originalText,successMsg}=opts||{}; if(btnEl){btnEl.disabled=true;btnEl.textContent='처리 중...';} try{ const fo={method:'PATCH',credentials:'same-origin'}; if(reason){fo.headers={'Content-Type':'application/json'};fo.body=JSON.stringify({reason});} const r=await fetch('/api/groups/'+groupId+'/schedules/'+scheduleId+'/'+action,fo); if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.message||action+' 실패');} await getSchedules({ all: true, forceRefresh: true });renderCalendar();updateRecentSchedules();loadSchedulesForManage(); window.closeCommonModal&&window.closeCommonModal(); const sd=document.createElement('div');sd.style.cssText='padding:8px 0;color:#166534;';sd.textContent=successMsg||'처리가 완료되었습니다.'; window.openCommonModal({title:'완료',content:sd,size:'sm'}); }catch(e){ if(btnEl){btnEl.disabled=false;btnEl.textContent=originalText||action;} window.openCommonModal({title:'오류',content:'<div>'+e.message+'</div>',size:'sm'}); } } function confirmAndAct(scheduleId,action,opts){ const {label,warningMsg}=opts||{}; const con=document.createElement('div');con.style.cssText='display:flex;flex-direction:column;gap:12px;'; const warn=document.createElement('div');warn.style.cssText='color:#92400e;background:#fffbeb;border:1px solid #fef3c7;border-radius:6px;padding:10px 12px;font-size:14px;'; warn.textContent=warningMsg||('정말로 이 일정을 '+label+'하시겠습니까?');con.appendChild(warn); const lbl=document.createElement('label');lbl.style.cssText='display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px;';lbl.textContent=label+' 사유 *'; const ta=document.createElement('textarea');ta.style.cssText='width:100%;min-height:80px;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-top:4px;resize:vertical;';ta.placeholder=label+' 사유를 입력해주세요 (필수)'; lbl.appendChild(ta);con.appendChild(lbl); const errDiv=document.createElement('div');errDiv.style.cssText='color:#dc2626;font-size:12px;display:none;';con.appendChild(errDiv); const bRow=document.createElement('div');bRow.style.cssText='display:flex;justify-content:flex-end;gap:8px;margin-top:4px;'; const cancelBtn=document.createElement('button');cancelBtn.className='tab';cancelBtn.textContent='닫기';cancelBtn.onclick=()=>{window.closeCommonModal&&window.closeCommonModal();}; const confirmBtn=document.createElement('button');confirmBtn.className='btn';confirmBtn.style.cssText='background:#dc2626;border-color:#dc2626;color:#fff;font-size:13px;';confirmBtn.textContent=label+' 확인'; confirmBtn.onclick=async()=>{ const reason=ta.value.trim(); if(!reason){errDiv.textContent=label+' 사유를 입력해주세요.';errDiv.style.display='block';return;} await performAction(scheduleId,action,{reason,btnEl:confirmBtn,originalText:label+' 확인',successMsg:'일정이 '+label+'되었습니다.'}); }; bRow.appendChild(cancelBtn);bRow.appendChild(confirmBtn);con.appendChild(bRow); window.openCommonModal({title:'일정 '+label,content:con,size:'sm',backdropClose:false}); }        window.fetchSchedulesRaw = fetchSchedulesRaw; window.renderCalendar = renderCalendar; window.setScheduleFilter = setScheduleFilter;        if (!isMember) loadJoinStatus();
+async function scheduleAction(scheduleId,action){ try{ const r=await fetch('/api/groups/'+groupId+'/schedules/'+scheduleId+'/'+action,{method:'PATCH',credentials:'same-origin'}); if(!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(j.message||action+' 실패'); } calendarEvents=await fetchSchedulesRaw(); renderCalendar(); loadSchedulesForManage(); }catch(e){ window.openCommonModal({title:'오류',content:'<div>'+e.message+'</div>',size:'sm'}); } }async function performAction(scheduleId,action,opts){ const {reason,btnEl,originalText,successMsg}=opts||{}; if(btnEl){btnEl.disabled=true;btnEl.textContent='처리 중...';} try{ const fo={method:'PATCH',credentials:'same-origin'}; if(reason){fo.headers={'Content-Type':'application/json'};fo.body=JSON.stringify({reason});} const r=await fetch('/api/groups/'+groupId+'/schedules/'+scheduleId+'/'+action,fo); if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.message||action+' 실패');} await getSchedules({ all: true, forceRefresh: true });renderCalendar();updateRecentSchedules();loadSchedulesForManage();loadPendingScheduleList(); window.closeCommonModal&&window.closeCommonModal(); const sd=document.createElement('div');sd.style.cssText='padding:8px 0;color:#166534;';sd.textContent=successMsg||'처리가 완료되었습니다.'; window.openCommonModal({title:'완료',content:sd,size:'sm'}); }catch(e){ if(btnEl){btnEl.disabled=false;btnEl.textContent=originalText||action;} window.openCommonModal({title:'오류',content:'<div>'+e.message+'</div>',size:'sm'}); } } function confirmAndAct(scheduleId,action,opts){ const {label,warningMsg}=opts||{}; const con=document.createElement('div');con.style.cssText='display:flex;flex-direction:column;gap:12px;'; const warn=document.createElement('div');warn.style.cssText='color:#92400e;background:#fffbeb;border:1px solid #fef3c7;border-radius:6px;padding:10px 12px;font-size:14px;'; warn.textContent=warningMsg||('정말로 이 일정을 '+label+'하시겠습니까?');con.appendChild(warn); const lbl=document.createElement('label');lbl.style.cssText='display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px;';lbl.textContent=label+' 사유 *'; const ta=document.createElement('textarea');ta.style.cssText='width:100%;min-height:80px;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-top:4px;resize:vertical;';ta.placeholder=label+' 사유를 입력해주세요 (필수)'; lbl.appendChild(ta);con.appendChild(lbl); const errDiv=document.createElement('div');errDiv.style.cssText='color:#dc2626;font-size:12px;display:none;';con.appendChild(errDiv); const bRow=document.createElement('div');bRow.style.cssText='display:flex;justify-content:flex-end;gap:8px;margin-top:4px;'; const cancelBtn=document.createElement('button');cancelBtn.className='tab';cancelBtn.textContent='닫기';cancelBtn.onclick=()=>{window.closeCommonModal&&window.closeCommonModal();}; const confirmBtn=document.createElement('button');confirmBtn.className='btn';confirmBtn.style.cssText='background:#dc2626;border-color:#dc2626;color:#fff;font-size:13px;';confirmBtn.textContent=label+' 확인'; confirmBtn.onclick=async()=>{ const reason=ta.value.trim(); if(!reason){errDiv.textContent=label+' 사유를 입력해주세요.';errDiv.style.display='block';return;} await performAction(scheduleId,action,{reason,btnEl:confirmBtn,originalText:label+' 확인',successMsg:'일정이 '+label+'되었습니다.'}); }; bRow.appendChild(cancelBtn);bRow.appendChild(confirmBtn);con.appendChild(bRow); window.openCommonModal({title:'일정 '+label,content:con,size:'sm',backdropClose:false}); }        window.fetchSchedulesRaw = fetchSchedulesRaw; window.renderCalendar = renderCalendar; window.setScheduleFilter = setScheduleFilter;        if (!isMember) loadJoinStatus();
 
     });
 </script>

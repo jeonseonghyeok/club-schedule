@@ -30,7 +30,7 @@ public class ScheduleAttendanceApiController {
 
     private final ScheduleAttendanceService attendanceService;
 
-    /** 참석 신청 */
+    /** 참가 신청 */
     @PostMapping("/attend")
     public ResponseEntity<?> attend(
             @PathVariable Long groupId,
@@ -42,7 +42,7 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok(toMap(result));
     }
 
-    /** 참석 취소 (본인) */
+    /** 참가 취소 (본인) */
     @DeleteMapping("/attend")
     public ResponseEntity<?> cancelAttend(
             @PathVariable Long groupId,
@@ -54,7 +54,7 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok().build();
     }
 
-    /** 참석자 목록 */
+    /** 참가자 목록 */
     @GetMapping("/attendance")
     public ResponseEntity<?> listAttendees(
             @PathVariable Long groupId,
@@ -67,7 +67,7 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok(result);
     }
 
-    /** 참석 이력(신청/승인/거부/취소) — is_latest 무관 전체, 시간순 */
+    /** 참가 이력(신청/승인/거부/취소) — is_latest 무관 전체, 시간순 */
     @GetMapping("/attendance/history")
     public ResponseEntity<?> listHistory(
             @PathVariable Long groupId,
@@ -80,7 +80,7 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok(result);
     }
 
-    /** 참석 승인 */
+    /** 참가 승인 */
     @PatchMapping("/attendance/{targetUserKey}/approve")
     public ResponseEntity<?> approve(
             @PathVariable Long groupId,
@@ -93,7 +93,7 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok(toMap(result));
     }
 
-    /** 참석 거부 */
+    /** 참가 거부 */
     @PatchMapping("/attendance/{targetUserKey}/reject")
     public ResponseEntity<?> reject(
             @PathVariable Long groupId,
@@ -119,7 +119,7 @@ public class ScheduleAttendanceApiController {
         return ResponseEntity.ok().build();
     }
 
-    /** 출석 체크 */
+    /** 참석 체크 */
     @PatchMapping("/attendance/{targetUserKey}/check")
     public ResponseEntity<?> check(
             @PathVariable Long groupId,
@@ -135,11 +135,8 @@ public class ScheduleAttendanceApiController {
         try { actual = ActualStatus.valueOf(actualStr.toUpperCase()); }
         catch (IllegalArgumentException e) { actual = ActualStatus.ATTENDED; }
 
-        Object reasonObj = payload.get("changeReason");
-        String changeReason = reasonObj != null ? reasonObj.toString() : null;
-
         ScheduleAttendanceVo result = attendanceService.checkActual(
-                groupId, scheduleId, targetUserKey, actual, userKey, changeReason);
+                groupId, scheduleId, targetUserKey, actual, userKey);
         return ResponseEntity.ok(toMap(result));
     }
 

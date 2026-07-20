@@ -25,4 +25,46 @@
         )
     </insert>
 
+    <resultMap id="notificationListItemMap" type="com.moyora.clubschedule.vo.NotificationListItem">
+        <id     property="notificationId" column="notification_id"/>
+        <result property="sourceTable"    column="source_table"/>
+        <result property="sourceId"       column="source_id"/>
+        <result property="category"       column="category"/>
+        <result property="title"          column="title"/>
+        <result property="content"        column="content"/>
+        <result property="isRead"         column="is_read"/>
+        <result property="createdAt"      column="created_at"/>
+        <result property="groupId"        column="group_id"/>
+    </resultMap>
+
+    <select id="selectRecentByUserKey" resultMap="notificationListItemMap">
+        SELECT
+            n.notification_id, n.source_table, n.source_id, n.category,
+            n.title, n.content, n.is_read, n.created_at,
+            CASE n.source_table
+                WHEN 'GROUP_JOIN_REQUEST' THEN gjr.group_id
+                WHEN 'SCHEDULE'           THEN gs.group_id
+                ELSE NULL
+            END AS group_id
+        FROM notification n
+        LEFT JOIN group_join_request gjr ON n.source_table = 'GROUP_JOIN_REQUEST' AND gjr.request_id = n.source_id
+        LEFT JOIN group_schedule gs      ON n.source_table = 'SCHEDULE'           AND gs.schedule_id = n.source_id
+        WHERE n.user_key = #{userKey}
+        ORDER BY n.created_at DESC, n.notification_id DESC
+        LIMIT #{limit}
+    </select>
+
+    <select id="countUnreadByUserKey" resultType="int">
+        SELECT COUNT(*) FROM notification WHERE user_key = #{userKey} AND is_read = 0
+    </select>
+
+    <update id="markRead">
+        UPDATE notification SET is_read = 1
+        WHERE notification_id = #{notificationId} AND user_key = #{userKey}
+    </update>
+
+    <update id="markAllRead">
+        UPDATE notification SET is_read = 1 WHERE user_key = #{userKey} AND is_read = 0
+    </update>
+
 </mapper>

@@ -11,13 +11,12 @@ import com.moyora.clubschedule.exception.ScheduleNotFoundException;
 import com.moyora.clubschedule.mapper.GroupMemberMapper;
 import com.moyora.clubschedule.mapper.GroupScheduleMapper;
 import com.moyora.clubschedule.mapper.GroupSchedulePolicyMapper;
-import com.moyora.clubschedule.mapper.ScheduleAttendanceCheckHistoryMapper;
 import com.moyora.clubschedule.mapper.ScheduleAttendanceMapper;
 import com.moyora.clubschedule.vo.GroupRole;
 import com.moyora.clubschedule.vo.GroupSchedulePolicyVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo.ScheduleStatus;
-import com.moyora.clubschedule.vo.ScheduleAttendanceCheckHistoryVo;
+import com.moyora.clubschedule.vo.Notification;
 import com.moyora.clubschedule.vo.ScheduleAttendanceVo;
 import com.moyora.clubschedule.vo.ScheduleAttendanceVo.AttendanceStatus;
 import com.moyora.clubschedule.vo.ScheduleAttendanceVo.ActualStatus;
@@ -29,25 +28,25 @@ import lombok.RequiredArgsConstructor;
 public class ScheduleAttendanceService {
 
     private final ScheduleAttendanceMapper             attendanceMapper;
-    private final ScheduleAttendanceCheckHistoryMapper checkHistoryMapper;
     private final GroupScheduleMapper                  scheduleMapper;
     private final GroupSchedulePolicyMapper            policyMapper;
     private final GroupMemberMapper                    memberMapper;
+    private final NotificationService                  notificationService;
 
-    // ── 참석 신청 ─────────────────────────────────────────────────────────────
+    // ── 참가 신청 ─────────────────────────────────────────────────────────────
 
     @Transactional
     public ScheduleAttendanceVo attend(Long groupId, Long scheduleId, Long userKey) {
         GroupScheduleVo schedule = requireSchedule(scheduleId, groupId);
 
         if (schedule.getStatus() != ScheduleStatus.CONFIRMED) {
-            throw new IllegalStateException("승인된 일정에만 참석 신청할 수 있습니다.");
+            throw new IllegalStateException("승인된 일정에만 참가 신청할 수 있습니다.");
         }
 
         ScheduleAttendanceVo existing = attendanceMapper.selectLatest(scheduleId, userKey);
         if (existing != null && existing.getStatus() == AttendanceStatus.PENDING
                 || existing != null && existing.getStatus() == AttendanceStatus.CONFIRMED) {
-            throw new IllegalStateException("이미 참석 신청 중이거나 참석 확정된 일정입니다.");
+            throw new IllegalStateException("이미 참가 신청 중이거나 참가 확정된 일정입니다.");
         }
 
         // 이전 이력 무효화
@@ -72,7 +71,7 @@ public class ScheduleAttendanceService {
         return attendanceMapper.selectById(pendingVo.getAttendanceId());
     }
 
-    // ── 참석 취소 (본인) ──────────────────────────────────────────────────────
+    // ── 참가 취소 (본인) ──────────────────────────────────────────────────────
 
     @Transactional
     public void cancelAttend(Long groupId, Long scheduleId, Long userKey) {
@@ -82,14 +81,14 @@ public class ScheduleAttendanceService {
         ScheduleAttendanceVo att = requireLatest(scheduleId, userKey);
         if (att.getStatus() == AttendanceStatus.CANCELLED
                 || att.getStatus() == AttendanceStatus.REJECTED) {
-            throw new IllegalStateException("이미 취소되었거나 거부된 참석 신청입니다.");
+            throw new IllegalStateException("이미 취소되었거나 거부된 참가 신청입니다.");
         }
 
         attendanceMapper.invalidateLatest(scheduleId, userKey);
         insertNewRow(scheduleId, userKey, AttendanceStatus.CANCELLED, null, userKey);
     }
 
-    // ── 참석자 목록 ───────────────────────────────────────────────────────────
+    // ── 참가자 목록 ───────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
     public List<ScheduleAttendanceVo> listAttendees(Long groupId, Long scheduleId) {
@@ -97,7 +96,7 @@ public class ScheduleAttendanceService {
         return attendanceMapper.selectActiveList(scheduleId);
     }
 
-    // ── 참석 이력(신청/승인/거부/취소) ────────────────────────────────────────────
+    // ── 참가 이력(신청/승인/거부/취소) ────────────────────────────────────────────
 
     /** is_latest 무관 전체 행을 시간순으로 반환 — status 값이 곧 액션(신청/확정/거부/취소)을 의미한다. */
     @Transactional(readOnly = true)
@@ -116,12 +115,24 @@ public class ScheduleAttendanceService {
 
         ScheduleAttendanceVo att = requireLatest(scheduleId, targetUserKey);
         if (att.getStatus() != AttendanceStatus.PENDING) {
-            throw new IllegalStateException("대기 중인 참석 신청만 승인할 수 있습니다.");
+            throw new IllegalStateException("대기 중인 참가 신청만 승인할 수 있습니다.");
         }
 
         attendanceMapper.invalidateLatest(scheduleId, targetUserKey);
-        return insertNewRow(scheduleId, targetUserKey, AttendanceStatus.CONFIRMED,
+        ScheduleAttendanceVo result = insertNewRow(scheduleId, targetUserKey, AttendanceStatus.CONFIRMED,
                 operatorUserKey, operatorUserKey);
+
+        notificationService.createNotification(Notification.builder()
+                .userKey(targetUserKey)
+                .sourceTable("SCHEDULE")
+                .sourceId(scheduleId)
+                .category("APPROVE")
+                .title("참가 신청이 승인되었습니다")
+                .content(schedule.getTitle() + " 일정 참가 신청이 승인되었습니다.")
+                .isRead(false)
+                .build());
+
+        return result;
     }
 
     // ── 거부 ──────────────────────────────────────────────────────────────────
@@ -134,11 +145,21 @@ public class ScheduleAttendanceService {
 
         ScheduleAttendanceVo att = requireLatest(scheduleId, targetUserKey);
         if (att.getStatus() != AttendanceStatus.PENDING) {
-            throw new IllegalStateException("대기 중인 참석 신청만 거부할 수 있습니다.");
+            throw new IllegalStateException("대기 중인 참가 신청만 거부할 수 있습니다.");
         }
 
         attendanceMapper.invalidateLatest(scheduleId, targetUserKey);
         insertNewRow(scheduleId, targetUserKey, AttendanceStatus.REJECTED, operatorUserKey, operatorUserKey);
+
+        notificationService.createNotification(Notification.builder()
+                .userKey(targetUserKey)
+                .sourceTable("SCHEDULE")
+                .sourceId(scheduleId)
+                .category("REJECT")
+                .title("참가 신청이 거부되었습니다")
+                .content(schedule.getTitle() + " 일정 참가 신청이 거부되었습니다.")
+                .isRead(false)
+                .build());
     }
 
     // ── 강제 취소 (매니저/리더 전용) ──────────────────────────────────────────────
@@ -156,36 +177,41 @@ public class ScheduleAttendanceService {
         insertNewRow(scheduleId, targetUserKey, AttendanceStatus.CANCELLED, null, operatorUserKey);
     }
 
-    // ── 출석 체크 (정정 가능, 이력 기록) ──────────────────────────────────────────
+    // ── 참석 체크 (정정 가능, 이력 기록) ──────────────────────────────────────────
 
     /**
-     * 출석 체크(실제 참석 여부). 최초 체크 이후에도 정정 가능하며, 매 호출마다
-     * 변경 전/후 값을 schedule_attendance_check_history에 남긴다.
-     * 권한은 참석 승인/거부/강제취소와 동일하게 일정 생성자 또는 MANAGER 이상.
+     * 참석 체크(실제 참석 여부). 최초 체크 이후에도 재호출로 정정 가능하다(최신 값만 유지).
+     * 권한은 참가 승인/거부/강제취소와 동일하게 일정 생성자 또는 MANAGER 이상.
+     * 일정 시작 이후에만 가능하다.
      */
     @Transactional
     public ScheduleAttendanceVo checkActual(Long groupId, Long scheduleId,
                                              Long targetUserKey, ActualStatus actualStatus,
-                                             Long operatorUserKey, String changeReason) {
+                                             Long operatorUserKey) {
         GroupScheduleVo schedule = requireSchedule(scheduleId, groupId);
         validateAttendanceManagerPermission(groupId, schedule, operatorUserKey);
+        requireAfterStart(schedule);
 
         ScheduleAttendanceVo att = requireLatest(scheduleId, targetUserKey);
         if (att.getStatus() != AttendanceStatus.CONFIRMED) {
-            throw new IllegalStateException("참석 확정된 멤버만 출석 체크할 수 있습니다.");
+            throw new IllegalStateException("참가 확정된 멤버만 참석 체크할 수 있습니다.");
         }
 
-        ScheduleAttendanceCheckHistoryVo history = new ScheduleAttendanceCheckHistoryVo();
-        history.setAttendanceId(att.getAttendanceId());
-        history.setScheduleId(scheduleId);
-        history.setUserKey(targetUserKey);
-        history.setPreviousActualStatus(att.getActualStatus());
-        history.setNewActualStatus(actualStatus);
-        history.setChangedBy(operatorUserKey);
-        history.setChangeReason(changeReason);
-        checkHistoryMapper.insertHistory(history);
-
         attendanceMapper.updateActualStatus(att.getAttendanceId(), actualStatus, operatorUserKey);
+
+        if (actualStatus == ActualStatus.ATTENDED || actualStatus == ActualStatus.NOSHOW) {
+            String resultText = actualStatus == ActualStatus.ATTENDED ? "출석" : "결석";
+            notificationService.createNotification(Notification.builder()
+                    .userKey(targetUserKey)
+                    .sourceTable("SCHEDULE")
+                    .sourceId(scheduleId)
+                    .category("NOTICE")
+                    .title("출석 처리 결과 안내")
+                    .content(schedule.getTitle() + " 일정: " + resultText + " 처리되었습니다.")
+                    .isRead(false)
+                    .build());
+        }
+
         return attendanceMapper.selectById(att.getAttendanceId());
     }
 
@@ -216,13 +242,19 @@ public class ScheduleAttendanceService {
 
     private ScheduleAttendanceVo requireLatest(Long scheduleId, Long userKey) {
         ScheduleAttendanceVo att = attendanceMapper.selectLatest(scheduleId, userKey);
-        if (att == null) throw new IllegalStateException("참석 신청 내역이 없습니다.");
+        if (att == null) throw new IllegalStateException("참가 신청 내역이 없습니다.");
         return att;
     }
 
     private void requireBeforeStart(GroupScheduleVo schedule) {
         if (LocalDateTime.now().isAfter(schedule.getStartAt())) {
-            throw new IllegalStateException("일정 시작 이후에는 참석 취소/변경이 불가합니다.");
+            throw new IllegalStateException("일정 시작 이후에는 참가 취소/변경이 불가합니다.");
+        }
+    }
+
+    private void requireAfterStart(GroupScheduleVo schedule) {
+        if (LocalDateTime.now().isBefore(schedule.getStartAt())) {
+            throw new IllegalStateException("일정 시작 이후부터 참석 등록/체크가 가능합니다.");
         }
     }
 

@@ -19,6 +19,7 @@ import com.moyora.clubschedule.vo.GroupScheduleHistoryVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo.ScheduleStatus;
 import com.moyora.clubschedule.vo.GroupSchedulePolicyVo.VisibilityType;
+import com.moyora.clubschedule.vo.Notification;
 
 import lombok.RequiredArgsConstructor;
 
@@ -32,6 +33,7 @@ public class GroupScheduleService {
     private final ScheduleAttendanceService  scheduleAttendanceService;
     private final GroupPermissionService     groupPermissionService;
     private final GroupManageService         groupManageService;
+    private final NotificationService        notificationService;
 
     // ── 조회 ──────────────────────────────────────────────────────────────────
 
@@ -121,6 +123,17 @@ public class GroupScheduleService {
         groupScheduleMapper.updateScheduleStatus(scheduleId, ScheduleStatus.CONFIRMED, operatorUserKey);
 
         scheduleAttendanceService.attend(groupId, scheduleId, schedule.getCreatedBy());
+
+        notificationService.createNotification(Notification.builder()
+                .userKey(schedule.getCreatedBy())
+                .sourceTable("SCHEDULE")
+                .sourceId(scheduleId)
+                .category("APPROVE")
+                .title("일정 신청이 승인되었습니다")
+                .content(schedule.getTitle() + " 일정이 승인되었습니다.")
+                .isRead(false)
+                .build());
+
         return groupScheduleMapper.selectByScheduleId(scheduleId);
     }
 
@@ -135,6 +148,17 @@ public class GroupScheduleService {
 
         groupPermissionService.validateApprovePermission(groupId, operatorUserKey);
         groupScheduleMapper.updateScheduleStatus(scheduleId, ScheduleStatus.REJECTED, operatorUserKey);
+
+        notificationService.createNotification(Notification.builder()
+                .userKey(schedule.getCreatedBy())
+                .sourceTable("SCHEDULE")
+                .sourceId(scheduleId)
+                .category("REJECT")
+                .title("일정 신청이 거부되었습니다")
+                .content(schedule.getTitle() + " 일정 신청이 거부되었습니다.")
+                .isRead(false)
+                .build());
+
         return groupScheduleMapper.selectByScheduleId(scheduleId);
     }
 
@@ -160,7 +184,7 @@ public class GroupScheduleService {
             int confirmed = scheduleAttendanceMapper.countConfirmedAttendees(scheduleId);
             if (dto.getMaxAttendance() < confirmed) {
                 throw new IllegalArgumentException(
-                        String.format("현재 참석 확정 인원(%d명)보다 정원이 작을 수 없습니다.", confirmed));
+                        String.format("현재 참가 확정 인원(%d명)보다 정원이 작을 수 없습니다.", confirmed));
             }
         }
 

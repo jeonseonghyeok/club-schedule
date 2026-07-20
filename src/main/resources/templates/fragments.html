@@ -102,5 +102,24 @@
         }
     </script>
 </th:block>
+
+<!-- 알림 벨: main.html/group.html/admin_main.html 헤더 우측 슬롯에 삽입 -->
+<th:block th:fragment="notifBell">
+    <span id="notifBellWrap" style="position:relative;display:inline-block;">
+        <button id="notifBellBtn" type="button" aria-label="알림" style="position:relative;background:none;border:none;cursor:pointer;font-size:1.25rem;line-height:1;padding:4px;">
+            🔔
+            <span id="notifBadge" style="display:none;position:absolute;top:-2px;right:-4px;background:#ef4444;color:#fff;border-radius:10px;min-width:16px;height:16px;font-size:11px;line-height:16px;text-align:center;padding:0 4px;font-weight:700;"></span>
+        </button>
+        <div id="notifDropdown" style="display:none;position:absolute;right:0;left:auto;top:100%;margin-top:6px;width:340px;max-height:420px;overflow:auto;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 8px 20px rgba(2,6,23,0.12);padding:10px;z-index:1000;text-align:left;">
+            <div style="display:flex;align-items:center;gap:6px;border-bottom:1px solid #e2e8f0;padding-bottom:8px;margin-bottom:8px;">
+                <button type="button" class="notif-tab active" data-filter="ALL" style="padding:4px 10px;border-radius:999px;background:#0f172a;color:#fff;border:none;font-size:12px;font-weight:700;cursor:pointer;">전체</button>
+                <button type="button" class="notif-tab" data-filter="UNREAD" style="padding:4px 10px;border-radius:999px;background:#f1f5f9;color:#0b1220;border:none;font-size:12px;font-weight:700;cursor:pointer;">읽지 않음</button>
+                <button type="button" id="notifMarkAllBtn" style="margin-left:auto;background:none;border:none;color:#2563eb;font-size:12px;cursor:pointer;font-weight:700;">모두 읽음</button>
+            </div>
+            <div id="notifList"></div>
+            <div id="notifEmpty" style="display:none;color:#94a3b8;font-size:13px;padding:20px 0;text-align:center;">알림이 없습니다.</div>
+        </div>
+    </span>
+</th:block>
 </body>
 </html>

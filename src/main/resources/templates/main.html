@@ -79,11 +79,13 @@
     <div class="site-header">
         <div class="brand">Club Schedule</div>
         <div class="subtitle">우리 모임의 일정을 한 눈에</div>
-        <div style="margin-left:auto;">
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+            <span th:replace="~{fragments :: notifBell}"></span>
             <span th:if="${isAdmin}"><form action="/admin" method="get" style="display:inline;margin:0;"><button class="btn" type="submit">관리자</button></form></span>
         </div>
     </div>
 </header>
+<script th:src="@{/js/notifications.js}"></script>
 
 <div class="container">
     <div class="stack">

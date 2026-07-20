@@ -9,9 +9,13 @@
     <header style="padding:20px 0;">
         <div style="max-width:980px;margin:0 auto;display:flex;align-items:center;padding:0 16px;">
             <div style="font-weight:700;font-size:1.125rem;color:#0f172a;">Club Schedule</div>
-            <div style="margin-left:auto;"><a href="/" class="btn secondary">메인으로</a></div>
+            <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+                <span th:replace="~{fragments :: notifBell}"></span>
+                <a href="/" class="btn secondary">메인으로</a>
+            </div>
         </div>
     </header>
+    <script th:src="@{/js/notifications.js}"></script>
 
     <div class="container">
         <div class="card">

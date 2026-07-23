@@ -1,0 +1,13 @@
+.git
+.gradle
+build/
+bin/
+.idea
+.vscode
+.playwright-mcp/
+cookies.txt
+*.log
+
+# 자격증명은 이미지에 포함하지 않고 배포 서버의 --env-file로 주입한다
+# (.env.example 참고, GitHub Actions 배포 워크플로와 짝을 이룸)
+src/main/resources/application-private.properties

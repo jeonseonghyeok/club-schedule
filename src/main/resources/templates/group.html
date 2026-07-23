@@ -78,7 +78,7 @@
         <div class="tabs" style="justify-content:space-between;">
             <div style="display:flex;gap:8px;">
                 <div id="tabHome" class="tab active">홈</div>
-                <div id="tabSchedule" class="tab">일정</div>
+                <div id="tabSchedule" class="tab" th:if="${isMember or visibilityType == 'PUBLIC'}">일정</div>
                 <div id="tabManage" class="tab" th:if="${isManager}">관리</div>
             </div>
             <div id="joinAction" th:if="${!isMember}"></div>

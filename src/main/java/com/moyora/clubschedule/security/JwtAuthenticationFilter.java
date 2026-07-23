@@ -92,7 +92,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
             logger.debug("Missing or invalid Authorization header for uri={}", uri);
-            sendUnauthorized(response, "Missing or invalid Authorization header");
+            sendUnauthorized(request, response, "Missing or invalid Authorization header");
             return;
         }
 
@@ -133,7 +133,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     chain.doFilter(request, response);
                     return;
                 }
-                sendUnauthorized(response, "Invalid or expired token");
+                sendUnauthorized(request, response, "Invalid or expired token");
                 return;
             }
 
@@ -148,7 +148,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 // 허용 경로라면 인증 없이 통과
                 chain.doFilter(request, response);
             } else {
-                sendUnauthorized(response, "Authentication error");
+                sendUnauthorized(request, response, "Authentication error");
             }
         }
     }
@@ -163,7 +163,19 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return false;
     }
 
-    private void sendUnauthorized(HttpServletResponse response, String message) throws IOException {
+    private void sendUnauthorized(HttpServletRequest request, HttpServletResponse response, String message) throws IOException {
+        String uri = request.getRequestURI();
+        String accept = request.getHeader("Accept");
+        boolean isPageRequest = !uri.startsWith("/api/")
+                && "GET".equalsIgnoreCase(request.getMethod())
+                && accept != null && accept.contains("text/html");
+
+        if (isPageRequest) {
+            // 토큰이 없거나 만료된 상태로 페이지에 접근한 경우, 401 JSON 대신 홈으로 이동시켜 로그인을 유도한다.
+            response.sendRedirect("/");
+            return;
+        }
+
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType("application/json;charset=UTF-8");

@@ -57,6 +57,7 @@ jobs:
             docker run -d \
               --name club-schedule \
               --restart unless-stopped \
+              --network app-network \
               -p 8081:8081 \
               --env-file /opt/club-schedule/.env \
               ${{ env.IMAGE_NAME }}:latest

@@ -50,10 +50,11 @@ com.moyora.clubschedule
 
 ### 테스트 계정
 - `http://127.0.0.1:8081/login/test` 페이지에서 계정을 선택해 로그인(내부적으로 POST `/login/test`, body `{"kakaoApiId": ...}`)
-- 테스트 계정은 kakaoApiId `9900000000001` ~ `9900000000100` 범위이며, 화면·API 응답에는 `nickname`으로 표시된다(로그인 식별자는 어디까지나 kakaoApiId이고 `testNN`은 그중 일부 계정의 닉네임일 뿐):
-  - `9900000000001` (닉네임 "시스템관리자"): ADMIN 권한 보유 → 관리자 테스트 시 사용
-  - `9900000000002` ~ `9900000000006`: 닉네임 "모임리더" / "모임매니저" / "하르온" / "소미아" / "온가람" (역할극용 별도 닉네임)
-  - `9900000000007` ~ `9900000000100`: 닉네임이 `test07` ~ `test100`인 일반 테스트 계정
+- 테스트 계정은 kakaoApiId `9900000000001` ~ `9900000000048` 범위이며, 화면·API 응답에는 `nickname`으로 표시된다(로그인 식별자는 어디까지나 kakaoApiId이고 닉네임은 역할 구분용 라벨일 뿐). 시드 스크립트: `docs/test-data.sql`.
+  - `9900000000001` ~ `9900000000003`: 닉네임 "관리자01" ~ "관리자03" — `system_role='ADMIN'` 실제 권한 보유 → 관리자 테스트 시 사용
+  - `9900000000004` ~ `9900000000008`: 닉네임 "모임리더01" ~ "모임리더05" — 역할극용 라벨일 뿐 시스템 권한은 일반 USER. 실제 LEADER 권한을 테스트하려면 대상 그룹의 `group_member.role`을 별도로 LEADER로 지정해야 함
+  - `9900000000009` ~ `9900000000018`: 닉네임 "모임매니저01" ~ "모임매니저10" — 위와 동일하게 라벨일 뿐이며, 실제 MANAGER 권한은 그룹별로 `group_member.role`을 MANAGER로 지정해야 함
+  - `9900000000019` ~ `9900000000048`: 닉네임 "일반멤버01" ~ "일반멤버30"인 일반 테스트 계정
 - 테스트 스크립트: `scripts/test-join-requests.ps1`
 
 ## 주요 도메인 구분
@@ -74,5 +75,10 @@ com.moyora.clubschedule
   - `admin:reload:panel` — 승인/거부 후 패널 새로고침
 
 ## 로컬 개발 환경
-- DB 접속 정보: `application-private.properties` (git 제외)
+- **DB**: 개발 서버 `mariadb-dev` / **`app_dev`** (MariaDB 11.2, `app-network`) — 로컬 Eclipse·`club-schedule` 컨테이너 동일 DB
+  - **Docker 앱**: `DATASOURCE_URL=jdbc:mariadb://mariadb-dev:3306/app_dev?allowMultiQueries=true` (`deploy.yml`의 `--network app-network` 필수)
+  - **로컬 Eclipse**: SSH `-L 3307:127.0.0.1:3306` (`scripts/start-db-tunnel.ps1`) — `mariadb-dev`가 Ubuntu 호스트 `127.0.0.1:3306`으로 publish 되어 있어야 함 (컨테이너 IP 172.19.0.4 는 SSH 터널 대상으로 쓰지 않음)
+- DB 접속 정보: `application-private.properties` (git 제외, 템플릿 `application-private.properties.example`)
+- 개발 서버 Docker: `/opt/club-schedule/.env` (`.env.example` 참고)
+- 스키마: `docs/club-schedue_DLL.sql` + `docs/DATABASE.md` migration 이력 — Flyway 없음, 수동 적용
 - 서버 실행: Eclipse에서 Spring Boot 앱 Run/Debug

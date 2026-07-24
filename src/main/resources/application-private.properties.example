@@ -1,0 +1,20 @@
+# 로컬 Eclipse 실행용 — 이 파일을 application-private.properties 로 복사한 뒤 값을 채운다.
+# (application-private.properties 는 .gitignore 대상)
+
+# 개발 DB (MariaDB 11.2, 컨테이너 mariadb-dev @ app-network) — SSH 터널 필수
+# 터널: scripts/start-db-tunnel.ps1 (원격 Ubuntu 127.0.0.1:3307 ← mariadb-dev 포트 publish, 3306은 mariadb-prod)
+# Docker 앱은 jdbc:mariadb://mariadb-dev:3306/app_dev/... (.env.example 참고)
+datasource_url=jdbc:mariadb://127.0.0.1:3307/app_dev?allowMultiQueries=true
+
+datasource_username=
+datasource_password=
+
+secret_key=
+
+# 로컬·개발 공용 DB 사용 시 테스트 로그인 활성화 (운영 .env 의 TEST_AUTH_SECRET 은 비움)
+test_auth_secret=
+
+kakao.rest.key=
+kakao.token.issue.url=https://kauth.kakao.com/oauth/token
+kakao.redirect-whitelist=/login/kakao/login_callback
+kakao.client.secret.key=

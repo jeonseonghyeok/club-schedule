@@ -4,59 +4,15 @@
     <meta charset="UTF-8">
     <title>그룹 관리</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-	<script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        /* Basic layout matching main.html style */
-        * { box-sizing: border-box; }
-        body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; color:#0f172a; background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
-        .container { max-width:980px; margin:24px auto; padding:0 16px; }
-        .card { background:#fff; border-radius:12px; padding:18px; box-shadow:0 8px 24px rgba(15,23,42,0.06); border:1px solid rgba(2,6,23,0.04); }
-        .section-title { font-weight:700; margin:0 0 12px 0; font-size:1rem; color:#0b1220; display:flex; align-items:center; justify-content:space-between; }
-        .tabs { display:flex; gap:8px; margin-bottom:12px; }
-        .tab { padding:8px 12px; border-radius:8px; background:#f1f5f9; cursor:pointer; font-weight:700; }
-        .tab.active { background:#0f172a; color:#fff; }
-        .grid { display:grid; grid-template-columns: 1fr; gap:12px; }
-        @media (min-width:900px) { .grid { grid-template-columns: 2fr 1fr; } }
-
-        /* Description truncation to ~7 lines */
-        .description { overflow:hidden; display:-webkit-box; -webkit-line-clamp:7; -webkit-box-orient:vertical; white-space:pre-wrap; }
-        .more-link { display:inline-flex; align-items:center; gap:4px; margin-top:8px; padding:4px 12px; border-radius:999px; background:#eff6ff; color:#2563eb; font-size:13px; font-weight:600; cursor:pointer; border:1px solid #dbeafe; transition:background .15s; }
-        .more-link:hover { background:#dbeafe; }
-        .join-btn { padding:8px 16px; border-radius:8px; background:#2563eb; color:#fff; font-weight:700; cursor:pointer; border:none; font-size:14px; }
-        .join-btn:hover { background:#1d4ed8; }
-        .join-btn:disabled { background:#94a3b8; cursor:default; }
-        .join-pending { display:flex; align-items:center; gap:8px; }
-        .join-pending-badge { padding:6px 12px; border-radius:999px; background:#fef9c3; color:#854d0e; font-size:13px; font-weight:600; }
-
-
-        /* Management tab styles */
-        .members-list, .schedules-list, .permissions-list { border-radius:10px; border:1px solid rgba(2,6,23,0.06); padding:12px; max-height:400px; overflow:auto; }
-        .member-item { display:flex; justify-content:space-between; align-items:center; padding:8px; border-radius:8px; background:linear-gradient(180deg,#fff,#fcfeff); margin-bottom:8px; }
-        .member-meta { color:#64748b; font-size:0.9rem; }
-        .danger { background:#fff1f2; color:#981b1b; border:1px solid #fecaca; }
-
-        /* Modal */
-        .modal-overlay { position:fixed; inset:0; background:rgba(2,6,23,0.5); display:none; align-items:center; justify-content:center; z-index:1000; }
-        .modal { background:#fff; width:720px; max-width:95%; border-radius:10px; padding:18px; box-shadow:0 10px 30px rgba(2,6,23,0.28); }
-        .modal .modal-header { display:flex; align-items:center; justify-content:space-between; }
-
-        /* Calendar specific styles */
-        #calendarFull { cursor: pointer; }
-
-        /* 일정 상세 모달: 옵션(⋯) 드롭다운 */
-        .opt-menu { display:none; position:absolute; right:0; bottom:100%; margin-bottom:6px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 8px 20px rgba(2,6,23,0.12); min-width:120px; z-index:20; overflow:hidden; }
-        .opt-menu-item { padding:8px 14px; font-size:13px; color:#1e293b; cursor:pointer; white-space:nowrap; }
-        .opt-menu-item:hover { background:#f1f5f9; }
-
-        /* 일정 상세 모달: 인원/정원 호버·탭 명단 팝오버 */
-        .roster-popover { display:none; position:absolute; left:0; top:100%; margin-top:6px; background:#fff; border:1px solid #e2e8f0; border-radius:8px; box-shadow:0 8px 20px rgba(2,6,23,0.12); padding:8px 10px; min-width:160px; max-height:220px; overflow:auto; z-index:20; }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/common.css}">
 </head>
 <body>
-<header style="padding:20px 0;">
-    <div style="max-width:980px;margin:0 auto;padding:0 16px;display:flex;align-items:center;gap:16px;">
-        <div style="font-weight:700;font-size:1.125rem;">Club Schedule</div>
-        <div style="margin-left:auto;"><span th:replace="~{fragments :: notifBell}"></span></div>
+<header>
+    <div class="site-header">
+        <div class="brand">Club Schedule</div>
+        <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+            <span th:replace="~{fragments :: notifBell}"></span>
+        </div>
     </div>
 </header>
 <script th:src="@{/js/notifications.js}"></script>
@@ -122,7 +78,7 @@
             <div class="card">
 				<!-- 우측 상단에 일정 등록 or 신청 버튼 (멤버에게만 표시) -->
                 <div style="display:flex;justify-content:flex-end;margin-bottom:8px;">
-                    <button id="globalAddEventBtn" th:if="${canCreateSchedule}" class="px-3 py-1 bg-blue-600 text-white text-sm rounded">일정등록</button>
+                    <button id="globalAddEventBtn" th:if="${canCreateSchedule}" class="btn-accent-sm">일정등록</button>
                 </div>
 				
 			<!-- Calendar will be rendered here; add button handled in renderCalendar() -->
@@ -1503,20 +1459,20 @@ function createDateTimeField() {
         function renderCalendar(){
             const cal = document.getElementById('calendarFull'); if (!cal) return; cal.innerHTML='';
             const monthStart = startOfMonth(calendarMonthStart); const month = monthStart.getMonth(); const year = monthStart.getFullYear();
-            const header = document.createElement('div'); header.className='flex justify-center items-center mb-6 px-2'; header.innerHTML = `
-                <button id="prevBtn" class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">◀</button>
-                <h2 class="text-xl font-bold text-slate-800">${year}년 ${month+1}월</h2>
-                <button id="nextBtn" class="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-600">▶</button>
+            const header = document.createElement('div'); header.className='cal-header'; header.innerHTML = `
+                <button id="prevBtn" class="cal-nav-btn">◀</button>
+                <h2 class="cal-title">${year}년 ${month+1}월</h2>
+                <button id="nextBtn" class="cal-nav-btn">▶</button>
             `; cal.appendChild(header);
             header.querySelector('#prevBtn').onclick = async ()=>{ calendarMonthStart = new Date(year, month-1, 1); const ms = startOfMonth(calendarMonthStart); const me = new Date(ms.getFullYear(), ms.getMonth()+1, 0, 23, 59, 59, 999); await getSchedules({ from: ms.getTime(), to: me.getTime() }); renderCalendar(); };
             header.querySelector('#nextBtn').onclick = async ()=>{ calendarMonthStart = new Date(year, month+1, 1); const ms = startOfMonth(calendarMonthStart); const me = new Date(ms.getFullYear(), ms.getMonth()+1, 0, 23, 59, 59, 999); await getSchedules({ from: ms.getTime(), to: me.getTime() }); renderCalendar(); };
-            const grid = document.createElement('div'); grid.className='grid grid-cols-7 gap-px bg-slate-200 border border-slate-200 rounded-xl overflow-hidden shadow-sm';
-            const weekdays = ['일','월','화','수','목','금','토']; weekdays.forEach((w,i)=>{ const wEl = document.createElement('div'); wEl.className = `bg-slate-50 py-3 text-center text-xs font-bold uppercase tracking-wider ${i===0? 'text-red-500': i===6? 'text-blue-500':'text-slate-500'}`; wEl.textContent = w; grid.appendChild(wEl); });
+            const grid = document.createElement('div'); grid.className='cal-grid';
+            const weekdays = ['일','월','화','수','목','금','토']; weekdays.forEach((w,i)=>{ const wEl = document.createElement('div'); wEl.className = `cal-weekday ${i===0? 'cal-weekday-sun': i===6? 'cal-weekday-sat':''}`; wEl.textContent = w; grid.appendChild(wEl); });
             const firstDayWeek = monthStart.getDay(); const startDate = new Date(monthStart); startDate.setDate(startDate.getDate() - firstDayWeek);
             const _dk=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); const eventsByDate = {}; const _filtered=(calendarEvents||[]).filter(ev=>scheduleFilter==='ALL'||ev.status===scheduleFilter); _filtered.forEach(ev=>{ if (!ev.start) return; const d=new Date(ev.start); const key=_dk(d); if (!eventsByDate[key]) eventsByDate[key]=[]; eventsByDate[key].push(ev); });
             const todayStr=_dk(new Date());
-            for (let i=0;i<42;i++){ const cellDate = new Date(startDate); cellDate.setDate(cellDate.getDate()+i); const dateKey=_dk(cellDate); const isCurrentMonth = cellDate.getMonth()===month; const isToday = dateKey===todayStr; const cell = document.createElement('div'); cell.className = `min-h-[52px] sm:min-h-[76px] p-1 sm:p-2 bg-white flex flex-col gap-0.5 overflow-hidden transition-colors hover:bg-slate-50 cursor-pointer ${!isCurrentMonth? 'bg-slate-50/50 text-slate-300':'text-slate-700'}`; const dayNum = document.createElement('span'); dayNum.className = `inline-flex items-center justify-center w-5 h-5 sm:w-7 sm:h-7 text-xs sm:text-sm font-semibold rounded-full flex-shrink-0 ${isToday ? 'bg-blue-600 text-white' : ''}`; dayNum.textContent = cellDate.getDate(); cell.appendChild(dayNum);
-                const evs = eventsByDate[dateKey] || []; if (evs.length>0){ const _has=s=>evs.some(it=>it.status===s); const _top=_has('PENDING')?'PENDING':_has('CONFIRMED')?'CONFIRMED':_has('REJECTED')?'REJECTED':'CANCELLED'; const _sc=_top==='PENDING'?'bg-yellow-50 text-yellow-700 border-yellow-100':_top==='REJECTED'?'bg-red-50 text-red-600 border-red-100':_top==='CANCELLED'?'bg-gray-50 text-gray-400 border-gray-200':'bg-blue-50 text-blue-700 border-blue-100'; const countBadge = document.createElement('span'); countBadge.className='inline-block self-start px-1 py-0.5 rounded border text-[9px] sm:text-xs font-semibold whitespace-nowrap '+_sc; countBadge.textContent = (evs.length>99 ? '99+' : String(evs.length))+'건'; cell.appendChild(countBadge); }
+            for (let i=0;i<42;i++){ const cellDate = new Date(startDate); cellDate.setDate(cellDate.getDate()+i); const dateKey=_dk(cellDate); const isCurrentMonth = cellDate.getMonth()===month; const isToday = dateKey===todayStr; const cell = document.createElement('div'); cell.className = `cal-cell ${!isCurrentMonth? 'cal-cell-outside':''}`; const dayNum = document.createElement('span'); dayNum.className = `cal-day-num ${isToday ? 'cal-day-num-today' : ''}`; dayNum.textContent = cellDate.getDate(); cell.appendChild(dayNum);
+                const evs = eventsByDate[dateKey] || []; if (evs.length>0){ const _has=s=>evs.some(it=>it.status===s); const _top=_has('PENDING')?'PENDING':_has('CONFIRMED')?'CONFIRMED':_has('REJECTED')?'REJECTED':'CANCELLED'; const _sc='cal-badge-'+_top.toLowerCase(); const countBadge = document.createElement('span'); countBadge.className='cal-count-badge '+_sc; countBadge.textContent = (evs.length>99 ? '99+' : String(evs.length))+'건'; cell.appendChild(countBadge); }
                 // 날짜 클릭: 항상 일자별 목록 모달을 연다(빈 날짜 포함) — 일정 등록은 모달 내 "일정추가" 버튼으로
                 cell.onclick = ()=>{ openDayView(cellDate, evs); };
                 grid.appendChild(cell);

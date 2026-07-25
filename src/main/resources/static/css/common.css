@@ -139,11 +139,18 @@ header { background: transparent; padding: 20px 0; }
 }
 .modal.modal-sm { width: 380px; }
 .modal .modal-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.modal .tabs { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-.modal .tab { padding: 8px 12px; border-radius: var(--radius-sm); background: #f1f5f9; cursor: pointer; font-weight: 700; }
-.modal .tab.active { background: var(--color-btn-bg); color: #fff; }
 .modal .modal-body { margin-top: 12px; max-height: 60vh; overflow: auto; }
 .modal .close-btn { background: transparent; border: none; font-size: 1.1rem; cursor: pointer; flex-shrink: 0; }
+
+/* Tabs (페이지 상단 탭, 모달 안 탭, JS로 생성되는 액션형 "chip" 버튼까지 공용) */
+.tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.modal .tabs { margin-top: 12px; margin-bottom: 0; }
+.tab { padding: 8px 12px; border-radius: var(--radius-sm); background: #f1f5f9; cursor: pointer; font-weight: 700; border: none; }
+.tab.active { background: var(--color-btn-bg); color: #fff; }
+
+/* 2단 반응형 그리드 (홈탭 본문 등: 900px 미만 1단 → 이상 2단) */
+.grid { display: grid; grid-template-columns: 1fr; gap: var(--space-md); }
+@media (min-width: 900px) { .grid { grid-template-columns: 2fr 1fr; } }
 
 /* Badge */
 .badge { display: inline-block; padding: 4px 8px; border-radius: 999px; font-weight: 700; font-size: 0.85rem; }
@@ -166,6 +173,78 @@ header { background: transparent; padding: 20px 0; }
 .request-detail-item { margin-top: 10px; }
 .request-detail-label { color: var(--color-text-muted); font-size: 0.85rem; font-weight: 700; margin-bottom: 4px; }
 .request-detail-description { white-space: pre-wrap; }
+
+/* Buttons (variant) */
+.btn-accent-sm {
+    display: inline-flex; align-items: center;
+    background: #2563eb; color: #fff; font-size: 0.875rem; font-weight: 400;
+    padding: 4px 12px; border-radius: 4px; border: none; cursor: pointer;
+}
+.btn-accent-sm:hover { background: #1d4ed8; }
+
+/* 모임 설명 / 더보기 */
+.description { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 7; line-clamp: 7; -webkit-box-orient: vertical; white-space: pre-wrap; }
+.more-link {
+    display: inline-flex; align-items: center; gap: 4px; margin-top: 8px; padding: 4px 12px;
+    border-radius: 999px; background: #eff6ff; color: #2563eb; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: 1px solid #dbeafe; transition: background .15s;
+}
+.more-link:hover { background: #dbeafe; }
+
+/* 가입하기 버튼 / 가입 상태 배지 */
+.join-btn { padding: 8px 16px; border-radius: 8px; background: #2563eb; color: #fff; font-weight: 700; cursor: pointer; border: none; font-size: 14px; }
+.join-btn:hover { background: #1d4ed8; }
+.join-btn:disabled { background: #94a3b8; cursor: default; }
+.join-pending { display: flex; align-items: center; gap: 8px; }
+.join-pending-badge { padding: 6px 12px; border-radius: 999px; background: #fef9c3; color: #854d0e; font-size: 13px; font-weight: 600; }
+
+/* 관리 탭: 회원/일정/권한 목록 */
+.members-list, .schedules-list, .permissions-list { border-radius: 10px; border: 1px solid rgba(2, 6, 23, 0.06); padding: 12px; max-height: 400px; overflow: auto; }
+.member-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-radius: 8px; background: linear-gradient(180deg, #fff, #fcfeff); margin-bottom: 8px; }
+.member-meta { color: var(--color-text-muted); font-size: 0.9rem; }
+.danger { background: #fff1f2; color: #981b1b; border: 1px solid #fecaca; }
+
+/* 일정 캘린더 */
+#calendarFull { cursor: pointer; }
+.opt-menu { display: none; position: absolute; right: 0; bottom: 100%; margin-bottom: 6px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 8px 20px rgba(2, 6, 23, 0.12); min-width: 120px; z-index: 20; overflow: hidden; }
+.opt-menu-item { padding: 8px 14px; font-size: 13px; color: #1e293b; cursor: pointer; white-space: nowrap; }
+.opt-menu-item:hover { background: #f1f5f9; }
+.roster-popover { display: none; position: absolute; left: 0; top: 100%; margin-top: 6px; background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 8px 20px rgba(2, 6, 23, 0.12); padding: 8px 10px; min-width: 160px; max-height: 220px; overflow: auto; z-index: 20; }
+
+.cal-header { display: flex; justify-content: center; align-items: center; gap: 12px; margin-bottom: 24px; padding: 0 8px; }
+.cal-nav-btn { padding: 8px; background: transparent; border: none; border-radius: 999px; color: #475569; cursor: pointer; transition: background-color .15s; }
+.cal-nav-btn:hover { background: #f1f5f9; }
+.cal-title { font-size: 1.25rem; font-weight: 700; color: #1e293b; margin: 0; }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background: #e2e8f0; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05); }
+.cal-weekday { background: #f8fafc; padding: 12px 0; text-align: center; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); }
+.cal-weekday-sun { color: #ef4444; }
+.cal-weekday-sat { color: #3b82f6; }
+
+.cal-cell {
+    min-height: 52px; padding: 4px; background: #fff; display: flex; flex-direction: column; gap: 2px;
+    overflow: hidden; transition: background-color .15s; cursor: pointer; color: #334155;
+}
+.cal-cell:hover { background: #f8fafc; }
+.cal-cell.cal-cell-outside { background: rgba(248, 250, 252, 0.5); color: #cbd5e1; }
+
+.cal-day-num {
+    display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    width: 20px; height: 20px; font-size: 0.75rem; font-weight: 600; border-radius: 999px;
+}
+.cal-day-num.cal-day-num-today { background: #2563eb; color: #fff; }
+
+.cal-count-badge { display: inline-block; align-self: flex-start; padding: 2px 4px; border-radius: 4px; border: 1px solid transparent; font-size: 9px; font-weight: 600; white-space: nowrap; }
+.cal-count-badge.cal-badge-pending { background: #fefce8; color: #a16207; border-color: #fef9c3; }
+.cal-count-badge.cal-badge-rejected { background: #fef2f2; color: #dc2626; border-color: #fee2e2; }
+.cal-count-badge.cal-badge-cancelled { background: #f9fafb; color: #9ca3af; border-color: #e5e7eb; }
+.cal-count-badge.cal-badge-confirmed { background: #eff6ff; color: #1d4ed8; border-color: #dbeafe; }
+
+@media (min-width: 640px) {
+    .cal-cell { min-height: 76px; padding: 8px; }
+    .cal-day-num { width: 28px; height: 28px; font-size: 0.875rem; }
+    .cal-count-badge { font-size: 0.75rem; }
+}
 
 /* ===== Breakpoints ===== */
 @media (max-width: 640px) {

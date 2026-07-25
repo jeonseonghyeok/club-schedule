@@ -267,6 +267,9 @@ header { background: transparent; padding: 20px 0; }
 .form-msg.error { background: #fee2e2; color: #991b1b; }
 .form-msg.ok { background: #dcfce7; color: #166534; }
 
+/* 좁은 화면에서 테이블이 잘리지 않도록 가로 스크롤 허용 (admin 패널 등) */
+.table-scroll { overflow-x: auto; }
+
 /* 코드/상태 출력용 블록 (login_callback 등) */
 pre.code-block {
     background: #f4f4f4; padding: 15px; border: 1px solid #ddd; border-radius: 4px;

@@ -6,9 +6,9 @@
     </th:block>
 </head>
 <body>
-    <header style="padding:20px 0;">
-        <div style="max-width:980px;margin:0 auto;display:flex;align-items:center;padding:0 16px;">
-            <div style="font-weight:700;font-size:1.125rem;color:#0f172a;">Club Schedule</div>
+    <header>
+        <div class="site-header">
+            <div class="brand">Club Schedule</div>
             <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
                 <span th:replace="~{fragments :: notifBell}"></span>
                 <a href="/" class="btn secondary">메인으로</a>
@@ -96,7 +96,7 @@
 
 <!-- 그룹 신청 상세 모달 -->
 <div id="grDetailModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:8px;padding:24px;min-width:400px;max-width:560px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.15);max-height:80vh;overflow-y:auto;">
+    <div style="background:#fff;border-radius:8px;padding:24px;max-width:560px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.15);max-height:80vh;overflow-y:auto;box-sizing:border-box;">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
             <h3 style="margin:0;font-size:1rem;">그룹 신청 상세</h3>
             <button id="grDetailCloseBtn" style="background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;color:#64748b;">&#215;</button>
@@ -117,7 +117,7 @@
 
 <!-- 거부 사유 모달 -->
 <div id="grRejectModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:1000;align-items:center;justify-content:center;">
-    <div style="background:#fff;border-radius:8px;padding:24px;min-width:360px;max-width:480px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.15);">
+    <div style="background:#fff;border-radius:8px;padding:24px;max-width:480px;width:90%;box-shadow:0 4px 24px rgba(0,0,0,.15);box-sizing:border-box;">
         <h3 id="grRejectModalTitle" style="margin:0 0 16px;font-size:1rem;">거부 사유 선택</h3>
 
         <select id="grRejectReason" style="width:100%;padding:8px;margin-bottom:12px;border:1px solid #ccc;border-radius:4px;font-size:0.95rem;">

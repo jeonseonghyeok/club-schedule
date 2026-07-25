@@ -1,4 +1,12 @@
 (function(){
+    // 좁은 화면에서 테이블이 잘리지 않도록 가로 스크롤 래퍼로 감싸서 붙인다
+    function appendScrollableTable(container, table){
+        const wrap = document.createElement('div');
+        wrap.className = 'table-scroll';
+        wrap.appendChild(table);
+        container.appendChild(wrap);
+    }
+
     // Users panel renderer: listens to 'admin:search:results' and renders a table
     function formatDateTime(s){
         if(!s) return '';
@@ -41,12 +49,12 @@
         common.appendChild(headerInfo);
 
         const table = document.createElement('table');
-        table.style.width = '100%';
+        table.style.minWidth = '100%';
         table.style.borderCollapse = 'collapse';
         table.className = 'admin-users-table';
 
-        const thStyle = 'border:1px solid #ddd;padding:8px;text-align:left;background:#f7f7f7;';
-        const tdStyle = 'border:1px solid #eee;padding:8px;';
+        const thStyle = 'border:1px solid #ddd;padding:8px;text-align:left;background:#f7f7f7;white-space:nowrap;';
+        const tdStyle = 'border:1px solid #eee;padding:8px;white-space:nowrap;';
 
         const thead = document.createElement('thead');
         const hr = document.createElement('tr');
@@ -96,7 +104,7 @@
             });
         }
         table.appendChild(tbody);
-        common.appendChild(table);
+        appendScrollableTable(common, table);
     }
 
     // Generic renderer used for groups, group requests, group joins
@@ -131,12 +139,12 @@
         common.appendChild(headerInfo);
 
         const table = document.createElement('table');
-        table.style.width = '100%';
+        table.style.minWidth = '100%';
         table.style.borderCollapse = 'collapse';
         table.className = 'admin-generic-table';
 
-        const thStyle = 'border:1px solid #ddd;padding:8px;text-align:left;background:#f7f7f7;';
-        const tdStyle = 'border:1px solid #eee;padding:8px;';
+        const thStyle = 'border:1px solid #ddd;padding:8px;text-align:left;background:#f7f7f7;white-space:nowrap;';
+        const tdStyle = 'border:1px solid #eee;padding:8px;white-space:nowrap;';
 
         const thead = document.createElement('thead');
         const hr = document.createElement('tr');
@@ -212,7 +220,7 @@
             });
         }
         table.appendChild(tbody);
-        common.appendChild(table);
+        appendScrollableTable(common, table);
     }
 
     function renderGroupRequests(common, data) {
@@ -225,11 +233,11 @@
         header.textContent = '총 ' + total + '건';
         common.appendChild(header);
 
-        const thStyle = 'border:1px solid #ddd;padding:8px;text-align:left;background:#f7f7f7;';
-        const tdStyle = 'border:1px solid #eee;padding:8px;vertical-align:middle;';
+        const thStyle = 'border:1px solid #ddd;padding:8px;text-align:left;background:#f7f7f7;white-space:nowrap;';
+        const tdStyle = 'border:1px solid #eee;padding:8px;vertical-align:middle;white-space:nowrap;';
 
         const table = document.createElement('table');
-        table.style.cssText = 'width:100%;border-collapse:collapse;';
+        table.style.cssText = 'min-width:100%;border-collapse:collapse;';
 
         const statusLabel = {PENDING:'대기', APPROVED:'승인', REJECTED:'거부', CANCELLED:'취소'};
 
@@ -268,7 +276,7 @@
             });
         }
         table.appendChild(tbody);
-        common.appendChild(table);
+        appendScrollableTable(common, table);
     }
 
     async function approveGroupRequest(requestId, groupName) {

@@ -398,8 +398,11 @@
             const div = document.createElement('div'); div.className = 'member-item';
             const left = document.createElement('div');
             const when = req.requestedAt ? new Date(req.requestedAt).toLocaleString() : '-';
-            left.innerHTML = '<div style="font-weight:700">' + ('사용자 #' + req.userKey) + '</div><div class="member-meta">' + when + '</div>';
-            const actions = document.createElement('div'); actions.style.display = 'flex'; actions.style.gap = '4px';
+            const nameLine = document.createElement('div'); nameLine.style.fontWeight = '700';
+            nameLine.textContent = req.nickname || ('사용자 #' + req.userKey);
+            const metaLine = document.createElement('div'); metaLine.className = 'member-meta'; metaLine.textContent = when;
+            left.appendChild(nameLine); left.appendChild(metaLine);
+            const actions = document.createElement('div'); actions.style.display = 'flex'; actions.style.gap = '4px'; actions.style.flexShrink = '0';
             const approveBtn = document.createElement('button'); approveBtn.className = 'tab'; approveBtn.style.background = '#dcfce7'; approveBtn.style.color = '#166534'; approveBtn.textContent = '승인';
             approveBtn.addEventListener('click', () => {
                 openYesNoConfirm('이 사용자의 가입 신청을 승인하시겠습니까?', async (yesBtn) => {

@@ -145,7 +145,7 @@ header { background: transparent; padding: 20px 0; }
 /* Tabs (페이지 상단 탭, 모달 안 탭, JS로 생성되는 액션형 "chip" 버튼까지 공용) */
 .tabs { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
 .modal .tabs { margin-top: 12px; margin-bottom: 0; }
-.tab { padding: 8px 12px; border-radius: var(--radius-sm); background: #f1f5f9; cursor: pointer; font-weight: 700; border: none; }
+.tab { padding: 8px 12px; border-radius: var(--radius-sm); background: #f1f5f9; cursor: pointer; font-weight: 700; border: none; white-space: nowrap; }
 .tab.active { background: var(--color-btn-bg); color: #fff; }
 
 /* 2단 반응형 그리드 (홈탭 본문 등: 900px 미만 1단 → 이상 2단) */

@@ -10,6 +10,7 @@ public class GroupJoinRequestVo {
     private Long requestId;
     private Long groupId;
     private Long userKey;
+    private String nickname;
     private String status; // PENDING, APPROVED, REJECTED
     private LocalDateTime requestedAt;
     private LocalDateTime approvedAt;

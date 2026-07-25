@@ -20,11 +20,12 @@
     </select>
 
     <select id="selectPendingByGroupId" parameterType="long" resultType="com.moyora.clubschedule.vo.GroupJoinRequestVo">
-        SELECT request_id, group_id, user_key, status, requested_at, approved_at, reject_reason
-        FROM group_join_request
-        WHERE group_id = #{groupId}
-        AND status = 'PENDING'
-        ORDER BY requested_at ASC
+        SELECT r.request_id, r.group_id, r.user_key, u.nickname, r.status, r.requested_at, r.approved_at, r.reject_reason
+        FROM group_join_request r
+        JOIN `user` u ON u.user_key = r.user_key
+        WHERE r.group_id = #{groupId}
+        AND r.status = 'PENDING'
+        ORDER BY r.requested_at ASC
     </select>
 
     <select id="selectAllPending" resultType="com.moyora.clubschedule.vo.GroupJoinRequestVo">

@@ -4,44 +4,14 @@
     <meta charset="UTF-8">
     <title>카카오 자동 로그인/회원가입</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            line-height: 1.6;
-            background-color: #f0f2f5;
-            color: #333;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #fff;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        }
-        h1, h2, h3 {
-            color: #1a1a1a;
-        }
-        pre {
-            background-color: #f4f4f4;
-            padding: 15px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-size: 14px;
-            overflow-x: auto;
-        }
-        #token-info {
-            margin-top: 20px;
-        }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/common.css}">
 </head>
 <body>
     <div class="container">
-        <h1>카카오 로그인 상태</h1>
-        <div id="token-info"></div>
+        <div class="card">
+            <h1>카카오 로그인 상태</h1>
+            <div id="token-info"></div>
+        </div>
     </div>
 
     <script>

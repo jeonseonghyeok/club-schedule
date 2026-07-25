@@ -4,75 +4,7 @@
     <meta charset="UTF-8">
     <title>메인 페이지</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        /* Reset & base */
-        * { box-sizing: border-box; }
-        body { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial; margin:0; color:#0f172a; background:linear-gradient(180deg,#f8fafc,#f1f5f9); }
-        a { color: #2563eb; text-decoration:none }
-
-        header { background:transparent; padding:20px 0; }
-        .site-header { max-width:980px; margin:0 auto; display:flex; align-items:center; gap:16px; padding:0 16px; }
-        .brand { font-weight:700; font-size:1.125rem; color:#0f172a; }
-        .subtitle { color:#475569; font-size:0.95rem; }
-
-        .container { max-width:980px; margin:24px auto; padding:0 16px; }
-
-        /* Single column layout */
-        .stack { display:flex; flex-direction:column; gap:18px; }
-
-        .card { background:#fff; border-radius:12px; padding:18px; box-shadow:0 8px 24px rgba(15,23,42,0.06); border:1px solid rgba(2,6,23,0.04); }
-
-        .profile { display:flex; gap:14px; align-items:center; }
-        .avatar { width:64px; height:64px; border-radius:12px; background:linear-gradient(135deg,#60a5fa,#7c3aed); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:1.25rem; }
-        .profile-info { display:flex; flex-direction:column; }
-        .profile-key { font-weight:700; font-size:1rem; }
-        .profile-meta { color:#64748b; font-size:0.95rem; }
-
-        .section-title { font-weight:700; margin:0 0 12px 0; font-size:1rem; color:#0b1220; display:flex; align-items:center; justify-content:space-between; }
-        .controls { display:flex; gap:8px; align-items:center; }
-        .search { padding:8px 10px; border-radius:8px; border:1px solid #e6eef8; width:260px; }
-
-        ul { list-style:none; margin:0; padding:0; display:grid; gap:10px; }
-        li { padding:12px; border-radius:10px; background:linear-gradient(180deg,#fff,#fcfeff); border:1px solid rgba(14,165,233,0.06); display:flex; align-items:center; justify-content:space-between; }
-        .group-left { display:flex; gap:12px; align-items:center; }
-        .group-name { font-weight:700; }
-        .group-sub { color:#64748b; font-size:0.9rem; }
-
-        .btn { display:inline-flex; align-items:center; gap:8px; background:#0f172a; color:#fff; padding:8px 12px; border-radius:10px; border:none; cursor:pointer; font-weight:700; }
-        .btn.secondary { background:#f1f5f9; color:#0b1220; border:1px solid #e2e8f0; }
-
-        @media (max-width:640px) {
-            .search { width:100%; }
-            .site-header { padding:0 12px; }
-            .container { padding:0 12px; }
-        }
-
-        /* Modal styles (kept) */
-        .modal-overlay { position:fixed; inset:0; background:rgba(2,6,23,0.5); display:none; align-items:center; justify-content:center; z-index:1000; }
-        .modal { background:#fff; width:720px; max-width:95%; border-radius:10px; padding:18px; box-shadow:0 10px 30px rgba(2,6,23,0.28); }
-        .modal .modal-header { display:flex; align-items:center; justify-content:space-between; }
-        .modal .tabs { display:flex; gap:8px; margin-top:12px; }
-        .modal .tab { padding:8px 12px; border-radius:8px; background:#f1f5f9; cursor:pointer; font-weight:700; }
-        .modal .tab.active { background:#0f172a; color:#fff; }
-        .modal .modal-body { margin-top:12px; max-height:60vh; overflow:auto; }
-        .modal .close-btn { background:transparent; border:none; font-size:1.1rem; cursor:pointer; }
-        .badge { display:inline-block; padding:4px 8px; border-radius:999px; font-weight:700; font-size:0.85rem; }
-        .badge.pending { background:#fff7ed; color:#b45309; border:1px solid #ffedd5; }
-        .badge.approved { background:#ecfdf5; color:#166534; border:1px solid #bbf7d0; }
-        .badge.rejected { background:#fff1f2; color:#981b1b; border:1px solid #fecaca; }
-        .badge.cancelled { background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; }
-        /* Scrollable requests list inside modal */
-        #modalRequestsList { max-height:40vh; overflow:auto; display:block; padding-right:8px; }
-
-        /* Request detail pane */
-        .request-list-item { transition: background 0.15s ease, border-color 0.15s ease; }
-        .request-list-item.active { border-color: rgba(14,165,233,0.35); background:#eff6ff; }
-        #requestDetailEmpty { margin-top:12px; color:#64748b; font-size:0.95rem; }
-        #requestDetailPane { margin-top:12px; padding:12px; border-radius:10px; border:1px solid rgba(2,6,23,0.06); background:linear-gradient(180deg,#fff,#fcfeff); }
-        .request-detail-item { margin-top:10px; }
-        .request-detail-label { color:#64748b; font-size:0.85rem; font-weight:700; margin-bottom:4px; }
-        #requestDetailDescription { white-space:pre-wrap; }
-    </style>
+    <link rel="stylesheet" th:href="@{/css/common.css}">
 </head>
 <body>
 <header>
@@ -117,7 +49,7 @@
                 </div>
             </div>
 
-            <ul id="myGroupsList">
+            <ul id="myGroupsList" class="list">
                 <li class="muted">로딩 중...</li>
             </ul>
         </div>
@@ -127,20 +59,25 @@
                 <span>모임 검색</span>
                 <input id="groupSearchInput" type="search" placeholder="모임명 검색..." class="search">
             </div>
-            <ul id="recommendedGroupsList">
+            <ul id="recommendedGroupsList" class="list">
                 <li class="muted">로딩 중...</li>
             </ul>
         </div>
 </div>
 
-<!-- 로그인 유도 -->
-<div class="container" th:if="${userKey == null}" style="margin-top:18px;">
-    <div class="card">
-        <div class="section-title">로그인 필요</div>
-        <p class="muted">모임 조회 및 신청을 하시려면 로그인이 필요합니다.</p>
-        <div style="margin-top:12px; display:flex; gap:8px;">
-            <a href="/login/kakao/login_callback?returnTo=/" class="btn">카카오 로그인</a>
-            <a href="/sign" class="btn secondary">회원가입</a>
+<!-- 로그인 필요 안내 모달 (비회원 접속 시 자동 노출) -->
+<div id="loginRequiredOverlay" class="modal-overlay" th:if="${userKey == null}">
+    <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="loginRequiredTitle">
+        <div class="modal-header">
+            <h3 id="loginRequiredTitle">로그인 필요</h3>
+            <button id="closeLoginRequiredBtn" class="close-btn" aria-label="Close">✕</button>
+        </div>
+        <div class="modal-body">
+            <p class="muted">모임 조회 및 신청을 하시려면 로그인이 필요합니다.</p>
+            <div style="margin-top:12px; display:flex; gap:8px;">
+                <a href="/login/kakao/login_callback?returnTo=/" class="btn">카카오 로그인</a>
+                <!-- 회원가입은 별도 플로우 확정 전까지 숨김 -->
+            </div>
         </div>
     </div>
 </div>
@@ -157,7 +94,7 @@
         </div>
         <div class="modal-body">
             <div id="modalStatusPane">
-                <ul id="modalRequestsList">
+                <ul id="modalRequestsList" class="list modal-scroll-list">
                     <li class="muted">로딩 중...</li>
                 </ul>
             </div>
@@ -241,16 +178,33 @@
 
         const refreshGroupsBtn = document.getElementById('refreshMyGroupsBtn'); if (refreshGroupsBtn) refreshGroupsBtn.addEventListener('click', loadMyGroups);
 
-        loadMyGroups();
-        loadRecommendedGroups();
+        if (currentUserKey == null) {
+            // 비회원: 실패가 뻔한 조회를 시도하지 않고 안내 문구만 표시, 로그인 모달을 띄운다
+            const myGroupsList = document.getElementById('myGroupsList');
+            if (myGroupsList) myGroupsList.innerHTML = '<li class="muted">로그인이 필요합니다.</li>';
+            const recommendedList = document.getElementById('recommendedGroupsList');
+            if (recommendedList) recommendedList.innerHTML = '<li class="muted">로그인이 필요합니다.</li>';
+            const groupSearchInput = document.getElementById('groupSearchInput');
+            if (groupSearchInput) groupSearchInput.disabled = true;
 
-        let searchDebounce;
-        const groupSearchInput = document.getElementById('groupSearchInput');
-        if (groupSearchInput) {
-            groupSearchInput.addEventListener('input', e => {
-                clearTimeout(searchDebounce);
-                searchDebounce = setTimeout(() => loadRecommendedGroups(e.target.value.trim()), 300);
-            });
+            const loginOverlay = document.getElementById('loginRequiredOverlay');
+            if (loginOverlay) {
+                loginOverlay.style.display = 'flex';
+                const closeBtn = document.getElementById('closeLoginRequiredBtn');
+                if (closeBtn) closeBtn.addEventListener('click', () => { loginOverlay.style.display = 'none'; });
+            }
+        } else {
+            loadMyGroups();
+            loadRecommendedGroups();
+
+            let searchDebounce;
+            const groupSearchInput = document.getElementById('groupSearchInput');
+            if (groupSearchInput) {
+                groupSearchInput.addEventListener('input', e => {
+                    clearTimeout(searchDebounce);
+                    searchDebounce = setTimeout(() => loadRecommendedGroups(e.target.value.trim()), 300);
+                });
+            }
         }
     });
 

@@ -20,6 +20,8 @@ import com.moyora.clubschedule.vo.GroupScheduleVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo.ScheduleStatus;
 import com.moyora.clubschedule.vo.GroupSchedulePolicyVo.VisibilityType;
 import com.moyora.clubschedule.vo.Notification;
+import com.moyora.clubschedule.vo.ScheduleAttendanceVo;
+import com.moyora.clubschedule.vo.ScheduleAttendanceVo.AttendanceStatus;
 
 import lombok.RequiredArgsConstructor;
 
@@ -208,6 +210,10 @@ public class GroupScheduleService {
         dto.setGroupId(groupId);
         groupScheduleMapper.updateSchedule(dto);
 
+        notifyConfirmedAttendees(scheduleId, schedule.getTitle(), operatorUserKey,
+                "참가 중인 일정이 변경되었습니다",
+                schedule.getTitle() + " 일정 내용이 변경되었습니다. 변경 사유: " + dto.getChangeReason());
+
         return groupScheduleMapper.selectByScheduleId(scheduleId);
     }
 
@@ -232,10 +238,38 @@ public class GroupScheduleService {
                 schedule.getCreatedBy(), schedule.getStatus());
 
         groupScheduleMapper.updateScheduleStatus(scheduleId, ScheduleStatus.CANCELLED, null);
+
+        notifyConfirmedAttendees(scheduleId, schedule.getTitle(), operatorUserKey,
+                "참가 중인 일정이 취소되었습니다",
+                schedule.getTitle() + " 일정이 취소되었습니다.");
+
         return groupScheduleMapper.selectByScheduleId(scheduleId);
     }
 
     // ── 내부 유틸 ─────────────────────────────────────────────────────────────
+
+    /**
+     * 일정 변경/취소를 참가 확정(CONFIRMED) 멤버에게 알린다. 작업을 수행한 본인은 제외한다.
+     * notification.source_table/category는 실제 SQL ENUM이라 스키마 변경 없이는 값을 추가할 수
+     * 없어, 기존에 존재하는 SCHEDULE/NOTICE 값을 재사용한다(결과 통보 성격의 기존 관례와 동일).
+     */
+    private void notifyConfirmedAttendees(Long scheduleId, String scheduleTitle, Long operatorUserKey,
+                                           String title, String content) {
+        List<ScheduleAttendanceVo> attendees = scheduleAttendanceMapper.selectActiveList(scheduleId);
+        for (ScheduleAttendanceVo att : attendees) {
+            if (att.getStatus() != AttendanceStatus.CONFIRMED) continue;
+            if (att.getUserKey().equals(operatorUserKey)) continue;
+            notificationService.createNotification(Notification.builder()
+                    .userKey(att.getUserKey())
+                    .sourceTable("SCHEDULE")
+                    .sourceId(scheduleId)
+                    .category("NOTICE")
+                    .title(title)
+                    .content(content)
+                    .isRead(false)
+                    .build());
+        }
+    }
 
     /** scheduleId로 조회 후, 해당 그룹 소속인지 검증 */
     private GroupScheduleVo getAndValidateGroup(Long scheduleId, Long groupId) {

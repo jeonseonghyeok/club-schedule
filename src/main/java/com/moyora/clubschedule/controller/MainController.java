@@ -74,13 +74,16 @@ public class MainController {
             }
         }
 
-        if (userKey != null && list == null) {
+        Long favoriteGroupId = null;
+        if (userKey != null) {
             UserVo user = userService.getUserByUserKey(userKey);
-            Long favoriteGroupId = (user != null) ? user.getFavoriteGroupId() : null;
-            if (favoriteGroupId != null) {
+            favoriteGroupId = (user != null) ? user.getFavoriteGroupId() : null;
+            if (favoriteGroupId != null && list == null) {
                 return "redirect:/groups/" + favoriteGroupId;
             }
         }
+        // list=1로 자동이동을 우회해 목록을 볼 때도 즐겨찾기 그룹을 강조 표시할 수 있도록 노출
+        model.addAttribute("favoriteGroupId", favoriteGroupId);
 
         return "main";
     }

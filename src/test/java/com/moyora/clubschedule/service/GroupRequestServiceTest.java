@@ -6,6 +6,7 @@ import static org.mockito.Mockito.*;
 import com.moyora.clubschedule.mapper.GroupMapper;
 import com.moyora.clubschedule.mapper.GroupMemberMapper;
 import com.moyora.clubschedule.mapper.GroupRequestMapper;
+import com.moyora.clubschedule.mapper.GroupSchedulePolicyMapper;
 import com.moyora.clubschedule.vo.GroupRequest;
 import com.moyora.clubschedule.vo.GroupVo;
 import com.moyora.clubschedule.vo.GroupMemberVo;
@@ -31,6 +32,8 @@ class GroupRequestServiceTest {
     private GroupMapper groupMapper;
     @Mock
     private GroupMemberMapper groupMemberMapper;
+    @Mock
+    private GroupSchedulePolicyMapper groupSchedulePolicyMapper;
 
     @InjectMocks
     private GroupRequestService service;

@@ -14,6 +14,11 @@ public interface GroupJoinRequestMapper {
     List<GroupJoinRequestVo> selectPendingByGroupId(@Param("groupId") Long groupId);
     List<GroupJoinRequestVo> selectAllPending();
 
+    // 관리자 전용 — DB 레벨 페이징 + 닉네임/그룹명 검색
+    List<GroupJoinRequestVo> selectAllPendingPaged(
+            @Param("q") String q, @Param("limit") int limit, @Param("offset") int offset);
+    int countAllPendingFiltered(@Param("q") String q);
+
     int updateStatusToApproved(@Param("requestId") Long requestId, @Param("processedBy") Long processedBy);
     int updateStatusToRejected(@Param("requestId") Long requestId, @Param("processedBy") Long processedBy, @Param("rejectReason") String rejectReason);
     int updateStatusToCancelled(@Param("requestId") Long requestId, @Param("userKey") Long userKey);

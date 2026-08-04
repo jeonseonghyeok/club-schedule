@@ -199,7 +199,8 @@ header { background: transparent; padding: 20px 0; }
 .join-pending-badge { padding: 6px 12px; border-radius: 999px; background: #fef9c3; color: #854d0e; font-size: 13px; font-weight: 600; }
 
 /* 관리 탭: 회원/일정/권한 목록 */
-.members-list, .schedules-list, .permissions-list { border-radius: 10px; border: 1px solid rgba(2, 6, 23, 0.06); padding: 12px; max-height: 400px; overflow: auto; }
+/* 모바일에서 한 화면에 약 3행만 보이도록 높이를 제한(스크롤은 유지) */
+.members-list, .schedules-list, .permissions-list { border-radius: 10px; border: 1px solid rgba(2, 6, 23, 0.06); padding: 12px; max-height: 230px; overflow: auto; }
 .member-item { display: flex; justify-content: space-between; align-items: center; padding: 8px; border-radius: 8px; background: linear-gradient(180deg, #fff, #fcfeff); margin-bottom: 8px; }
 .member-meta { color: var(--color-text-muted); font-size: 0.9rem; }
 .danger { background: #fff1f2; color: #981b1b; border: 1px solid #fecaca; }
@@ -276,11 +277,34 @@ pre.code-block {
     white-space: pre-wrap; word-wrap: break-word; font-size: 14px; overflow-x: auto;
 }
 
+/* 로딩 스피너 (login_callback 등) */
+.spinner {
+    width: 32px; height: 32px; margin: 16px auto;
+    border: 3px solid var(--color-border, #e2e2e2); border-top-color: var(--color-btn-bg, #333);
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* 버튼 내부용 소형 스피너 — 참가 상태 로딩 중 텍스트가 순간적으로 뒤바뀌는 이질감 방지 */
+.spinner-sm {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid rgba(255, 255, 255, 0.5); border-top-color: #fff;
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+}
+
+/* 일정 등록/복제 모달의 시작~종료 시간 필드 그룹 (group.html openCreateEventModal) */
+.when-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.datetime-field { display: flex; gap: 4px; flex-wrap: wrap; }
+.datetime-field input[type="date"] { flex: 1 1 100px; min-width: 100px; }
+.datetime-field select { flex: 0 0 60px; }
+
 /* ===== Breakpoints ===== */
 @media (max-width: 640px) {
     .search { width: auto; max-width: 140px; }
     .site-header { padding: 0 12px; }
     .container { padding: 0 12px; }
+    .when-row { grid-template-columns: 1fr; }
 }
 @media (max-width: 400px) {
     .brand { font-size: 1rem; }

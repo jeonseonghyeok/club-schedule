@@ -381,6 +381,114 @@
         modal.style.display = 'flex';
     }
 
+    function renderGroupJoins(common, data) {
+        const items = extractItems(data) || [];
+        common.innerHTML = '';
+
+        const total = (data && (data.totalCount || data.total)) || items.length;
+        const header = document.createElement('div');
+        header.style.marginBottom = '8px';
+        header.textContent = '총 ' + total + '건';
+        common.appendChild(header);
+
+        const thStyle = 'border:1px solid #ddd;padding:8px;text-align:left;background:#f7f7f7;white-space:nowrap;';
+        const tdStyle = 'border:1px solid #eee;padding:8px;vertical-align:middle;white-space:nowrap;';
+
+        const table = document.createElement('table');
+        table.style.cssText = 'min-width:100%;border-collapse:collapse;';
+
+        const statusLabel = {PENDING:'대기', APPROVED:'승인', REJECTED:'거부', CANCELLED:'취소'};
+
+        const thead = document.createElement('thead');
+        const hr = document.createElement('tr');
+        ['신청번호', '모임명', '요청자', '신청일시', '상태', '처리'].forEach(function(h) {
+            const th = document.createElement('th');
+            th.setAttribute('style', thStyle);
+            th.textContent = h;
+            hr.appendChild(th);
+        });
+        thead.appendChild(hr);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+        if (items.length === 0) {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            td.setAttribute('style', tdStyle + 'text-align:center;');
+            td.colSpan = 6;
+            td.textContent = '조회 결과가 없습니다.';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        } else {
+            items.forEach(function(it) {
+                const tr = document.createElement('tr');
+                [it.requestId, it.groupName, (it.nickname || it.userKey), formatDateTime(it.requestedAt), statusLabel[it.status] || it.status].forEach(function(v) {
+                    const td = document.createElement('td');
+                    td.setAttribute('style', tdStyle);
+                    td.textContent = v != null ? String(v) : '';
+                    tr.appendChild(td);
+                });
+
+                const actionTd = document.createElement('td');
+                actionTd.setAttribute('style', tdStyle);
+                if (it.status === 'PENDING') {
+                    const approveBtn = document.createElement('button');
+                    approveBtn.textContent = '승인';
+                    approveBtn.setAttribute('style', 'padding:5px 12px;background:#1976d2;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem;margin-right:6px;');
+                    approveBtn.onclick = function() { approveGroupJoin(it.requestId, it.groupName); };
+
+                    const rejectBtn = document.createElement('button');
+                    rejectBtn.textContent = '거부';
+                    rejectBtn.setAttribute('style', 'padding:5px 12px;background:#d32f2f;color:#fff;border:none;border-radius:4px;cursor:pointer;font-size:0.85rem;');
+                    rejectBtn.onclick = function() { rejectGroupJoin(it.requestId, it.groupName); };
+
+                    actionTd.appendChild(approveBtn);
+                    actionTd.appendChild(rejectBtn);
+                } else {
+                    actionTd.textContent = '-';
+                }
+                tr.appendChild(actionTd);
+                tbody.appendChild(tr);
+            });
+        }
+        table.appendChild(tbody);
+        appendScrollableTable(common, table);
+    }
+
+    async function approveGroupJoin(requestId, groupName) {
+        if (!confirm('[' + groupName + '] 가입 요청을 승인하시겠습니까?')) return;
+        try {
+            const res = await fetch('/admin/api/group-joins/' + requestId + '/approve', { method: 'POST' });
+            if (res.ok) {
+                window.dispatchEvent(new CustomEvent('admin:reload:panel', { detail: { panelId: 'groupJoinsPanel' } }));
+            } else {
+                const body = await res.json().catch(function() { return {}; });
+                alert('승인 실패: ' + (body.error || res.status));
+            }
+        } catch(err) {
+            alert('오류: ' + err.message);
+        }
+    }
+
+    async function rejectGroupJoin(requestId, groupName) {
+        const reason = prompt('[' + groupName + '] 거부 사유를 입력하세요(선택):', '');
+        if (reason === null) return; // 취소
+        try {
+            const res = await fetch('/admin/api/group-joins/' + requestId + '/reject', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rejectReason: reason || null })
+            });
+            if (res.ok) {
+                window.dispatchEvent(new CustomEvent('admin:reload:panel', { detail: { panelId: 'groupJoinsPanel' } }));
+            } else {
+                const body = await res.json().catch(function() { return {}; });
+                alert('거부 실패: ' + (body.error || res.status));
+            }
+        } catch(err) {
+            alert('오류: ' + err.message);
+        }
+    }
+
     function openRejectModal(requestId, groupName) {
         const modal = document.getElementById('grRejectModal');
         if (!modal) return;
@@ -415,7 +523,7 @@
                 renderGroupRequests(common, data);
                 break;
             case 'groupJoinsPanel':
-                renderGeneric(common, data, 'groupJoinsPanel');
+                renderGroupJoins(common, data);
                 break;
             default:
                 // fallback to generic rendering

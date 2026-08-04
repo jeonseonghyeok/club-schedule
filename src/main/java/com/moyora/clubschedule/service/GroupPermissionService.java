@@ -1,8 +1,16 @@
 package com.moyora.clubschedule.service;
 
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.moyora.clubschedule.exception.GroupAccessDeniedException;
+import com.moyora.clubschedule.mapper.GroupMapper;
 import com.moyora.clubschedule.mapper.GroupMemberMapper;
 import com.moyora.clubschedule.mapper.GroupMemberPermissionMapper;
 import com.moyora.clubschedule.mapper.GroupSchedulePolicyMapper;
@@ -11,6 +19,7 @@ import com.moyora.clubschedule.vo.GroupRole;
 import com.moyora.clubschedule.vo.GroupSchedulePolicyVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo;
 import com.moyora.clubschedule.vo.GroupScheduleVo.ScheduleStatus;
+import com.moyora.clubschedule.vo.GroupVo;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -30,6 +39,81 @@ public class GroupPermissionService {
     private final GroupMemberMapper           groupMemberMapper;
     private final GroupMemberPermissionMapper groupMemberPermissionMapper;
     private final GroupSchedulePolicyMapper   groupSchedulePolicyMapper;
+    private final GroupMapper                 groupMapper;
+
+    // ── 매니저 권한 프리셋 (docs/ROADMAP.md 2026-07-10 정책 확정: 개별 체크박스 대신 프리셋 단위 부여) ──
+
+    public enum PermissionPreset {
+        SCHEDULE_MANAGER(PermissionType.CREATE_SCHEDULE_DIRECT, PermissionType.MANAGE_SCHEDULE),
+        ATTENDANCE_MANAGER(PermissionType.MANAGE_SCHEDULE);
+
+        private final Set<PermissionType> grantedTypes;
+
+        PermissionPreset(PermissionType... types) {
+            this.grantedTypes = EnumSet.copyOf(Arrays.asList(types));
+        }
+    }
+
+    /** 프리셋이 관리하는 permission_type 전체(프리셋에 속하지 않은 MANAGE_MEMBER 등은 건드리지 않는다) */
+    private static final Set<PermissionType> PRESET_MANAGED_TYPES =
+            EnumSet.of(PermissionType.CREATE_SCHEDULE_DIRECT, PermissionType.MANAGE_SCHEDULE);
+
+    /**
+     * 매니저 개인에게 프리셋 역할 단위로 권한을 부여/회수한다(전체 교체 방식 — presets에 없는
+     * 프리셋의 permission_type은 회수된다). 호출자는 반드시 현재 리더여야 하고, 대상은 반드시
+     * role=MANAGER여야 한다(정책: 권한 프리셋은 매니저 전용).
+     */
+    @Transactional
+    public boolean applyPermissionPresets(Long groupId, Long targetUserKey,
+                                           Set<PermissionPreset> presets, Long operatorUserKey) {
+        if (operatorUserKey == null || targetUserKey == null) return false;
+
+        GroupVo group = groupMapper.findById(groupId);
+        if (group == null || !operatorUserKey.equals(group.getLeaderUserKey())) return false;
+
+        String roleStr = groupMemberMapper.selectRoleByGroupAndUser(groupId, targetUserKey);
+        if (!"MANAGER".equalsIgnoreCase(roleStr)) return false;
+
+        Set<PermissionType> targetTypes = EnumSet.noneOf(PermissionType.class);
+        if (presets != null) {
+            for (PermissionPreset preset : presets) targetTypes.addAll(preset.grantedTypes);
+        }
+
+        for (PermissionType type : PRESET_MANAGED_TYPES) {
+            if (targetTypes.contains(type)) {
+                groupMemberPermissionMapper.upsertPermission(groupId, targetUserKey, type.name(), operatorUserKey);
+            } else {
+                groupMemberPermissionMapper.deletePermission(groupId, targetUserKey, type.name());
+            }
+        }
+        return true;
+    }
+
+    /** 현재 활성화된 프리셋 목록(UI 렌더링용) — 프리셋이 요구하는 permission_type을 모두 보유해야 활성으로 본다. */
+    public Set<PermissionPreset> resolveActivePresets(Long groupId, Long userKey) {
+        List<String> allowed = groupMemberPermissionMapper.selectAllowedTypes(groupId, userKey);
+        Set<PermissionType> allowedTypes = new HashSet<>();
+        for (String s : allowed) {
+            try { allowedTypes.add(PermissionType.valueOf(s)); } catch (IllegalArgumentException ignored) { /* 무시 */ }
+        }
+        Set<PermissionPreset> result = EnumSet.noneOf(PermissionPreset.class);
+        for (PermissionPreset preset : PermissionPreset.values()) {
+            if (allowedTypes.containsAll(preset.grantedTypes)) result.add(preset);
+        }
+        return result;
+    }
+
+    /**
+     * 일정/출석 관리 가능 여부(boolean, 예외 없음). LEADER는 항상 true, MANAGER는 override 또는
+     * 그룹 정책 기본값을 따른다. ScheduleAttendanceService의 출석 승인/거부/체크인 권한 판단에도
+     * 재사용해 "출석관리자" 프리셋(MANAGE_SCHEDULE)이 실질적 효과를 갖도록 한다.
+     */
+    public boolean canManageSchedule(Long groupId, Long userKey) {
+        GroupRole role = resolveRole(groupId, userKey);
+        if (role == GroupRole.LEADER) return true;
+        if (role == GroupRole.MANAGER) return resolveManagerCanManage(groupId, userKey, fetchPolicy(groupId));
+        return false;
+    }
 
     // ── 화면 렌더링용 권한 요약 ────────────────────────────────────────────────
 
@@ -133,10 +217,14 @@ public class GroupPermissionService {
 
     /**
      * 일정 수정 권한 검증.
+     *  작성자 본인                        → PENDING·CONFIRMED 모두 수정 가능
      *  LEADER                             → PENDING·CONFIRMED 수정 가능
      *  MANAGER + MANAGE_SCHEDULE 권한     → PENDING·CONFIRMED 수정 가능
-     *  본인 작성 PENDING                  → 수정 가능
      *  REJECTED·CANCELLED                 → 누구도 수정 불가
+     *
+     * (기존에는 PENDING 상태를 작성자 전용으로 제한해, 오탈자 하나에도 반려 후 재작성을
+     *  강제했었다 — MANAGE_SCHEDULE 권한이 있는 매니저/리더는 CONFIRMED와 동일하게
+     *  PENDING도 바로 수정할 수 있도록 완화한다.)
      */
     public void validateEditPermission(Long groupId, Long userKey, GroupScheduleVo schedule) {
         ScheduleStatus status = schedule.getStatus();
@@ -144,13 +232,8 @@ public class GroupPermissionService {
             throw new GroupAccessDeniedException("반려되었거나 취소된 일정은 수정할 수 없습니다.");
         }
 
-        // 승인 대기 중인 일정은 작성자만 수정 가능 (관리자·리더 불가)
-        if (status == ScheduleStatus.PENDING) {
-            if (schedule.getCreatedBy().equals(userKey)) return;
-            throw new GroupAccessDeniedException("승인 대기 중인 일정은 작성자만 수정할 수 있습니다.");
-        }
+        if (schedule.getCreatedBy().equals(userKey)) return;
 
-        // 승인된(CONFIRMED) 일정: LEADER 또는 MANAGE_SCHEDULE 권한 MANAGER만 수정 가능
         GroupRole role = resolveRole(groupId, userKey);
         if (role == GroupRole.LEADER) return;
         if (role == GroupRole.MANAGER) {

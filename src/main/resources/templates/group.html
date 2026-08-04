@@ -11,25 +11,35 @@
     <div class="site-header">
         <div class="brand">Club Schedule</div>
         <div style="margin-left:auto;display:flex;align-items:center;gap:12px;">
+            <a th:href="@{/(list=1)}" class="tab">목록으로</a>
             <span th:replace="~{fragments :: notifBell}"></span>
         </div>
     </div>
 </header>
 <script th:src="@{/js/notifications.js}"></script>
 
-<div class="container" th:attr="data-group-id=${group.groupId}, data-is-member=${isMember}, data-can-create-schedule=${canCreateSchedule}, data-create-needs-approval=${createNeedsApproval}, data-can-manage-schedule=${canManageSchedule}, data-current-user-key=${currentUserKey}">
+<div class="container" th:attr="data-group-id=${group.groupId}, data-is-member=${isMember}, data-is-leader=${isLeader}, data-can-create-schedule=${canCreateSchedule}, data-create-needs-approval=${createNeedsApproval}, data-can-manage-schedule=${canManageSchedule}, data-current-user-key=${currentUserKey}">
     <div class="card">
         <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
             <div>
                 <div style="font-weight:800; font-size:1.25rem;" th:text="${group.name}">그룹명</div>
 <!--                <div style="color:#64748b; margin-top:6px;" class="member-meta">그룹 ID: <span th:text="${group.groupId}">1</span></div>-->
             </div>
-            <div style="display:flex; gap:8px; align-items:center;">
-                <a th:href="@{/(list=1)}" class="tab">목록으로</a>
+            <div style="display:flex; gap:8px; align-items:center;" th:if="${isMember}">
+                <button id="myHistoryBtn" type="button"
+                        title="참가이력"
+                        style="background:none;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;line-height:1;cursor:pointer;padding:5px 10px;color:#475569;">
+                    참가이력
+                </button>
+                <button id="myInfoBtn" type="button"
+                        title="내정보"
+                        style="background:none;border:1px solid #e2e8f0;border-radius:6px;font-size:13px;line-height:1;cursor:pointer;padding:5px 10px;color:#475569;">
+                    내정보
+                </button>
             </div>
         </div>
     </div>
-	
+
     <div class="card" style="margin-top:12px;">
         <div class="tabs" style="justify-content:space-between;">
             <div style="display:flex;gap:8px;">
@@ -105,10 +115,15 @@
 
             <div class="card">
                 <div class="section-title">회원 관리</div>
-                <div style="display:flex;gap:8px;margin-bottom:12px;">
-                    <button type="button" id="memTabActive" class="tab active">일반회원</button>
-                    <button type="button" id="memTabWithdrawn" class="tab">탈퇴회원</button>
-                    <button type="button" id="memTabKicked" class="tab">내보내기</button>
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:12px;">
+                    <div style="display:flex;gap:8px;">
+                        <button type="button" id="memTabActive" class="tab active">활동</button>
+                        <button type="button" id="memTabSuspended" class="tab">정지</button>
+                    </div>
+                    <div id="memSuspendFilterRow" style="display:none;gap:12px;align-items:center;font-size:13px;color:#475569;">
+                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="memFilterWithdrawn" checked> 탈퇴</label>
+                        <label style="display:flex;align-items:center;gap:4px;cursor:pointer;"><input type="checkbox" id="memFilterKicked" checked> 추방</label>
+                    </div>
                 </div>
                 <div class="members-list" id="membersManageList">
                     <div class="muted">로딩 중...</div>
@@ -223,12 +238,12 @@
         const cManage = document.getElementById('contentManage');
 
         let groupId = /*[[${group.groupId}]]*/ 0;
-        let isMember = /*[[${isMember}]]*/ false;        let canCreateSchedule = /*[[${canCreateSchedule}]]*/ false;        let createNeedsApproval = /*[[${createNeedsApproval}]]*/ false;        let canManageSchedule = /*[[${canManageSchedule}]]*/ false;        let currentUserKey = /*[[${currentUserKey}]]*/ 0;
+        let isMember = /*[[${isMember}]]*/ false;        let isLeader = /*[[${isLeader}]]*/ false;        let canCreateSchedule = /*[[${canCreateSchedule}]]*/ false;        let createNeedsApproval = /*[[${createNeedsApproval}]]*/ false;        let canManageSchedule = /*[[${canManageSchedule}]]*/ false;        let currentUserKey = /*[[${currentUserKey}]]*/ 0;
         try {
             const container = document.querySelector('.container');
             if (container && container.dataset) {
                 if (container.dataset.groupId) groupId = Number(container.dataset.groupId) || groupId;
-                if (typeof container.dataset.isMember !== 'undefined') { const v = container.dataset.isMember; if (v === 'true' || v === 'false') isMember = (v === 'true'); else isMember = Boolean(v); }                if (typeof container.dataset.canCreateSchedule !== 'undefined') canCreateSchedule = (container.dataset.canCreateSchedule === 'true');                if (typeof container.dataset.createNeedsApproval !== 'undefined') createNeedsApproval = (container.dataset.createNeedsApproval === 'true');                if (typeof container.dataset.canManageSchedule !== 'undefined') canManageSchedule = (container.dataset.canManageSchedule === 'true'); if (container.dataset.currentUserKey) currentUserKey = Number(container.dataset.currentUserKey) || currentUserKey;
+                if (typeof container.dataset.isMember !== 'undefined') { const v = container.dataset.isMember; if (v === 'true' || v === 'false') isMember = (v === 'true'); else isMember = Boolean(v); }                if (typeof container.dataset.isLeader !== 'undefined') isLeader = (container.dataset.isLeader === 'true');                if (typeof container.dataset.canCreateSchedule !== 'undefined') canCreateSchedule = (container.dataset.canCreateSchedule === 'true');                if (typeof container.dataset.createNeedsApproval !== 'undefined') createNeedsApproval = (container.dataset.createNeedsApproval === 'true');                if (typeof container.dataset.canManageSchedule !== 'undefined') canManageSchedule = (container.dataset.canManageSchedule === 'true'); if (container.dataset.currentUserKey) currentUserKey = Number(container.dataset.currentUserKey) || currentUserKey;
             }
         } catch(e) {}
 
@@ -268,6 +283,183 @@
                     }
                 } catch (e) {
                     window.openCommonModal({ title:'오류', content:'<div>요청 처리에 실패했습니다.</div>', size:'sm' });
+                }
+            });
+        }
+
+        // 내 참가 이력 — 본인이 이 그룹에서 신청/참가한 일정들의 최신 상태를 한눈에 조회
+        const myHistoryBtn = document.getElementById('myHistoryBtn');
+        if (myHistoryBtn) {
+            myHistoryBtn.addEventListener('click', async () => {
+                const wrap = document.createElement('div');
+                wrap.innerHTML = '<div class="muted">로딩 중...</div>';
+                window.openCommonModal({ title: '내 참가 이력', content: wrap, size: 'md' });
+                try {
+                    const res = await fetch('/api/groups/' + groupId + '/attendance/me', { credentials: 'same-origin' });
+                    if (!res.ok) throw new Error('실패');
+                    const list = await res.json();
+                    if (!Array.isArray(list) || list.length === 0) {
+                        wrap.innerHTML = '<div class="muted">참가 이력이 없습니다.</div>';
+                        return;
+                    }
+                    const statusLabel = { PENDING: '🟡 대기', CONFIRMED: '🟢 참가확정', REJECTED: '🔴 거부', CANCELLED: '⚫ 취소' };
+                    const actualLabel = { ATTENDED: ' · 출석', NOSHOW: ' · 결석', NONE: '' };
+                    const table = document.createElement('table');
+                    table.style.cssText = 'width:100%;border-collapse:collapse;font-size:13px;';
+                    table.innerHTML = '<thead><tr style="border-bottom:1px solid #e2e8f0;">'
+                        + '<th style="text-align:left;padding:6px 4px;">일정</th>'
+                        + '<th style="text-align:left;padding:6px 4px;">시작일시</th>'
+                        + '<th style="text-align:left;padding:6px 4px;">상태</th></tr></thead>';
+                    const tbody = document.createElement('tbody');
+                    list.forEach(h => {
+                        const tr = document.createElement('tr'); tr.style.cssText = 'border-bottom:1px solid #f1f5f9;';
+                        const tdTitle = document.createElement('td'); tdTitle.style.cssText = 'padding:6px 4px;'; tdTitle.textContent = h.scheduleTitle || '(제목 없음)';
+                        const tdStart = document.createElement('td'); tdStart.style.cssText = 'padding:6px 4px;'; tdStart.textContent = h.scheduleStartAt ? new Date(h.scheduleStartAt).toLocaleString() : '-';
+                        const tdStatus = document.createElement('td'); tdStatus.style.cssText = 'padding:6px 4px;';
+                        tdStatus.textContent = (statusLabel[h.status] || h.status || '-') + (actualLabel[h.actualStatus] || '');
+                        tr.appendChild(tdTitle); tr.appendChild(tdStart); tr.appendChild(tdStatus);
+                        tbody.appendChild(tr);
+                    });
+                    table.appendChild(tbody);
+                    wrap.innerHTML = '';
+                    wrap.appendChild(table);
+                } catch (e) {
+                    wrap.innerHTML = '<div class="muted">참가 이력을 불러오지 못했습니다.</div>';
+                }
+            });
+        }
+
+        // 회원 정보 모달(내정보 버튼 / 회원관리 이름 클릭 공용)
+        // opts.editable: 직책 칸을 드롭다운으로 표시 + 적용 버튼(리더만, 승계 로직 포함)
+        // opts.canKick: 내보내기 버튼 표시(그룹 관리 화면에 진입 가능한 매니저 이상이면 누구나 대상 MEMBER를 내보낼 수 있음 — 백엔드 isManager 권한과 동일)
+        const ROLE_LABEL = { LEADER: '리더', MANAGER: '매니저', MEMBER: '일반회원' };
+        function openMemberInfoModal(member, opts) {
+            opts = opts || {};
+            const editable = !!opts.editable;
+            const canKick = !!opts.canKick;
+            const wrap = document.createElement('div');
+            wrap.style.cssText = 'display:flex;flex-direction:column;gap:10px;';
+
+            const infoTable = document.createElement('table');
+            infoTable.style.cssText = 'width:100%;border-collapse:collapse;font-size:14px;';
+            function addRow(label, valueOrNode) {
+                const tr = document.createElement('tr');
+                const th = document.createElement('th');
+                th.style.cssText = 'text-align:left;padding:6px 8px 6px 0;color:#64748b;font-weight:600;white-space:nowrap;width:70px;vertical-align:middle;';
+                th.textContent = label;
+                const td = document.createElement('td'); td.style.cssText = 'padding:6px 0;';
+                if (typeof valueOrNode === 'string') td.textContent = valueOrNode; else td.appendChild(valueOrNode);
+                tr.appendChild(th); tr.appendChild(td);
+                infoTable.appendChild(tr);
+            }
+
+            addRow('닉네임', member.displayName || ('사용자 #' + member.userKey));
+
+            const isActive = member.status === 'ACTIVE';
+            let roleSelect = null;
+            if (isActive) {
+                if (editable) {
+                    roleSelect = document.createElement('select');
+                    roleSelect.style.cssText = 'width:100%;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:13px;';
+                    ['MEMBER', 'MANAGER', 'LEADER'].forEach(r => {
+                        const opt = document.createElement('option');
+                        opt.value = r; opt.textContent = (r === 'LEADER' ? '리더(승계)' : ROLE_LABEL[r]);
+                        if (r === member.role) opt.selected = true;
+                        roleSelect.appendChild(opt);
+                    });
+                    addRow('직책', roleSelect);
+                } else {
+                    addRow('직책', ROLE_LABEL[member.role] || member.role || '-');
+                }
+            }
+            // 정지(탈퇴/추방)된 회원은 더 이상 직책을 갖지 않으므로 직책 행 대신 퇴장일을 붉은 글씨로 표시한다.
+
+            addRow('가입일', member.joinedAt ? new Date(member.joinedAt).toLocaleDateString() : '-');
+
+            if (!isActive && member.leftAt) {
+                const leftLabel = member.status === 'KICKED' ? '추방일' : '탈퇴일';
+                const leftSpan = document.createElement('span');
+                leftSpan.style.cssText = 'color:#dc2626;font-weight:600;';
+                leftSpan.textContent = new Date(member.leftAt).toLocaleDateString();
+                addRow(leftLabel, leftSpan);
+            }
+
+            wrap.appendChild(infoTable);
+
+            if (editable || canKick) {
+                const btnRow = document.createElement('div');
+                btnRow.style.cssText = 'display:flex;gap:8px;margin-top:4px;border-top:1px solid #f1f5f9;padding-top:10px;justify-content:'
+                    + ((editable && canKick) ? 'space-between' : 'flex-end') + ';';
+
+                if (canKick) {
+                    const kickBtn = document.createElement('button');
+                    kickBtn.className = 'tab'; kickBtn.style.cssText = 'background:#fff1f2;color:#981b1b;'; kickBtn.textContent = '내보내기';
+                    kickBtn.onclick = () => {
+                        window.closeCommonModal();
+                        openMemberReasonModal('회원 내보내기', '내보내기', async (reason, btn) => {
+                            btn.disabled = true;
+                            try {
+                                const res = await fetch('/api/groups/' + groupId + '/members/' + member.userKey + '/ban', {
+                                    method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ reason: reason || null })
+                                });
+                                if (!res.ok) throw new Error('실패');
+                                window.closeCommonModal();
+                                loadMembersManage();
+                            } catch (e) { btn.disabled = false; window.openCommonModal({ title: '오류', content: '<div>내보내기 처리에 실패했습니다.</div>', size: 'sm' }); }
+                        });
+                    };
+                    btnRow.appendChild(kickBtn);
+                }
+
+                if (editable) {
+                    const applyBtn = document.createElement('button');
+                    applyBtn.className = 'tab'; applyBtn.style.cssText = 'background:#2563eb;color:#fff;'; applyBtn.textContent = '적용';
+                    applyBtn.onclick = async () => {
+                        const newRole = roleSelect.value;
+                        if (newRole === member.role) { window.closeCommonModal(); return; }
+                        if (newRole === 'LEADER' && !confirm('정말 이 회원에게 리더를 승계하시겠습니까? 승계 후 본인은 매니저로 강등됩니다.')) return;
+                        applyBtn.disabled = true; roleSelect.disabled = true;
+                        try {
+                            const res = await fetch('/api/groups/' + groupId + '/members/' + member.userKey + '/role', {
+                                method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ role: newRole })
+                            });
+                            if (!res.ok) throw new Error('실패');
+                            window.closeCommonModal();
+                            if (newRole === 'LEADER') {
+                                alert('리더가 위임되었습니다. 페이지를 새로고침합니다.');
+                                window.location.reload();
+                                return;
+                            }
+                            loadMembersManage();
+                        } catch (e) {
+                            applyBtn.disabled = false; roleSelect.disabled = false;
+                            window.openCommonModal({ title: '오류', content: '<div>역할 변경에 실패했습니다.</div>', size: 'sm' });
+                        }
+                    };
+                    btnRow.appendChild(applyBtn);
+                }
+
+                wrap.appendChild(btnRow);
+            }
+
+            window.openCommonModal({ title: '회원 정보', content: wrap, size: 'sm' });
+        }
+
+        // 내정보 — 본인의 그룹 내 역할/가입일 확인(수정 불가)
+        const myInfoBtn = document.getElementById('myInfoBtn');
+        if (myInfoBtn) {
+            myInfoBtn.addEventListener('click', async () => {
+                try {
+                    const res = await fetch('/api/groups/' + groupId + '/members', { credentials: 'same-origin' });
+                    if (!res.ok) throw new Error('실패');
+                    const list = await res.json();
+                    const me = list.find(m => String(m.userKey) === String(currentUserKey));
+                    if (!me) { window.openCommonModal({ title: '오류', content: '<div>내 정보를 찾을 수 없습니다.</div>', size: 'sm' }); return; }
+                    openMemberInfoModal(me, { editable: false });
+                } catch (e) {
+                    window.openCommonModal({ title: '오류', content: '<div>내 정보를 불러오지 못했습니다.</div>', size: 'sm' });
                 }
             });
         }
@@ -474,23 +666,26 @@
             } catch (e) { el.innerHTML = '<div class="muted">일정을 불러오지 못했습니다.</div>'; }
         }
 
-        // 관리 탭 "회원 관리" — 일반회원/탈퇴회원/내보내기 상태 필터 (별도 페이지 대신 인라인 탭)
+        // 관리 탭 "회원 관리" — 활동/정지 토글. 정지 선택 시 우측 체크박스(탈퇴/추방, 기본 전체선택)로 세부 필터링
         let membersManageData = [];
-        let membersManageStatus = 'ACTIVE';
+        let membersManageView = 'ACTIVE'; // 'ACTIVE' | 'SUSPENDED'
         const memTabActive = document.getElementById('memTabActive');
-        const memTabWithdrawn = document.getElementById('memTabWithdrawn');
-        const memTabKicked = document.getElementById('memTabKicked');
-        const memTabs = [memTabActive, memTabWithdrawn, memTabKicked];
-        const memStatusMap = { memTabActive: 'ACTIVE', memTabWithdrawn: 'WITHDRAWN', memTabKicked: 'KICKED' };
-        function activateMemberTab(tab) {
+        const memTabSuspended = document.getElementById('memTabSuspended');
+        const memSuspendFilterRow = document.getElementById('memSuspendFilterRow');
+        const memFilterWithdrawn = document.getElementById('memFilterWithdrawn');
+        const memFilterKicked = document.getElementById('memFilterKicked');
+        const memTabs = [memTabActive, memTabSuspended];
+        function activateMemberView(tab, view) {
             memTabs.forEach(t => { if (t) t.classList.remove('active'); });
             tab.classList.add('active');
-            membersManageStatus = memStatusMap[tab.id];
+            membersManageView = view;
+            if (memSuspendFilterRow) memSuspendFilterRow.style.display = (view === 'SUSPENDED') ? 'flex' : 'none';
             renderMembersManageList();
         }
-        if (memTabActive) memTabActive.addEventListener('click', () => activateMemberTab(memTabActive));
-        if (memTabWithdrawn) memTabWithdrawn.addEventListener('click', () => activateMemberTab(memTabWithdrawn));
-        if (memTabKicked) memTabKicked.addEventListener('click', () => activateMemberTab(memTabKicked));
+        if (memTabActive) memTabActive.addEventListener('click', () => activateMemberView(memTabActive, 'ACTIVE'));
+        if (memTabSuspended) memTabSuspended.addEventListener('click', () => activateMemberView(memTabSuspended, 'SUSPENDED'));
+        if (memFilterWithdrawn) memFilterWithdrawn.addEventListener('change', renderMembersManageList);
+        if (memFilterKicked) memFilterKicked.addEventListener('change', renderMembersManageList);
 
         function openMemberReasonModal(title, confirmLabel, onConfirm) {
             const con = document.createElement('div'); con.style.cssText = 'display:flex;flex-direction:column;gap:12px;';
@@ -509,31 +704,41 @@
             const div = document.createElement('div'); div.className = 'member-item';
             const left = document.createElement('div');
             const nameLine = document.createElement('div'); nameLine.style.fontWeight = '700';
-            nameLine.textContent = (m.displayName || ('사용자 #' + m.userKey)) + ' (' + (m.role || 'MEMBER') + ')';
+            // 활동 회원만 직책을 붙인다 — 정지(탈퇴/추방)된 회원은 더 이상 그 직책을 가지지 않으므로 표시하지 않는다.
+            nameLine.textContent = (m.displayName || ('사용자 #' + m.userKey))
+                + (m.status === 'ACTIVE' ? ' (' + (ROLE_LABEL[m.role] || m.role || 'MEMBER') + ')' : '');
+            // 이 목록은 관리 탭(매니저 이상)에서만 열리므로 조회는 누구나(매니저 포함) 가능하게 하고,
+            // 역할변경(리더 전용, 승계 로직 포함)과 내보내기(매니저 이상 가능)만 권한에 따라 갈린다.
+            // LEADER 본인 행은 승계 경로(다른 회원을 LEADER로 선택)로만 강등 가능하므로 역할변경 UI는 없음.
+            const canEditRole = isLeader && m.status === 'ACTIVE' && m.role !== 'LEADER';
+            const canKick = m.status === 'ACTIVE' && m.role === 'MEMBER';
+            nameLine.style.cursor = 'pointer';
+            if (canEditRole) {
+                nameLine.style.textDecoration = 'underline';
+                nameLine.style.textDecorationStyle = 'dotted';
+                nameLine.title = '클릭해서 정보 확인 · 역할 변경';
+            } else {
+                nameLine.title = '클릭해서 정보 확인';
+            }
+            nameLine.addEventListener('click', ev => { ev.stopPropagation(); openMemberInfoModal(m, { editable: canEditRole, canKick: canKick }); });
             if (m.banned) { const badge = document.createElement('span'); badge.style.cssText = 'display:inline-block;margin-left:6px;padding:1px 8px;border-radius:999px;font-size:11px;font-weight:700;background:#fee2e2;color:#991b1b;'; badge.textContent = '차단됨'; nameLine.appendChild(badge); }
             const meta = document.createElement('div'); meta.className = 'member-meta';
-            meta.textContent = (m.joinedAt ? '가입일 ' + new Date(m.joinedAt).toLocaleDateString() : '-') + (m.banReason ? ' · 차단 사유: ' + m.banReason : '');
+            meta.textContent = (m.joinedAt ? '가입일 ' + new Date(m.joinedAt).toLocaleDateString() : '-');
+            if (m.status !== 'ACTIVE' && m.leftAt) {
+                const leftLabel = m.status === 'KICKED' ? '추방일' : '탈퇴일';
+                const leftSpan = document.createElement('span');
+                leftSpan.style.cssText = 'color:#dc2626;font-weight:600;';
+                leftSpan.textContent = ' · ' + leftLabel + ' ' + new Date(m.leftAt).toLocaleDateString();
+                meta.appendChild(leftSpan);
+            }
+            if (m.banReason) { meta.appendChild(document.createTextNode(' · 차단 사유: ' + m.banReason)); }
             left.appendChild(nameLine); left.appendChild(meta);
             div.appendChild(left);
 
             const actions = document.createElement('div'); actions.style.cssText = 'display:flex;gap:6px;';
 
-            if (m.status === 'ACTIVE' && m.role === 'MEMBER') {
-                const banBtn = document.createElement('button'); banBtn.className = 'tab'; banBtn.style.cssText = 'background:#fff1f2;color:#981b1b;'; banBtn.textContent = '내보내기';
-                banBtn.onclick = () => openMemberReasonModal('회원 내보내기', '내보내기', async (reason, btn) => {
-                    btn.disabled = true;
-                    try {
-                        const res = await fetch('/api/groups/' + groupId + '/members/' + m.userKey + '/ban', {
-                            method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ reason: reason || null })
-                        });
-                        if (!res.ok) throw new Error('실패');
-                        window.closeCommonModal();
-                        loadMembersManage();
-                    } catch (e) { btn.disabled = false; window.openCommonModal({ title:'오류', content:'<div>내보내기 처리에 실패했습니다.</div>', size:'sm' }); }
-                });
-                actions.appendChild(banBtn);
-            } else if (m.status === 'WITHDRAWN' || m.status === 'KICKED') {
+            // ACTIVE·MEMBER의 "내보내기"는 이제 이름 클릭 시 뜨는 정보 모달(canKick)에서만 제공한다(중복 제거).
+            if (m.status === 'WITHDRAWN' || m.status === 'KICKED') {
                 if (m.banned) {
                     const unbanBtn = document.createElement('button'); unbanBtn.className = 'tab'; unbanBtn.style.cssText = 'background:#eff6ff;color:#1d4ed8;'; unbanBtn.textContent = '벤 해제';
                     unbanBtn.onclick = async () => {
@@ -567,12 +772,26 @@
             return div;
         }
 
+        const ROLE_SORT_ORDER = { LEADER: 0, MANAGER: 1, MEMBER: 2 };
         function renderMembersManageList() {
             const el = document.getElementById('membersManageList');
             if (!el) return;
             el.innerHTML = '';
-            const filtered = membersManageData.filter(m => (m.status || 'ACTIVE') === membersManageStatus);
-            if (filtered.length === 0) { el.innerHTML = '<div class="muted">해당 상태의 회원이 없습니다.</div>'; return; }
+            let filtered;
+            if (membersManageView === 'ACTIVE') {
+                filtered = membersManageData
+                    .filter(m => (m.status || 'ACTIVE') === 'ACTIVE')
+                    .slice()
+                    .sort((a, b) => (ROLE_SORT_ORDER[a.role] ?? 99) - (ROLE_SORT_ORDER[b.role] ?? 99));
+            } else {
+                const showWithdrawn = !memFilterWithdrawn || memFilterWithdrawn.checked;
+                const showKicked = !memFilterKicked || memFilterKicked.checked;
+                filtered = membersManageData
+                    .filter(m => (showWithdrawn && m.status === 'WITHDRAWN') || (showKicked && m.status === 'KICKED'))
+                    .slice()
+                    .sort((a, b) => new Date(b.leftAt || 0) - new Date(a.leftAt || 0));
+            }
+            if (filtered.length === 0) { el.innerHTML = '<div class="muted">해당하는 회원이 없습니다.</div>'; return; }
             filtered.forEach(m => el.appendChild(renderMemberRow(m)));
         }
 
@@ -585,7 +804,65 @@
                 if (!res.ok) throw new Error('실패');
                 membersManageData = await res.json();
                 renderMembersManageList();
+                renderPermissionsList();
             } catch (e) { el.innerHTML = '<div class="muted">회원 목록을 불러오지 못했습니다.</div>'; }
+        }
+
+        // 관리 탭 "권한 관리 (리더 전용)" — 매니저에게 프리셋 역할(일정관리자/출석관리자) 단위로
+        // group_member_permission override를 부여/회수한다. membersManageData(회원 관리에서 이미
+        // 불러온 목록)를 재사용해 별도 fetch 없이 렌더링한다.
+        const PERMISSION_PRESETS = [
+            ['SCHEDULE_MANAGER', '일정관리자', '일정 등록 즉시 승인 + 일정 승인/반려/수정/취소'],
+            ['ATTENDANCE_MANAGER', '출석관리자', '참가 신청 승인/거부 + 참석 체크']
+        ];
+
+        function renderPermissionsList() {
+            const el = document.getElementById('permissionsList');
+            if (!el) return;
+            el.innerHTML = '';
+            const managers = membersManageData.filter(m => m.status === 'ACTIVE' && m.role === 'MANAGER');
+            if (managers.length === 0) {
+                el.innerHTML = '<div class="muted">매니저가 없습니다. 회원 관리에서 먼저 매니저로 승격시키세요.</div>';
+                return;
+            }
+            managers.forEach(m => {
+                const row = document.createElement('div'); row.className = 'member-item';
+                const left = document.createElement('div');
+                left.innerHTML = '<div style="font-weight:700">' + (m.displayName || ('사용자 #' + m.userKey)) + '</div>';
+                row.appendChild(left);
+
+                const activePresets = new Set(m.presets || []);
+                const opts = document.createElement('div'); opts.style.cssText = 'display:flex;gap:14px;align-items:center;flex-wrap:wrap;';
+                PERMISSION_PRESETS.forEach(([key, label, desc]) => {
+                    const lbl = document.createElement('label');
+                    lbl.style.cssText = 'display:flex;gap:4px;align-items:center;font-size:13px;cursor:pointer;';
+                    lbl.title = desc;
+                    const cb = document.createElement('input');
+                    cb.type = 'checkbox';
+                    cb.checked = activePresets.has(key);
+                    cb.onchange = async () => {
+                        cb.disabled = true;
+                        const next = new Set(activePresets);
+                        if (cb.checked) next.add(key); else next.delete(key);
+                        try {
+                            const res = await fetch('/api/groups/' + groupId + '/members/' + m.userKey + '/permissions', {
+                                method: 'PUT', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ presets: Array.from(next) })
+                            });
+                            if (!res.ok) throw new Error('실패');
+                            m.presets = Array.from(next);
+                            activePresets.clear(); next.forEach(v => activePresets.add(v));
+                        } catch (e) {
+                            cb.checked = !cb.checked;
+                            window.openCommonModal({ title: '오류', content: '<div>권한 변경에 실패했습니다.</div>', size: 'sm' });
+                        } finally { cb.disabled = false; }
+                    };
+                    lbl.appendChild(cb); lbl.appendChild(document.createTextNode(label));
+                    opts.appendChild(lbl);
+                });
+                row.appendChild(opts);
+                el.appendChild(row);
+            });
         }
 
         // 우측 상단 '일정등록' 버튼 클릭 연결(템플릿에서 isMember 조건으로 렌더링됨)
@@ -678,8 +955,8 @@ function startOfMonth(date){ const d = new Date(date); d.setHours(0,0,0,0); d.se
     attendBtnRow.style.cssText = 'display:flex;flex-direction:column;gap:6px;';
     const attBtn = document.createElement('button');
     attBtn.className = 'btn'; attBtn.disabled = true;
-    attBtn.style.cssText = 'font-size:13px;width:100%;background:#94a3b8;color:#fff;font-weight:700;border:none;border-radius:8px;padding:8px 0;cursor:default;';
-    attBtn.textContent = '참가 신청';
+    attBtn.style.cssText = 'font-size:13px;width:50%;margin-left:auto;margin-right:auto;justify-content:center;background:#94a3b8;color:#fff;font-weight:700;border:none;border-radius:8px;padding:8px 0;cursor:default;';
+    attBtn.innerHTML = '<span class="spinner-sm" aria-hidden="true"></span>';
     attendBtnRow.appendChild(attBtn);
     wrap.appendChild(attendBtnRow);
     loadMyAttendance(ev, attendBtnRow, attBtn);
@@ -733,7 +1010,7 @@ async function loadMyAttendance(ev, containerEl, attBtn, onSuccess, opts) {
   const applyBtnStyle = (bg, color, border) => {
     attBtn.style.cssText = compact
       ? 'font-size:12px;padding:6px 14px;border-radius:999px;font-weight:700;white-space:nowrap;cursor:pointer;background:'+bg+';color:'+color+';border:'+(border||'none')+';'
-      : 'font-size:13px;width:100%;font-weight:700;border-radius:8px;padding:8px 0;cursor:pointer;background:'+bg+';color:'+color+';border:'+(border||'none')+';';
+      : 'font-size:13px;width:50%;margin-left:auto;margin-right:auto;justify-content:center;font-weight:700;border-radius:8px;padding:8px 0;cursor:pointer;background:'+bg+';color:'+color+';border:'+(border||'none')+';';
   };
   const defaultOnSuccess = (msg, color) => {
     window.closeCommonModal && window.closeCommonModal();
@@ -750,13 +1027,14 @@ async function loadMyAttendance(ev, containerEl, attBtn, onSuccess, opts) {
       applyBtnStyle(isRejected ? '#dc2626' : '#2563eb', '#fff');
       attBtn.textContent = isRejected ? '참가 재신청' : '참가 신청';
       attBtn.onclick = async () => {
-        const originalLabel = attBtn.textContent;
-        attBtn.disabled = true; attBtn.textContent = '처리 중...';
+        // 처리 중 중복 클릭으로 이미 처리된 신청에 재요청이 나가는 것을 막기 위해 즉시 숨긴다.
+        // 실패 시에만 다시 보이게 하고(재시도 가능), 성공 시엔 onSuccess가 화면을 갱신하므로 복원 불필요.
+        attBtn.disabled = true; attBtn.style.display = 'none';
         try {
           const r = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attend', { method: 'POST', credentials: 'same-origin' });
           if (r.ok) { (onSuccess || (() => defaultOnSuccess('참가 신청이 완료되었습니다.', '#166534')))(); }
-          else { const j = await r.json().catch(() => ({})); attBtn.disabled = false; attBtn.textContent = originalLabel; alert(j.message || '신청 실패'); }
-        } catch (e) { attBtn.disabled = false; attBtn.textContent = originalLabel; alert(e.message); }
+          else { const j = await r.json().catch(() => ({})); attBtn.disabled = false; attBtn.style.display = ''; alert(j.message || '신청 실패'); }
+        } catch (e) { attBtn.disabled = false; attBtn.style.display = ''; alert(e.message); }
       };
     } else if (myAtt.status === 'PENDING' || myAtt.status === 'CONFIRMED') {
       if (myAtt.status === 'PENDING') {
@@ -770,15 +1048,19 @@ async function loadMyAttendance(ev, containerEl, attBtn, onSuccess, opts) {
       attBtn.textContent = '참가 취소';
       attBtn.onclick = async () => {
         if (!confirm('참가를 취소하시겠습니까?')) return;
-        attBtn.disabled = true;
+        // 처리 중 중복 클릭으로 이미 취소/거부된 신청에 재요청이 나가는 것을 막기 위해 즉시 숨긴다.
+        attBtn.disabled = true; attBtn.style.display = 'none';
         try {
           const r = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attend', { method: 'DELETE', credentials: 'same-origin' });
           if (r.ok) { (onSuccess || (() => defaultOnSuccess('참가 취소되었습니다.', '#64748b')))(); }
-          else { const j = await r.json().catch(() => ({})); attBtn.disabled = false; alert(j.message || '취소 실패'); }
-        } catch (e) { attBtn.disabled = false; alert(e.message); }
+          else { const j = await r.json().catch(() => ({})); attBtn.disabled = false; attBtn.style.display = ''; alert(j.message || '취소 실패'); }
+        } catch (e) { attBtn.disabled = false; attBtn.style.display = ''; alert(e.message); }
       };
     }
   } catch (e) {
+    // 스피너가 무한 회전 상태로 멈추지 않도록 버튼을 정지시킨다(비활성 유지)
+    attBtn.innerHTML = '';
+    attBtn.textContent = '오류';
     const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '참가 상태를 불러오지 못했습니다.';
     containerEl.appendChild(errDiv);
   }
@@ -983,27 +1265,33 @@ function openAttendeeManageModal(ev) {
     const row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:8px;font-size:13px;flex-wrap:wrap;';
     const ns = document.createElement('span'); ns.textContent = a.displayName || '(알 수 없음)';
     row.appendChild(ns);
+    // 이 행의 액션 버튼들을 모아두고, 하나를 누르면 전부 즉시 숨겨서 같은 대상에 대한
+    // 중복/모순 요청(예: 승인 처리 중에 거부를 또 누르는 것)을 막는다. 실패 시에만 복원한다.
+    const rowButtons = [];
+    const hideRowButtons = () => rowButtons.forEach(b => { b.disabled = true; b.style.display = 'none'; });
+    const restoreRowButtons = () => rowButtons.forEach(b => { b.disabled = false; b.style.display = ''; });
     const canMgr = canManageSchedule || String(ev.createdBy) === String(currentUserKey);
     if (canMgr && a.status === 'PENDING') {
       const appB = document.createElement('button'); appB.className = 'tab'; appB.style.cssText = 'padding:2px 8px;font-size:11px;background:#dcfce7;color:#166534;margin-left:auto;'; appB.textContent = '승인';
       appB.onclick = async () => {
-        appB.disabled = true;
+        hideRowButtons();
         try {
           const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey + '/approve', { method: 'PATCH', credentials: 'same-origin' });
           if (res.ok) { loadApplyTab(); }
-          else { const j = await res.json().catch(() => ({})); appB.disabled = false; alert(j.message || '승인 실패'); }
-        } catch (e) { appB.disabled = false; alert(e.message); }
+          else { const j = await res.json().catch(() => ({})); restoreRowButtons(); alert(j.message || '승인 실패'); }
+        } catch (e) { restoreRowButtons(); alert(e.message); }
       };
       const rejB = document.createElement('button'); rejB.className = 'tab'; rejB.style.cssText = 'padding:2px 8px;font-size:11px;background:#fee2e2;color:#991b1b;'; rejB.textContent = '거부';
       rejB.onclick = async () => {
         if (!confirm('참가를 거부하시겠습니까?')) return;
-        rejB.disabled = true;
+        hideRowButtons();
         try {
           const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey + '/reject', { method: 'PATCH', credentials: 'same-origin' });
           if (res.ok) { loadApplyTab(); }
-          else { const j = await res.json().catch(() => ({})); rejB.disabled = false; alert(j.message || '거부 실패'); }
-        } catch (e) { rejB.disabled = false; alert(e.message); }
+          else { const j = await res.json().catch(() => ({})); restoreRowButtons(); alert(j.message || '거부 실패'); }
+        } catch (e) { restoreRowButtons(); alert(e.message); }
       };
+      rowButtons.push(appB, rejB);
       row.appendChild(appB); row.appendChild(rejB);
     }
     // 취소(강제취소): 매니저/리더 전용 — 일정 생성자 단독 권한으로는 불가(승인/거부보다 좁은 권한)
@@ -1011,13 +1299,14 @@ function openAttendeeManageModal(ev) {
       const cancelB = document.createElement('button'); cancelB.className = 'tab'; cancelB.style.cssText = 'padding:2px 8px;font-size:11px;background:#fff1f2;color:#be123c;margin-left:auto;'; cancelB.textContent = '취소';
       cancelB.onclick = async () => {
         if (!confirm('이 참가자의 참가를 취소하시겠습니까?')) return;
-        cancelB.disabled = true;
+        hideRowButtons();
         try {
           const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey, { method: 'DELETE', credentials: 'same-origin' });
           if (res.ok) { loadApplyTab(); }
-          else { const j = await res.json().catch(() => ({})); cancelB.disabled = false; alert(j.message || '취소 실패'); }
-        } catch (e) { cancelB.disabled = false; alert(e.message); }
+          else { const j = await res.json().catch(() => ({})); restoreRowButtons(); alert(j.message || '취소 실패'); }
+        } catch (e) { restoreRowButtons(); alert(e.message); }
       };
+      rowButtons.push(cancelB);
       row.appendChild(cancelB);
     }
     return row;
@@ -1108,10 +1397,13 @@ function openAttendeeManageModal(ev) {
       summary.textContent = summaryText(confirmed, counts);
     }
 
-    const bulkRow = document.createElement('div'); bulkRow.style.cssText = 'display:flex;justify-content:flex-end;margin-bottom:6px;';
+    const bulkRow = document.createElement('div'); bulkRow.style.cssText = 'display:flex;justify-content:flex-end;gap:6px;margin-bottom:6px;';
     const allBtn = document.createElement('button'); allBtn.className = 'tab'; allBtn.style.cssText = 'padding:4px 10px;font-size:12px;'; allBtn.textContent = '전체 참석';
     allBtn.onclick = () => { radios.forEach(r => { r.attended.checked = true; }); updateSummary(); };
+    const noneBtn = document.createElement('button'); noneBtn.className = 'tab'; noneBtn.style.cssText = 'padding:4px 10px;font-size:12px;'; noneBtn.textContent = '전체 불참';
+    noneBtn.onclick = () => { radios.forEach(r => { r.noshow.checked = true; }); updateSummary(); };
     bulkRow.appendChild(allBtn);
+    bulkRow.appendChild(noneBtn);
     contentCheck.appendChild(bulkRow);
 
     const tableWrap = document.createElement('div'); tableWrap.style.cssText = 'overflow-x:auto;';
@@ -1147,28 +1439,34 @@ function openAttendeeManageModal(ev) {
     const saveBtn = document.createElement('button'); saveBtn.className = 'tab'; saveBtn.style.cssText = 'background:#2563eb;border:1px solid #2563eb;color:#fff;'; saveBtn.textContent = '저장';
     saveBtn.onclick = async () => {
       saveBtn.disabled = true; cancelBtn.disabled = true;
-      try {
-        const calls = [];
-        confirmed.forEach(a => {
-          const desired = radios.get(a.userKey).attended.checked ? 'ATTENDED' : 'NOSHOW';
-          if (desired !== a.actualStatus) {
-            calls.push(fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + a.userKey + '/check', {
-              method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ actualStatus: desired })
-            }));
-          }
-        });
-        const results = await Promise.all(calls);
-        const failed = results.find(r => !r.ok);
-        if (failed) {
-          const j = await failed.json().catch(() => ({}));
-          throw new Error(j.message || '저장 실패');
-        }
-        loadCheckTab();
-        loadApplyTab();
-      } catch (e) {
+      const targets = [];
+      confirmed.forEach(a => {
+        const desired = radios.get(a.userKey).attended.checked ? 'ATTENDED' : 'NOSHOW';
+        if (desired !== a.actualStatus) targets.push({ a, desired });
+      });
+      if (targets.length === 0) { renderCheckView(attList); return; }
+      // Promise.allSettled + 대상별 결과 추적 — 일부만 실패해도 어떤 인원인지 정확히 알려주고,
+      // 이미 성공한 변경은 그대로 반영한다(재조회 후 다음 저장 시 성공분은 자동 제외됨).
+      const settled = await Promise.allSettled(targets.map(t =>
+        fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance/' + t.a.userKey + '/check', {
+          method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ actualStatus: t.desired })
+        }).then(res => ({ ok: res.ok }))
+      ));
+      const failedNames = [];
+      settled.forEach((s, idx) => {
+        const ok = s.status === 'fulfilled' && s.value.ok;
+        if (!ok) failedNames.push(targets[idx].a.displayName || ('사용자 #' + targets[idx].a.userKey));
+      });
+      loadCheckTab();
+      loadApplyTab();
+      if (failedNames.length > 0) {
         saveBtn.disabled = false; cancelBtn.disabled = false;
-        window.openCommonModal({ title: '오류', content: '<div>' + (e.message || '저장 실패') + '</div>', size: 'sm' });
+        window.openCommonModal({
+          title: '일부 저장 실패',
+          content: '<div>다음 인원 저장에 실패했습니다: <b>' + failedNames.join(', ') + '</b><br>나머지 인원은 정상 저장되었습니다. 실패한 인원만 다시 시도해주세요.</div>',
+          size: 'sm'
+        });
       }
     };
     btnRow.appendChild(cancelBtn); btnRow.appendChild(saveBtn);
@@ -1199,19 +1497,19 @@ function populateMinuteSelect(sel, fine, preserveValue) {
 }
 function createDateTimeField() {
   const wrap = document.createElement('div');
-  wrap.style.cssText = 'display:flex;gap:4px;';
+  wrap.className = 'datetime-field';
   const dateInput = document.createElement('input');
   dateInput.type = 'date';
-  dateInput.style.cssText = 'flex:1 1 auto;min-width:0;padding:8px;border:1px solid #ddd;border-radius:6px;';
+  dateInput.style.cssText = 'padding:8px;border:1px solid #ddd;border-radius:6px;';
   const hourSel = document.createElement('select');
-  hourSel.style.cssText = 'flex:0 0 60px;padding:8px;border:1px solid #ddd;border-radius:6px;';
+  hourSel.style.cssText = 'padding:8px;border:1px solid #ddd;border-radius:6px;';
   for (let h=0; h<24; h++){
     const o = document.createElement('option');
     o.value = String(h).padStart(2,'0'); o.textContent = o.value;
     hourSel.appendChild(o);
   }
   const minSel = document.createElement('select');
-  minSel.style.cssText = 'flex:0 0 60px;padding:8px;border:1px solid #ddd;border-radius:6px;';
+  minSel.style.cssText = 'padding:8px;border:1px solid #ddd;border-radius:6px;';
   populateMinuteSelect(minSel, false);
   wrap.appendChild(dateInput); wrap.appendChild(hourSel); wrap.appendChild(minSel);
   function getDate(){
@@ -1258,7 +1556,8 @@ function createDateTimeField() {
             const locInput = document.createElement('input'); locInput.type='text'; locInput.style.width='100%'; locInput.style.padding='8px'; locInput.style.border='1px solid #ddd'; locInput.style.borderRadius='6px'; locInput.placeholder = '장소명(예: 강남역 스터디룸)'; locLabel.appendChild(locInput);
 
             // 시작/종료
-            const whenRow = document.createElement('div'); whenRow.style.display='grid'; whenRow.style.gridTemplateColumns='1fr 1fr'; whenRow.style.gap='8px';            const whenStartLabel = document.createElement('label'); whenStartLabel.textContent='시작 시간';
+            const whenRow = document.createElement('div'); whenRow.className='when-row';
+            const whenStartLabel = document.createElement('label'); whenStartLabel.textContent='시작 시간';
             const startField = createDateTimeField(); startField.setDate(_startDef);
             whenStartLabel.appendChild(startField.wrap);
             const whenEndLabel = document.createElement('label'); whenEndLabel.textContent='종료 시간';
@@ -1305,7 +1604,7 @@ function createDateTimeField() {
 
             limitRow.appendChild(limitCheckbox);
             limitRow.appendChild(limitText);
-            limitRow.appendChild(maxInput); if(prefill&&prefill.title){titleInput.value=prefill.title;contentInput.value=prefill.description||'';locInput.value=prefill.locationName||'';if((prefill.maxAttendance||0)>0){limitCheckbox.checked=true;maxInput.value=prefill.maxAttendance;maxInput.style.display='';} startField.clear();endField.clear();_endManuallySet=false;}
+            limitRow.appendChild(maxInput); if(prefill&&prefill.title){titleInput.value=prefill.title;contentInput.value=prefill.description||'';locInput.value=prefill.locationName||'';if((prefill.maxAttendance||0)>0){limitCheckbox.checked=true;maxInput.value=prefill.maxAttendance;maxInput.style.display='';} if(prefill.start){const _orig=new Date(prefill.start);const _today=new Date();const _newStart=new Date(_today.getFullYear(),_today.getMonth(),_today.getDate(),_orig.getHours(),_orig.getMinutes(),0,0);const _durMs=prefill.end?(prefill.end-prefill.start):60*60*1000;const _newEnd=new Date(_newStart.getTime()+_durMs);startField.setDate(_newStart);endField.setDate(_newEnd);_endManuallySet=true;if(![0,30].includes(_newStart.getMinutes())||![0,30].includes(_newEnd.getMinutes())){minuteChk.checked=true;populateMinuteSelect(startField.minSel,true,startField.minSel.value);populateMinuteSelect(endField.minSel,true,endField.minSel.value);}}else{startField.clear();endField.clear();_endManuallySet=false;}}
 			
 			const errorDiv = document.createElement('div');
 			    errorDiv.id = 'modal-error-msg';
@@ -1376,21 +1675,28 @@ function createDateTimeField() {
                     end: endEpoch||null,
                     max_attendance: maxVal
                 };
+                // 저장 처리 중 중복 클릭으로 같은 일정이 두 번 생성되는 것을 막기 위해 버튼을 즉시 숨긴다.
+                // 실패 시에만 다시 보이게 해서 재시도할 수 있게 한다(성공 시엔 모달이 닫히므로 복원 불필요).
+                saveBtn.disabled = true; saveBtn.style.display = 'none';
                 try{
-                    const res = await fetch('/api/groups/' + groupId + '/schedules', { 
-						method:'POST', 
+                    const res = await fetch('/api/groups/' + groupId + '/schedules', {
+						method:'POST',
 						credentials: 'same-origin',// 쿠키 전송
-						headers:{'Content-Type':'application/json'}, 
-						body: JSON.stringify(payload) 
+						headers:{'Content-Type':'application/json'},
+						body: JSON.stringify(payload)
 					});
                     if (!res.ok){
-                        if (res.status===401) { showModalError('로그인이 필요합니다.'); return; }
+                        if (res.status===401) { showModalError('로그인이 필요합니다.'); saveBtn.disabled = false; saveBtn.style.display = ''; return; }
                         const text = await res.text().catch(()=>null);
                         throw new Error('생성 실패' + (text ? (': ' + text) : ''));
                     }
                     await res.json();
                     await getSchedules({ all: true, forceRefresh: true }); renderCalendar(); updateRecentSchedules(); window.closeCommonModal(); window.openCommonModal({ title:'완료', content:'<div>일정이 추가되었습니다.</div>', size:'sm' });
-                } catch(err) { console.error(err); window.openCommonModal({ title:'오류', content:'<div>일정 추가에 실패했습니다.</div>', size:'sm' }); }
+                } catch(err) {
+                    console.error(err);
+                    saveBtn.disabled = false; saveBtn.style.display = '';
+                    window.openCommonModal({ title:'오류', content:'<div>일정 추가에 실패했습니다.</div>', size:'sm' });
+                }
              });
          };
 
@@ -1449,10 +1755,11 @@ function createDateTimeField() {
                     const attBtn = document.createElement('button');
                     attBtn.disabled = true;
                     attBtn.style.cssText = 'font-size:12px;padding:6px 14px;border-radius:999px;border:none;background:#94a3b8;color:#fff;font-weight:700;cursor:default;white-space:nowrap;';
-                    attBtn.textContent = '참가 신청';
+                    attBtn.innerHTML = '<span class="spinner-sm" aria-hidden="true"></span>';
                     side.appendChild(attBtn);
                     row.appendChild(side);
-                    loadMyAttendance(ev, side, attBtn, () => updateRecentSchedules(), { compact: true });
+                    // 참가/취소 처리 후 confirmedCount 등이 최신 값이 되도록 캐시된 calendarEvents를 강제 재조회한 뒤 다시 그린다.
+                    loadMyAttendance(ev, side, attBtn, async () => { await getSchedules({ all: true, forceRefresh: true }); updateRecentSchedules(); }, { compact: true });
                 }
                 recentEl.appendChild(row);
             });
@@ -1491,7 +1798,9 @@ function createDateTimeField() {
 }
 async function loadSchedules(){ const cal = document.getElementById('calendarFull'); if (!cal) return; cal.textContent='일정을 불러오는 중...'; calendarEvents = await getSchedules(); renderCalendar(); updateRecentSchedules(); }
 
-        async function loadSchedulesForManage(){ const el = document.getElementById('schedulesList'); if(!el) return; el.innerHTML = '<div class="muted">일정 목록을 불러오는 중...</div>'; try{ const data = await getSchedules({ all: true }); el.innerHTML=''; if(!Array.isArray(data)||data.length===0){ el.innerHTML='<div class="muted">일정이 없습니다.</div>'; return; } data.forEach(ev=>{ const item=document.createElement('div'); item.className='member-item'; const sMap={'PENDING':'🟡 승인대기','CONFIRMED':'🟢 승인','REJECTED':'🔴 반려','CANCELLED':'⚫ 취소'}; const left=document.createElement('div'); left.innerHTML='<div style="font-weight:700">'+(ev.title||'일정')+'</div><div class="member-meta">'+new Date(ev.start).toLocaleString()+' &middot; '+(sMap[ev.status]||ev.status||'-')+'</div>'; const btns=document.createElement('div'); btns.style.display='flex'; btns.style.gap='4px'; if(canManageSchedule&&(ev.status==='PENDING'||ev.status==='CONFIRMED')){ const edb=document.createElement('button'); edb.textContent='수정'; edb.className='tab'; edb.style.background='#eff6ff'; edb.style.color='#1d4ed8'; edb.onclick=()=>openEditModal(ev.id); btns.appendChild(edb); } if(canManageSchedule&&ev.status==='PENDING'){ const ab=document.createElement('button'); ab.textContent='승인'; ab.className='tab'; ab.style.background='#dcfce7'; ab.style.color='#166534'; ab.onclick=()=>{performAction(ev.id,'approve',{btnEl:ab,originalText:'승인',successMsg:'일정이 승인되었습니다.'});}; const rb=document.createElement('button'); rb.textContent='반려'; rb.className='tab'; rb.style.background='#fee2e2'; rb.style.color='#991b1b'; rb.onclick=()=>{confirmAndAct(ev.id,'reject',{label:'거부',warningMsg:'이 일정을 거부하시겠습니까? 거부 후에는 되돌릴 수 없습니다.'});}; btns.appendChild(ab); btns.appendChild(rb); } if(canManageSchedule&&(ev.status==='PENDING'||ev.status==='CONFIRMED')){ const cb=document.createElement('button'); cb.textContent='취소'; cb.className='tab'; cb.style.background='#fff1f2'; cb.style.color='#be123c'; cb.onclick=()=>{confirmAndAct(ev.id,'cancel',{label:'취소',warningMsg:'이 일정을 취소하시겠습니까? 취소 후에는 복구할 수 없습니다.'});}; btns.appendChild(cb); } item.appendChild(left); item.appendChild(btns); el.appendChild(item); }); }catch(e){ el.innerHTML = '<div class="muted">일정을 불러오지 못했습니다.</div>'; } }
+        // 수정/취소는 행에서 없애고 openEventDetail 모달(⋯ 드롭다운에 이미 수정/취소가 있음)로 위임한다.
+        // 승인/반려는 대기 중인 일정을 목록에서 바로 처리할 수 있도록 남겨둔다(버튼 클릭은 행 클릭과 분리).
+        async function loadSchedulesForManage(){ const el = document.getElementById('schedulesList'); if(!el) return; el.innerHTML = '<div class="muted">일정 목록을 불러오는 중...</div>'; try{ const data = await getSchedules({ all: true }); el.innerHTML=''; if(!Array.isArray(data)||data.length===0){ el.innerHTML='<div class="muted">일정이 없습니다.</div>'; return; } data.forEach(ev=>{ const item=document.createElement('div'); item.className='member-item'; item.style.cursor='pointer'; item.onclick=()=>openEventDetail(ev); const sMap={'PENDING':'🟡 승인대기','CONFIRMED':'🟢 승인','REJECTED':'🔴 반려','CANCELLED':'⚫ 취소'}; const left=document.createElement('div'); left.innerHTML='<div style="font-weight:700">'+(ev.title||'일정')+'</div><div class="member-meta">'+new Date(ev.start).toLocaleString()+' &middot; '+(sMap[ev.status]||ev.status||'-')+'</div>'; const btns=document.createElement('div'); btns.style.display='flex'; btns.style.gap='4px'; if(canManageSchedule&&ev.status==='PENDING'){ const ab=document.createElement('button'); ab.textContent='승인'; ab.className='tab'; ab.style.background='#dcfce7'; ab.style.color='#166534'; ab.onclick=(e)=>{e.stopPropagation();performAction(ev.id,'approve',{btnEl:ab,originalText:'승인',successMsg:'일정이 승인되었습니다.'});}; const rb=document.createElement('button'); rb.textContent='반려'; rb.className='tab'; rb.style.background='#fee2e2'; rb.style.color='#991b1b'; rb.onclick=(e)=>{e.stopPropagation();confirmAndAct(ev.id,'reject',{label:'거부',warningMsg:'이 일정을 거부하시겠습니까? 거부 후에는 되돌릴 수 없습니다.'});}; btns.appendChild(ab); btns.appendChild(rb); } item.appendChild(left); item.appendChild(btns); el.appendChild(item); }); }catch(e){ el.innerHTML = '<div class="muted">일정을 불러오지 못했습니다.</div>'; } }
 
         function openDayView(date, evs){
           const wrap = document.createElement('div'); wrap.style.cssText='display:flex;flex-direction:column;gap:8px;';
@@ -1519,17 +1828,24 @@ async function loadSchedules(){ const cal = document.getElementById('calendarFul
                 const attBtn = document.createElement('button');
                 attBtn.disabled = true;
                 attBtn.style.cssText = 'font-size:12px;padding:6px 14px;border-radius:999px;border:none;background:#94a3b8;color:#fff;font-weight:700;cursor:default;white-space:nowrap;';
-                attBtn.textContent = '참가 신청';
+                attBtn.innerHTML = '<span class="spinner-sm" aria-hidden="true"></span>';
                 side.appendChild(attBtn);
                 row.appendChild(side);
-                loadMyAttendance(it, side, attBtn, () => openDayView(date, evs), { compact: true });
+                // 참가/취소 처리 후 이 날짜의 목록을 최신 calendarEvents 기준으로 다시 만들어 재오픈한다(오래된 evs 재사용 방지).
+                loadMyAttendance(it, side, attBtn, async () => {
+                  await getSchedules({ all: true, forceRefresh: true });
+                  const _dk2 = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+                  const dayKey = _dk2(date);
+                  const freshDayEvs = (calendarEvents || []).filter(e => e.start && _dk2(new Date(e.start)) === dayKey);
+                  openDayView(date, freshDayEvs);
+                }, { compact: true });
               }
 
               wrap.appendChild(row);
             });
           }
           if (canCreateSchedule){
-            const addBtn = document.createElement('button'); addBtn.className='btn'; addBtn.style.cssText='margin-top:4px;width:100%;background:#2563eb;color:#fff;font-weight:700;border:none;border-radius:8px;padding:10px 0;cursor:pointer;'; addBtn.textContent='일정추가';
+            const addBtn = document.createElement('button'); addBtn.className='btn'; addBtn.style.cssText='margin-top:4px;width:50%;margin-left:auto;margin-right:auto;justify-content:center;background:#2563eb;color:#fff;font-weight:700;border:none;border-radius:8px;padding:10px 0;cursor:pointer;'; addBtn.textContent='일정추가';
             addBtn.onclick = ()=>{ window.closeCommonModal && window.closeCommonModal(); window.openCreateEventModal(date); };
             wrap.appendChild(addBtn);
           }
@@ -1565,7 +1881,7 @@ async function loadSchedules(){ const cal = document.getElementById('calendarFul
   const locInput=inp({type:'text',value:ev.locationName||''});
   locLabel.appendChild(locInput);
   // 시작/종료 그리드
-  const whenRow=mk('div','display:grid;grid-template-columns:1fr 1fr;gap:8px;');
+  const whenRow=mk('div',null,{className:'when-row'});
   const whenStartLabel=mk('label',null,{textContent:'시작 시간'});
   const startField=createDateTimeField(); startField.setDate(_startDef);
   whenStartLabel.appendChild(startField.wrap);
@@ -1623,11 +1939,13 @@ async function loadSchedules(){ const cal = document.getElementById('calendarFul
     if(endEpoch<=startEpoch){_showErr('종료 시간은 시작 시간보다 이후여야 합니다.');return;}
     const maxVal=limitChk.checked?(Number(maxInput.value)||0):0;
     const payload={changeReason,title,content:contentInput.value.trim()||null,location_name:locInput.value.trim()||null,start:startEpoch,end:endDateObj?endEpoch:null,max_attendance:maxVal};
+    // 중복 클릭으로 같은 수정 요청이 두 번 나가지 않도록 처리 중엔 버튼을 숨긴다. 실패 시에만 복원.
+    saveBtn.disabled=true; saveBtn.style.display='none';
     try{
       const r=await fetch('/api/groups/'+groupId+'/schedules/'+scheduleId,{method:'PATCH',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(!r.ok){const t=await r.text().catch(()=>null);throw new Error(t||'수정 실패');}
       await getSchedules({ all: true, forceRefresh: true });renderCalendar();updateRecentSchedules();window.closeCommonModal();window.openCommonModal({title:'완료',content:'<div>일정이 수정되었습니다.</div>',size:'sm'});
-    }catch(err){_showErr(err.message||'수정 중 오류가 발생했습니다.');}
+    }catch(err){saveBtn.disabled=false; saveBtn.style.display=''; _showErr(err.message||'수정 중 오류가 발생했습니다.');}
   });
 }
 async function scheduleAction(scheduleId,action){ try{ const r=await fetch('/api/groups/'+groupId+'/schedules/'+scheduleId+'/'+action,{method:'PATCH',credentials:'same-origin'}); if(!r.ok){ const j=await r.json().catch(()=>({})); throw new Error(j.message||action+' 실패'); } calendarEvents=await fetchSchedulesRaw(); renderCalendar(); loadSchedulesForManage(); }catch(e){ window.openCommonModal({title:'오류',content:'<div>'+e.message+'</div>',size:'sm'}); } }async function performAction(scheduleId,action,opts){ const {reason,btnEl,originalText,successMsg}=opts||{}; if(btnEl){btnEl.disabled=true;btnEl.textContent='처리 중...';} try{ const fo={method:'PATCH',credentials:'same-origin'}; if(reason){fo.headers={'Content-Type':'application/json'};fo.body=JSON.stringify({reason});} const r=await fetch('/api/groups/'+groupId+'/schedules/'+scheduleId+'/'+action,fo); if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.message||action+' 실패');} await getSchedules({ all: true, forceRefresh: true });renderCalendar();updateRecentSchedules();loadSchedulesForManage();loadPendingScheduleList(); window.closeCommonModal&&window.closeCommonModal(); const sd=document.createElement('div');sd.style.cssText='padding:8px 0;color:#166534;';sd.textContent=successMsg||'처리가 완료되었습니다.'; window.openCommonModal({title:'완료',content:sd,size:'sm'}); }catch(e){ if(btnEl){btnEl.disabled=false;btnEl.textContent=originalText||action;} window.openCommonModal({title:'오류',content:'<div>'+e.message+'</div>',size:'sm'}); } } function confirmAndAct(scheduleId,action,opts){ const {label,warningMsg}=opts||{}; const con=document.createElement('div');con.style.cssText='display:flex;flex-direction:column;gap:12px;'; const warn=document.createElement('div');warn.style.cssText='color:#92400e;background:#fffbeb;border:1px solid #fef3c7;border-radius:6px;padding:10px 12px;font-size:14px;'; warn.textContent=warningMsg||('정말로 이 일정을 '+label+'하시겠습니까?');con.appendChild(warn); const lbl=document.createElement('label');lbl.style.cssText='display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:14px;';lbl.textContent=label+' 사유 *'; const ta=document.createElement('textarea');ta.style.cssText='width:100%;min-height:80px;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;margin-top:4px;resize:vertical;';ta.placeholder=label+' 사유를 입력해주세요 (필수)'; lbl.appendChild(ta);con.appendChild(lbl); const errDiv=document.createElement('div');errDiv.style.cssText='color:#dc2626;font-size:12px;display:none;';con.appendChild(errDiv); const bRow=document.createElement('div');bRow.style.cssText='display:flex;justify-content:flex-end;gap:8px;margin-top:4px;'; const cancelBtn=document.createElement('button');cancelBtn.className='tab';cancelBtn.textContent='닫기';cancelBtn.onclick=()=>{window.closeCommonModal&&window.closeCommonModal();}; const confirmBtn=document.createElement('button');confirmBtn.className='btn';confirmBtn.style.cssText='background:#dc2626;border-color:#dc2626;color:#fff;font-size:13px;';confirmBtn.textContent=label+' 확인'; confirmBtn.onclick=async()=>{ const reason=ta.value.trim(); if(!reason){errDiv.textContent=label+' 사유를 입력해주세요.';errDiv.style.display='block';return;} await performAction(scheduleId,action,{reason,btnEl:confirmBtn,originalText:label+' 확인',successMsg:'일정이 '+label+'되었습니다.'}); }; bRow.appendChild(cancelBtn);bRow.appendChild(confirmBtn);con.appendChild(bRow); window.openCommonModal({title:'일정 '+label,content:con,size:'sm',backdropClose:false}); }        window.fetchSchedulesRaw = fetchSchedulesRaw; window.renderCalendar = renderCalendar; window.setScheduleFilter = setScheduleFilter;        if (!isMember) loadJoinStatus();

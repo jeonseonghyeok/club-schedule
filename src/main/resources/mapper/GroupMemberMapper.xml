@@ -80,4 +80,9 @@
         WHERE group_id = #{groupId} AND user_key = #{userKey}
     </update>
 
+    <!-- 새로 추가: 역할 승격/강등 -->
+    <update id="updateMemberRole">
+        UPDATE group_member SET role = #{role} WHERE group_id = #{groupId} AND user_key = #{userKey}
+    </update>
+
 </mapper>

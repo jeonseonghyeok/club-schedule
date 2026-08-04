@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -26,10 +27,14 @@ import com.moyora.clubschedule.dto.GroupScheduleEditDto;
 import com.moyora.clubschedule.mapper.ScheduleAttendanceMapper;
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupManageService;
+import com.moyora.clubschedule.service.GroupPermissionService;
 import com.moyora.clubschedule.service.GroupScheduleService;
 import com.moyora.clubschedule.service.GroupService;
+import com.moyora.clubschedule.service.ScheduleAttendanceService;
 import com.moyora.clubschedule.vo.GroupMemberVo;
+import com.moyora.clubschedule.vo.GroupRole;
 import com.moyora.clubschedule.vo.GroupScheduleVo;
+import com.moyora.clubschedule.vo.ScheduleAttendanceVo;
 
 import lombok.RequiredArgsConstructor;
 
@@ -40,7 +45,9 @@ public class GroupApiController {
 
     private final GroupService groupService;
     private final GroupManageService groupManageService;
+    private final GroupPermissionService groupPermissionService;
     private final GroupScheduleService groupScheduleService;
+    private final ScheduleAttendanceService scheduleAttendanceService;
     private final ScheduleAttendanceMapper scheduleAttendanceMapper;
 
     // ── Members ──────────────────────────────────────────────────────────────
@@ -56,11 +63,64 @@ public class GroupApiController {
             map.put("role",        m.getRole());
             map.put("status",      m.getStatus());
             map.put("joinedAt",    m.getJoinedAt() != null ? m.getJoinedAt().toString() : null);
+            map.put("leftAt",      m.getLeftAt() != null ? m.getLeftAt().toString() : null);
             map.put("banned",     Boolean.TRUE.equals(m.getBanned()));
             map.put("banReason",  m.getBanReason());
+            if ("MANAGER".equals(m.getRole()) && "ACTIVE".equals(m.getStatus())) {
+                List<String> presets = new ArrayList<>();
+                for (GroupPermissionService.PermissionPreset p : groupPermissionService.resolveActivePresets(groupId, m.getUserKey())) {
+                    presets.add(p.name());
+                }
+                map.put("presets", presets);
+            }
             out.add(map);
         }
         return ResponseEntity.ok(out);
+    }
+
+    @PatchMapping("/{groupId}/members/{userKey}/role")
+    public ResponseEntity<?> changeMemberRole(
+            @PathVariable Long groupId,
+            @PathVariable Long userKey,
+            @RequestBody Map<String, Object> payload,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long operator = userDetails != null ? userDetails.getUserKey() : null;
+        if (operator == null) return ResponseEntity.status(401).build();
+
+        String roleStr = getString(payload, "role");
+        GroupRole newRole;
+        try {
+            newRole = GroupRole.valueOf((roleStr == null ? "" : roleStr).toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body("role은 LEADER/MANAGER/MEMBER 중 하나여야 합니다.");
+        }
+
+        boolean ok = groupManageService.changeRole(groupId, userKey, newRole, operator);
+        return ok ? ResponseEntity.ok().build() : ResponseEntity.status(403).build();
+    }
+
+    @PutMapping("/{groupId}/members/{userKey}/permissions")
+    public ResponseEntity<?> setMemberPermissions(
+            @PathVariable Long groupId,
+            @PathVariable Long userKey,
+            @RequestBody(required = false) Map<String, Object> payload,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long operator = userDetails != null ? userDetails.getUserKey() : null;
+        if (operator == null) return ResponseEntity.status(401).build();
+
+        java.util.Set<GroupPermissionService.PermissionPreset> presets =
+                java.util.EnumSet.noneOf(GroupPermissionService.PermissionPreset.class);
+        Object presetsObj = payload != null ? payload.get("presets") : null;
+        if (presetsObj instanceof List) {
+            for (Object o : (List<?>) presetsObj) {
+                try {
+                    presets.add(GroupPermissionService.PermissionPreset.valueOf(o.toString().toUpperCase()));
+                } catch (IllegalArgumentException ignored) { /* 알 수 없는 프리셋은 무시 */ }
+            }
+        }
+
+        boolean ok = groupPermissionService.applyPermissionPresets(groupId, userKey, presets, operator);
+        return ok ? ResponseEntity.ok().build() : ResponseEntity.status(403).build();
     }
 
     @PatchMapping("/{groupId}/members/{userKey}/ban")
@@ -86,6 +146,28 @@ public class GroupApiController {
         if (operator == null) return ResponseEntity.status(401).build();
         boolean ok = groupManageService.unbanMember(groupId, userKey, operator);
         return ok ? ResponseEntity.ok().build() : ResponseEntity.status(403).build();
+    }
+
+    // 본인의 그룹 내 참가 이력(일정별 최신 상태, 최신 일정순) — 마이페이지성 화면 부재 findings 반영
+    @GetMapping("/{groupId}/attendance/me")
+    public ResponseEntity<?> myAttendanceHistory(
+            @PathVariable Long groupId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long userKey = userDetails != null ? userDetails.getUserKey() : null;
+        if (userKey == null) return ResponseEntity.status(401).build();
+
+        List<ScheduleAttendanceVo> list = scheduleAttendanceService.listMyHistory(groupId, userKey);
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (ScheduleAttendanceVo v : list) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("scheduleId",    v.getScheduleId());
+            m.put("scheduleTitle", v.getScheduleTitle());
+            m.put("scheduleStartAt", v.getScheduleStartAt() != null ? v.getScheduleStartAt().toString() : null);
+            m.put("status",        v.getStatus() != null ? v.getStatus().name() : null);
+            m.put("actualStatus",  v.getActualStatus() != null ? v.getActualStatus().name() : null);
+            result.add(m);
+        }
+        return ResponseEntity.ok(result);
     }
 
     // ── Schedules ─────────────────────────────────────────────────────────────

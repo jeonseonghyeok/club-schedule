@@ -92,4 +92,22 @@
         ORDER BY sa.created_at ASC
     </select>
 
+    <resultMap id="myHistoryRM" type="com.moyora.clubschedule.vo.ScheduleAttendanceVo" extends="attendanceRM">
+        <result property="scheduleTitle"   column="schedule_title"/>
+        <result property="scheduleStartAt" column="schedule_start_at"/>
+    </resultMap>
+
+    <!-- 본인의 그룹 내 참가 이력 — 일정별 최신 상태(is_latest=1)만, 최신 일정순 -->
+    <select id="selectMyHistoryByGroup" resultMap="myHistoryRM">
+        SELECT sa.*,
+               gs.title    AS schedule_title,
+               gs.start_at AS schedule_start_at
+        FROM schedule_attendance sa
+        JOIN group_schedule gs ON gs.schedule_id = sa.schedule_id
+        WHERE gs.group_id  = #{groupId}
+          AND sa.user_key  = #{userKey}
+          AND sa.is_latest = 1
+        ORDER BY gs.start_at DESC
+    </select>
+
 </mapper>

@@ -2,7 +2,6 @@ package com.moyora.clubschedule.controller;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 
 import jakarta.validation.Valid;
 
@@ -10,10 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import com.moyora.clubschedule.security.CustomUserDetails;
@@ -82,51 +78,8 @@ public class GroupRequestController {
         }
     }
 
-    // 관리자 전용: 승인
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
-    @PostMapping("/{requestId}/approve")
-    public ResponseEntity<?> approveRequest(@PathVariable Long requestId, @AuthenticationPrincipal CustomUserDetails userDetails) {
-        // 안전하게 관리자 키를 가져옴
-        Long adminKey = null;
-        if (userDetails != null) {
-            adminKey = userDetails.getUserKey();
-        } else {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null) {
-                Object principal = auth.getPrincipal();
-                if (principal instanceof CustomUserDetails) {
-                    adminKey = ((CustomUserDetails) principal).getUserKey();
-                }
-            }
-        }
-        try {
-            groupRequestService.approveRequest(requestId, adminKey);
-            return ResponseEntity.ok().build();
-        } catch (RuntimeException ex) {
-            return ResponseEntity.status(409).body(Map.of("error", ex.getMessage()));
-        }
-    }
-
-    // 관리자 전용: 거부
-    @PreAuthorize("hasRole('ROLE_ADMIN')")
-    @PostMapping("/{requestId}/reject")
-    public ResponseEntity<?> rejectRequest(@PathVariable Long requestId, @RequestBody Map<String, String> body, @AuthenticationPrincipal CustomUserDetails userDetails) {
-        Long adminKey = null;
-        if (userDetails != null) {
-            adminKey = userDetails.getUserKey();
-        } else {
-            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-            if (auth != null) {
-                Object principal = auth.getPrincipal();
-                if (principal instanceof CustomUserDetails) {
-                    adminKey = ((CustomUserDetails) principal).getUserKey();
-                }
-            }
-        }
-        String reason = body.get("rejectReason");
-        boolean ok = groupRequestService.rejectGroupRequest(requestId, adminKey, reason);
-        if (ok) return ResponseEntity.ok().build();
-        return ResponseEntity.badRequest().build();
-    }
-    
+    // 관리자 전용 승인/반려는 AdminApiController(/admin/api/group-requests/{id}/approve|reject)에서 처리한다.
+    // 과거 이곳에 있던 승인/반려 엔드포인트는 hasRole('ROLE_ADMIN')(Spring Security가 자동으로
+    // ROLE_ 접두사를 붙여 실제로는 ROLE_ROLE_ADMIN을 요구)으로 인해 항상 거부되는 죽은 코드였으며,
+    // 프론트엔드 어디서도 호출하지 않아 삭제했다.
 }

@@ -13,6 +13,7 @@ public interface GroupMapper {
     void insert(GroupVo group);
     int update(GroupVo group);
     int countByLeaderUserKey(Long leaderUserKey);
+    int updateLeaderUserKey(@Param("groupId") Long groupId, @Param("leaderUserKey") Long leaderUserKey);
 
     List<GroupVo> findAllOrderByGroupIdDesc();
 

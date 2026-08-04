@@ -70,7 +70,6 @@
     <div class="modal modal-sm" role="dialog" aria-modal="true" aria-labelledby="loginRequiredTitle">
         <div class="modal-header">
             <h3 id="loginRequiredTitle">로그인 필요</h3>
-            <button id="closeLoginRequiredBtn" class="close-btn" aria-label="Close">✕</button>
         </div>
         <div class="modal-body">
             <p class="muted">모임 조회 및 신청을 하시려면 로그인이 필요합니다.</p>
@@ -160,6 +159,7 @@
     let cachedGroups = [];
     let cachedModalRequests = [];
     const currentUserKey = /*[[${userKey}]]*/ null;
+    const favoriteGroupId = /*[[${favoriteGroupId}]]*/ null;
     document.addEventListener('DOMContentLoaded', () => {
         const search = document.getElementById('groupSearch');
         if (search) {
@@ -190,8 +190,6 @@
             const loginOverlay = document.getElementById('loginRequiredOverlay');
             if (loginOverlay) {
                 loginOverlay.style.display = 'flex';
-                const closeBtn = document.getElementById('closeLoginRequiredBtn');
-                if (closeBtn) closeBtn.addEventListener('click', () => { loginOverlay.style.display = 'none'; });
             }
         } else {
             loadMyGroups();
@@ -219,10 +217,19 @@
             return;
         }
         listEl.innerHTML = '';
-        groups.forEach(item => {
+        // 즐겨찾기(우선모임)를 최상단에 노출 — 기존에는 ★ 토글만 있고 목록에 반영되지 않았음
+        const sorted = groups.slice().sort((a, b) => {
+            const aFav = favoriteGroupId != null && String(a.groupId) === String(favoriteGroupId);
+            const bFav = favoriteGroupId != null && String(b.groupId) === String(favoriteGroupId);
+            if (aFav === bFav) return 0;
+            return aFav ? -1 : 1;
+        });
+        sorted.forEach(item => {
             const li = document.createElement('li');
             const left = document.createElement('div'); left.className='group-left';
-            const name = document.createElement('div'); name.className = 'group-name'; name.textContent = item.name || '무제 모임';
+            const name = document.createElement('div'); name.className = 'group-name';
+            const isFavorite = favoriteGroupId != null && String(item.groupId) === String(favoriteGroupId);
+            name.textContent = (isFavorite ? '★ ' : '') + (item.name || '무제 모임');
             // make name clickable and keyboard accessible
             name.style.cursor = 'pointer';
             name.setAttribute('role', 'link');

@@ -183,15 +183,62 @@ public class AdminApiController {
         return ok ? ResponseEntity.ok().build() : ResponseEntity.badRequest().build();
     }
 
-    // group-joins: 간단한 페이징
+    // group-joins: 목록 조회 — page 파라미터가 있으면 DB 레벨 페이징(닉네임/그룹명 검색 포함),
+    // 없으면 기존 전체조회+인메모리 페이징(하위 호환)
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/group-joins")
     public ResponseEntity<?> apiGroupJoins(@RequestParam(required = false) Integer page,
                                            @RequestParam(required = false) Integer size,
                                            @RequestParam(required = false) String q) {
+        if (page != null) {
+            int sz = (size == null || size < 1) ? 25 : size;
+            int pg = Math.max(1, page);
+            List<?> items = groupJoinRequestService.getAllPendingPaged(q, pg, sz);
+            int total = groupJoinRequestService.countAllPending(q);
+            PagingResponse<Object> resp = new PagingResponse<>();
+            resp.setTotalCount(total);
+            resp.setCurrentPage(pg);
+            resp.setSize(sz);
+            resp.setItems((List<Object>) items);
+            resp.setTotalPages((int) ((total + sz - 1) / sz));
+            int blockSize = 5; int currentBlock = (pg - 1) / blockSize;
+            resp.setStartPage(currentBlock * blockSize + 1);
+            resp.setEndPage(Math.min(resp.getStartPage() + blockSize - 1, resp.getTotalPages()));
+            return ResponseEntity.ok(resp);
+        }
         List<?> all = groupJoinRequestService.getAllPending();
         PagingResponse<?> resp = buildPagedResponse(all, page, size, q);
         return ResponseEntity.ok(resp);
+    }
+
+    // group-joins: 관리자 승인 — 그룹 리더가 아니어도 처리 가능(hasRole('ADMIN')로 게이트)
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/group-joins/{requestId}/approve")
+    public ResponseEntity<?> approveGroupJoin(
+            @PathVariable Long requestId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            groupJoinRequestService.approveJoin(requestId, userDetails.getUserKey());
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(409).body(Map.of("error", ex.getMessage()));
+        }
+    }
+
+    // group-joins: 관리자 거부
+    @PreAuthorize("hasRole('ADMIN')")
+    @PostMapping("/group-joins/{requestId}/reject")
+    public ResponseEntity<?> rejectGroupJoin(
+            @PathVariable Long requestId,
+            @RequestBody(required = false) Map<String, String> body,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        try {
+            String reason = body != null ? body.get("rejectReason") : null;
+            groupJoinRequestService.rejectJoin(requestId, userDetails.getUserKey(), reason);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException ex) {
+            return ResponseEntity.status(409).body(Map.of("error", ex.getMessage()));
+        }
     }
 
 }

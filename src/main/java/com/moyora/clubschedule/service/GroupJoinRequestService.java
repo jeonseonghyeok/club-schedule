@@ -66,6 +66,20 @@ public class GroupJoinRequestService {
         return mapper.selectAllPending();
     }
 
+    /** 관리자 전용 — DB 레벨 페이징 + 닉네임/그룹명 검색 */
+    public List<GroupJoinRequestVo> getAllPendingPaged(String q, int page, int size) {
+        int offset = (page - 1) * size;
+        return mapper.selectAllPendingPaged(normalizeQuery(q), size, offset);
+    }
+
+    public int countAllPending(String q) {
+        return mapper.countAllPendingFiltered(normalizeQuery(q));
+    }
+
+    private String normalizeQuery(String q) {
+        return (q == null || q.isBlank()) ? null : q.trim();
+    }
+
     /**
      * 해당 요청의 그룹에 대해 주어진 userKey가 그룹 리더인지 확인
      */

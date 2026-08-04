@@ -117,4 +117,39 @@ public class GroupManageService {
         GroupJoinBanVo ban = groupJoinBanMapper.selectByGroupAndUser(groupId, userKey);
         return ban != null && Boolean.TRUE.equals(ban.getActive());
     }
+
+    /**
+     * 멤버 역할을 승격/강등한다. 호출자는 반드시 현재 리더(group.leader_user_key 기준)여야 한다.
+     *
+     * newRole == LEADER: 리더 승계. 같은 트랜잭션 안에서 기존 리더를 MANAGER로 강등하고,
+     *   group.leader_user_key와 target의 group_member.role을 함께 갱신한다(그룹당 LEADER는
+     *   항상 정확히 1명 — leader_user_key가 유일 진실소스이고 role은 이를 따라간다).
+     * newRole == MANAGER/MEMBER: target이 현재 리더가 아닐 때만 허용한다. 리더 본인의 강등은
+     *   반드시 다른 멤버를 리더로 승격시키는 승계 경로로만 가능하다.
+     */
+    @Transactional
+    public boolean changeRole(Long groupId, Long targetUserKey, GroupRole newRole, Long operatorUserKey) {
+        if (operatorUserKey == null || targetUserKey == null || newRole == null) return false;
+
+        GroupVo group = groupMapper.findById(groupId);
+        if (group == null || !operatorUserKey.equals(group.getLeaderUserKey())) return false;
+
+        GroupMemberVo target = groupMemberMapper.selectMemberAnyStatus(groupId, targetUserKey);
+        if (target == null || !"ACTIVE".equals(target.getStatus())) return false;
+
+        boolean targetIsCurrentLeader = targetUserKey.equals(group.getLeaderUserKey());
+
+        if (newRole == GroupRole.LEADER) {
+            if (targetIsCurrentLeader) return true; // 이미 리더 — 변경 없음
+            groupMemberMapper.updateMemberRole(groupId, group.getLeaderUserKey(), GroupRole.MANAGER.name());
+            groupMapper.updateLeaderUserKey(groupId, targetUserKey);
+            groupMemberMapper.updateMemberRole(groupId, targetUserKey, GroupRole.LEADER.name());
+            return true;
+        }
+
+        // MANAGER/MEMBER로 변경 — 현재 리더는 승계 경로(위 분기)로만 강등 가능
+        if (targetIsCurrentLeader) return false;
+        groupMemberMapper.updateMemberRole(groupId, targetUserKey, newRole.name());
+        return true;
+    }
 }

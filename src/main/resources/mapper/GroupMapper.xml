@@ -31,6 +31,11 @@
         SELECT COUNT(*) FROM `group` WHERE leader_user_key = #{leaderUserKey}
     </select>
 
+    <!-- 새로 추가: 리더 승계 시 group.leader_user_key 갱신 (group_member.role='LEADER'과 함께 항상 동기화) -->
+    <update id="updateLeaderUserKey">
+        UPDATE `group` SET leader_user_key = #{leaderUserKey} WHERE group_id = #{groupId}
+    </update>
+
     <select id="findAllOrderByGroupIdDesc" resultType="GroupVo">
         SELECT * FROM `group` ORDER BY group_id DESC
     </select>

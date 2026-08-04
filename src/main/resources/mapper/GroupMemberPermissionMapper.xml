@@ -21,4 +21,25 @@
         LIMIT 1
     </select>
 
+    <insert id="upsertPermission">
+        INSERT INTO group_member_permission (group_id, user_key, permission_type, is_allowed, granted_by_user_key)
+        VALUES (#{groupId}, #{userKey}, #{permissionType}, 1, #{grantedBy})
+        ON DUPLICATE KEY UPDATE is_allowed = 1, granted_by_user_key = #{grantedBy}
+    </insert>
+
+    <delete id="deletePermission">
+        DELETE FROM group_member_permission
+        WHERE group_id       = #{groupId}
+          AND user_key        = #{userKey}
+          AND permission_type = #{permissionType}
+    </delete>
+
+    <select id="selectAllowedTypes" resultType="string">
+        SELECT permission_type
+        FROM group_member_permission
+        WHERE group_id  = #{groupId}
+          AND user_key  = #{userKey}
+          AND is_allowed = 1
+    </select>
+
 </mapper>

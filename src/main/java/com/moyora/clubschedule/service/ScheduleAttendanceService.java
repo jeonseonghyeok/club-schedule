@@ -32,6 +32,7 @@ public class ScheduleAttendanceService {
     private final GroupSchedulePolicyMapper            policyMapper;
     private final GroupMemberMapper                    memberMapper;
     private final NotificationService                  notificationService;
+    private final GroupPermissionService                permissionService;
 
     // ── 참가 신청 ─────────────────────────────────────────────────────────────
 
@@ -103,6 +104,12 @@ public class ScheduleAttendanceService {
     public List<ScheduleAttendanceVo> listHistory(Long groupId, Long scheduleId) {
         requireSchedule(scheduleId, groupId);
         return attendanceMapper.selectHistoryByScheduleId(scheduleId);
+    }
+
+    /** 본인의 그룹 내 참가 이력(일정별 최신 상태, 최신 일정순) — 마이페이지성 화면이 없어 신설. */
+    @Transactional(readOnly = true)
+    public List<ScheduleAttendanceVo> listMyHistory(Long groupId, Long userKey) {
+        return attendanceMapper.selectMyHistoryByGroup(groupId, userKey);
     }
 
     // ── 승인 ──────────────────────────────────────────────────────────────────
@@ -258,11 +265,17 @@ public class ScheduleAttendanceService {
         }
     }
 
-    /** 일정 등록자이거나 MANAGER 이상이면 허용 */
+    /**
+     * 일정 등록자이거나, 출석 관리 권한(LEADER 항상 허용 / MANAGER는 MANAGE_SCHEDULE override
+     * 또는 그룹 정책 기본값)이 있으면 허용. GroupPermissionService.canManageSchedule을 재사용해
+     * "출석관리자" 권한 프리셋이 실제로 승인/거부/체크인에 반영되도록 한다.
+     */
     private void validateAttendanceManagerPermission(Long groupId, GroupScheduleVo schedule,
                                                       Long operatorUserKey) {
         if (schedule.getCreatedBy().equals(operatorUserKey)) return;
-        requireManagerRole(groupId, operatorUserKey);
+        if (!permissionService.canManageSchedule(groupId, operatorUserKey)) {
+            throw new GroupAccessDeniedException("매니저 이상 권한이 필요합니다.");
+        }
     }
 
     private void requireManagerRole(Long groupId, Long userKey) {

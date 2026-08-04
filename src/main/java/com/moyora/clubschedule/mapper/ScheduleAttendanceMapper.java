@@ -40,4 +40,9 @@ public interface ScheduleAttendanceMapper {
 
     /** is_latest 무관 전체 이력(신청/승인/거부/취소) 시간순 조회 */
     List<ScheduleAttendanceVo> selectHistoryByScheduleId(@Param("scheduleId") Long scheduleId);
+
+    /** 본인의 그룹 내 참가 이력(is_latest=1, 일정별 최신 상태) — 일정 제목/시작일시 포함, 최신 일정순 */
+    List<ScheduleAttendanceVo> selectMyHistoryByGroup(
+            @Param("groupId") Long groupId,
+            @Param("userKey") Long userKey);
 }

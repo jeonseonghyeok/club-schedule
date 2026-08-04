@@ -10,7 +10,10 @@
     <div class="container">
         <div class="card">
             <h1>카카오 로그인 상태</h1>
-            <div id="token-info"></div>
+            <div id="token-info">
+                <div id="callbackSpinner" class="spinner" aria-hidden="true"></div>
+                <p id="callbackMessage" class="muted">로그인 처리 중입니다...</p>
+            </div>
         </div>
     </div>
 
@@ -46,6 +49,13 @@
         window.location.href = buildKakaoAuthUrl(redirectUri);
     }
 
+    function showCallbackError(message) {
+        const spinner = document.getElementById('callbackSpinner');
+        if (spinner) spinner.style.display = 'none';
+        const msgEl = document.getElementById('callbackMessage');
+        if (msgEl) msgEl.textContent = message;
+    }
+
     async function processKakaoCallback() {
         const code = getQueryParam('code');
         if (!code) return;
@@ -56,16 +66,18 @@
             const response = await postCodeToServer(code, redirectUri, returnToParam);
 
             if (response.ok) {
-                window.location.href = '/';
+                const msgEl = document.getElementById('callbackMessage');
+                if (msgEl) msgEl.textContent = '로그인 완료되어 잠시후 메인화면으로 이동됩니다.';
+                setTimeout(() => { window.location.href = '/'; }, 1000);
                 return;
             }
 
             let err = { message: '알 수 없는 오류' };
             try { err = await response.json(); } catch (e) { /* 파싱 실패 무시 */ }
-            alert(`로그인 처리 중 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`);
+            showCallbackError(`로그인 처리 중 오류가 발생했습니다: ${err.message || '알 수 없는 오류'}`);
             console.error('서버 오류:', err);
         } catch (err) {
-            alert('네트워크 오류');
+            showCallbackError('네트워크 오류가 발생했습니다.');
             console.error('네트워크 오류:', err);
         }
     }

@@ -27,6 +27,19 @@
           AND is_latest   = 1
     </select>
 
+    <select id="countConfirmedByScheduleIds" resultType="java.util.HashMap">
+        SELECT sa.schedule_id AS scheduleId,
+               COUNT(*)       AS cnt
+        FROM schedule_attendance sa
+        WHERE sa.status      = 'CONFIRMED'
+          AND sa.is_latest   = 1
+          AND sa.schedule_id IN
+          <foreach collection="scheduleIds" item="id" open="(" separator="," close=")">
+              #{id}
+          </foreach>
+        GROUP BY sa.schedule_id
+    </select>
+
     <select id="selectLatest" resultMap="attendanceRM">
         SELECT sa.*
         FROM schedule_attendance sa
@@ -34,6 +47,17 @@
           AND sa.user_key    = #{userKey}
           AND sa.is_latest   = 1
         LIMIT 1
+    </select>
+
+    <select id="selectMyLatestByScheduleIds" resultMap="attendanceRM">
+        SELECT sa.*
+        FROM schedule_attendance sa
+        WHERE sa.user_key    = #{userKey}
+          AND sa.is_latest   = 1
+          AND sa.schedule_id IN
+          <foreach collection="scheduleIds" item="id" open="(" separator="," close=")">
+              #{id}
+          </foreach>
     </select>
 
     <select id="selectActiveList" resultMap="attendanceRM">
@@ -44,6 +68,22 @@
         WHERE sa.schedule_id = #{scheduleId}
           AND sa.is_latest   = 1
         ORDER BY sa.created_at ASC
+    </select>
+
+    <select id="selectActiveListByScheduleIds" resultMap="attendanceRM">
+        SELECT sa.*,
+               u.nickname AS display_name
+        FROM schedule_attendance sa
+        JOIN `user` u            ON u.user_key = sa.user_key
+        JOIN group_schedule gs   ON gs.schedule_id = sa.schedule_id
+        WHERE gs.group_id    = #{groupId}
+          AND sa.is_latest   = 1
+          AND sa.status IN ('CONFIRMED', 'PENDING')
+          AND sa.schedule_id IN
+          <foreach collection="scheduleIds" item="id" open="(" separator="," close=")">
+              #{id}
+          </foreach>
+        ORDER BY sa.schedule_id, sa.created_at ASC
     </select>
 
     <update id="invalidateLatest">

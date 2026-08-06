@@ -17,6 +17,24 @@
     </div>
 </header>
 <script th:src="@{/js/notifications.js}"></script>
+<script>
+    // 세션 만료 등으로 어느 fetch든 401을 받으면, 각 호출부가 서버 원문 에러 메시지를
+    // 그대로 alert로 띄우기 전에 여기서 가로채 로그인 화면으로 안내한다.
+    (function () {
+        let authRedirecting = false;
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = async function (...args) {
+            const res = await originalFetch(...args);
+            if (res.status === 401 && !authRedirecting) {
+                authRedirecting = true;
+                alert('로그인이 필요합니다. 로그인 화면으로 이동합니다.');
+                window.location.href = '/';
+                return new Promise(() => {}); // 리다이렉트 전까지 호출부의 후속 처리(에러 alert 등)가 실행되지 않도록 막는다
+            }
+            return res;
+        };
+    })();
+</script>
 
 <div class="container" th:attr="data-group-id=${group.groupId}, data-is-member=${isMember}, data-is-leader=${isLeader}, data-can-create-schedule=${canCreateSchedule}, data-create-needs-approval=${createNeedsApproval}, data-can-manage-schedule=${canManageSchedule}, data-current-user-key=${currentUserKey}">
     <div class="card">
@@ -188,7 +206,13 @@
             bodyEl.innerHTML = '';
             if (options.content instanceof Node) bodyEl.appendChild(options.content);
             else bodyEl.innerHTML = options.content || '';
-            setSize(options.size || 'md'); if (closeBtn) closeBtn.style.display = (options.showClose === false) ? 'none' : '';
+            setSize(options.size || 'md');
+            if (closeBtn) {
+                closeBtn.style.display = (options.showClose === false) ? 'none' : '';
+                // 목록에서 상세로 들어온 경우 등, "닫기" 대신 "← 뒤로" 동작이 필요한 화면을 위한 오버라이드.
+                closeBtn.textContent = options.closeLabel || '닫기';
+                closeBtn.onclick = options.onCloseClick || closeCommonModal;
+            }
             overlay.style.display = 'flex';
             overlay.setAttribute('aria-hidden','false');
             lockBody();
@@ -213,8 +237,7 @@
             unlockBody();
         }
 
-        // 닫기 버튼에 동작 연결
-        if (closeBtn) closeBtn.addEventListener('click', closeCommonModal);
+        // 닫기 버튼 동작은 openCommonModal 호출마다 closeBtn.onclick으로 설정됨(기본값 closeCommonModal)
 
         window.openCommonModal = openCommonModal;
         window.closeCommonModal = closeCommonModal;
@@ -878,7 +901,7 @@
         
         let calendarMonthStart = (new Date()).setDate(1);
 
-        async function fetchSchedulesRaw(fromMs, toMs) { try { let url = '/api/groups/' + groupId + '/schedules'; const qs = []; if (fromMs != null) qs.push('from=' + fromMs); if (toMs != null) qs.push('to=' + toMs); if (qs.length > 0) url += '?' + qs.join('&'); const res = await fetch(url); if (!res.ok) throw new Error('Failed to load schedules'); const data = await res.json(); return (Array.isArray(data) ? data.map(ev => ({ id: ev.id, title: ev.title || '일정', start: (typeof ev.start === 'number') ? ev.start : (ev.start ? Number(ev.start) : null), status: ev.status || null, createdBy: ev.createdBy || null, description: ev.description||'', end: ev.end||null, locationName: ev.locationName||null, maxAttendance: ev.maxAttendance||0, confirmedCount: ev.confirmedCount||0 })) : []); } catch (e) { console.warn(e); return []; } }
+        async function fetchSchedulesRaw(fromMs, toMs) { try { let url = '/api/groups/' + groupId + '/schedules'; const qs = []; if (fromMs != null) qs.push('from=' + fromMs); if (toMs != null) qs.push('to=' + toMs); if (qs.length > 0) url += '?' + qs.join('&'); const res = await fetch(url); if (!res.ok) throw new Error('Failed to load schedules'); const data = await res.json(); return (Array.isArray(data) ? data.map(ev => ({ id: ev.id, title: ev.title || '일정', start: (typeof ev.start === 'number') ? ev.start : (ev.start ? Number(ev.start) : null), status: ev.status || null, createdBy: ev.createdBy || null, description: ev.description||'', end: ev.end||null, locationName: ev.locationName||null, maxAttendance: ev.maxAttendance||0, confirmedCount: ev.confirmedCount||0, myAttendanceStatus: ev.myAttendanceStatus || null })) : []); } catch (e) { console.warn(e); return []; } }
         const SCHEDULE_CACHE_TTL_MS = 5 * 60 * 1000;
         let scheduleCache = { rangeFrom: null, rangeTo: null, hasAll: false, events: [], fetchedAt: 0 };
         function defaultScheduleRange() { const now = Date.now(); return { from: now - 30 * 24 * 60 * 60 * 1000, to: now + 60 * 24 * 60 * 60 * 1000 }; }
@@ -909,7 +932,8 @@
 function startOfMonth(date){ const d = new Date(date); d.setHours(0,0,0,0); d.setDate(1); return d; }
         function sameDate(a,b){ return a.getFullYear()===b.getFullYear() && a.getMonth()===b.getMonth() && a.getDate()===b.getDate(); }
 
-        function openEventDetail(ev){
+        function openEventDetail(ev, opts){
+  const onBack = opts && opts.onBack;
   const sMap={'PENDING':'🟡 승인 대기','CONFIRMED':'🟢 승인','REJECTED':'🔴 거부','CANCELLED':'⚫ 취소'};
   const sBg={'PENDING':'background:#fef9c3;color:#854d0e;','CONFIRMED':'background:#dcfce7;color:#166534;','REJECTED':'background:#fee2e2;color:#991b1b;','CANCELLED':'background:#f1f5f9;color:#64748b;'};
   const wrap=document.createElement('div');wrap.style.cssText='display:flex;flex-direction:column;gap:10px;';
@@ -930,7 +954,7 @@ function startOfMonth(date){ const d = new Date(date); d.setHours(0,0,0,0); d.se
   // 인원/최대인원: 승인(CONFIRMED)된 인원만 기준으로 카운트
   const isConfirmed = ev.status === 'CONFIRMED';
   const capLabel = '참가인원';
-  const capValue = ev.maxAttendance > 0 ? `${ev.confirmedCount||0}/${ev.maxAttendance}명` : `${ev.confirmedCount||0}명 / 제한없음`;
+  const capValue = formatCapacity(ev.confirmedCount||0, ev.maxAttendance);
   const capRow = mkR(capLabel, capValue);
   if (capRow) {
     wrap.appendChild(capRow);
@@ -938,7 +962,7 @@ function startOfMonth(date){ const d = new Date(date); d.setHours(0,0,0,0); d.se
     if (isConfirmed && capValueEl && isMember) {
       capRow.style.position = 'relative';
       capValueEl.style.cssText = 'cursor:pointer;border-bottom:1px dotted #94a3b8;';
-      attachRosterPopover(capValueEl, capRow, ev.id);
+      attachRosterPopover(capValueEl, capRow, ev.id, ev.maxAttendance);
     }
     if (isConfirmed && (canManageSchedule || String(ev.createdBy)===String(currentUserKey))) {
       const mgrLink = document.createElement('span');
@@ -999,7 +1023,9 @@ function startOfMonth(date){ const d = new Date(date); d.setHours(0,0,0,0); d.se
     if(rightGroup.children.length>0)br.appendChild(rightGroup);
     if(br.children.length>0)wrap.appendChild(br);
   }
-  window.openCommonModal({title:ev.title||'일정',content:wrap,size:'md'});
+  window.openCommonModal(onBack
+    ? {title:ev.title||'일정',content:wrap,size:'md',closeLabel:'←',onCloseClick:onBack}
+    : {title:ev.title||'일정',content:wrap,size:'md'});
 }
 
 // 내 참가 상태에 따라 상단 참가 버튼(attBtn)을 갱신하고, 필요 시 안내 문구/취소 버튼을 추가
@@ -1017,10 +1043,8 @@ async function loadMyAttendance(ev, containerEl, attBtn, onSuccess, opts) {
     const sd = document.createElement('div'); sd.style.cssText = 'padding:8px 0;color:' + color + ';'; sd.textContent = msg;
     window.openCommonModal({ title: '완료', content: sd, size: 'sm' });
   };
-  try {
-    const res = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attendance', { credentials: 'same-origin' });
-    const list = res.ok ? await res.json() : [];
-    const myAtt = list.find(a => String(a.userKey) === String(currentUserKey));
+  {
+    const myAtt = ev.myAttendanceStatus ? { status: ev.myAttendanceStatus } : null;
     if (!myAtt || myAtt.status === 'REJECTED' || myAtt.status === 'CANCELLED') {
       const isRejected = !!myAtt && myAtt.status === 'REJECTED';
       attBtn.disabled = false;
@@ -1032,13 +1056,26 @@ async function loadMyAttendance(ev, containerEl, attBtn, onSuccess, opts) {
         attBtn.disabled = true; attBtn.style.display = 'none';
         try {
           const r = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attend', { method: 'POST', credentials: 'same-origin' });
+          // 성공/실패와 무관하게 캐시된 일정 목록(=참가여부)을 항상 최신화한다 — 그래야 이 모달을 닫은 뒤
+          // 다시 열었을 때 이미 처리된 상태를 두고 같은 요청을 반복해 매번 409가 나는 것을 막을 수 있다.
+          await getSchedules({ all: true, forceRefresh: true });
           if (r.ok) { (onSuccess || (() => defaultOnSuccess('참가 신청이 완료되었습니다.', '#166534')))(); }
-          else { const j = await r.json().catch(() => ({})); attBtn.disabled = false; attBtn.style.display = ''; alert(j.message || '신청 실패'); }
+          else {
+            const j = await r.json().catch(() => ({}));
+            attBtn.style.display = '';
+            alert(j.message || '신청 실패');
+            // 실패 원인이 상태 불일치(이미 처리됨 등)일 수 있으므로, 방금 갱신한 최신 상태로 버튼을 다시 그린다.
+            loadMyAttendance((calendarEvents || []).find(e => e.id == ev.id) || ev, containerEl, attBtn, onSuccess, opts);
+          }
         } catch (e) { attBtn.disabled = false; attBtn.style.display = ''; alert(e.message); }
       };
     } else if (myAtt.status === 'PENDING' || myAtt.status === 'CONFIRMED') {
+      // 실패 후 재조회로 이 함수가 같은 containerEl에 다시 그려질 수 있어, 이전에 넣어둔 대기 배지가 있으면 먼저 제거한다.
+      const prevMsg = containerEl.querySelector('[data-att-msg]');
+      if (prevMsg) prevMsg.remove();
       if (myAtt.status === 'PENDING') {
         const msg = document.createElement('div');
+        msg.setAttribute('data-att-msg', '1');
         if (compact) { msg.style.cssText = 'font-size:11px;color:#854d0e;background:#fef9c3;border-radius:999px;padding:2px 8px;white-space:nowrap;'; msg.textContent = '대기중'; }
         else { msg.style.cssText = 'font-size:12px;color:#854d0e;background:#fef9c3;border-radius:6px;padding:6px 10px;'; msg.textContent = '참가 신청 승인 대기 중입니다.'; }
         containerEl.insertBefore(msg, attBtn);
@@ -1052,24 +1089,52 @@ async function loadMyAttendance(ev, containerEl, attBtn, onSuccess, opts) {
         attBtn.disabled = true; attBtn.style.display = 'none';
         try {
           const r = await fetch('/api/groups/' + groupId + '/schedules/' + ev.id + '/attend', { method: 'DELETE', credentials: 'same-origin' });
+          // 성공/실패와 무관하게 캐시된 일정 목록(=참가여부)을 항상 최신화한다 — 그래야 이 모달을 닫은 뒤
+          // 다시 열었을 때 이미 처리된 상태를 두고 같은 요청을 반복해 매번 409가 나는 것을 막을 수 있다.
+          await getSchedules({ all: true, forceRefresh: true });
           if (r.ok) { (onSuccess || (() => defaultOnSuccess('참가 취소되었습니다.', '#64748b')))(); }
-          else { const j = await r.json().catch(() => ({})); attBtn.disabled = false; attBtn.style.display = ''; alert(j.message || '취소 실패'); }
+          else {
+            const j = await r.json().catch(() => ({}));
+            attBtn.style.display = '';
+            alert(j.message || '취소 실패');
+            // 실패 원인이 상태 불일치(이미 취소/거부됨 등)일 수 있으므로, 방금 갱신한 최신 상태로 버튼을 다시 그린다.
+            loadMyAttendance((calendarEvents || []).find(e => e.id == ev.id) || ev, containerEl, attBtn, onSuccess, opts);
+          }
         } catch (e) { attBtn.disabled = false; attBtn.style.display = ''; alert(e.message); }
       };
     }
-  } catch (e) {
-    // 스피너가 무한 회전 상태로 멈추지 않도록 버튼을 정지시킨다(비활성 유지)
-    attBtn.innerHTML = '';
-    attBtn.textContent = '오류';
-    const errDiv = document.createElement('div'); errDiv.style.cssText = 'color:#dc2626;font-size:13px;'; errDiv.textContent = '참가 상태를 불러오지 못했습니다.';
-    containerEl.appendChild(errDiv);
   }
 }
 
 // 인원/정원 값에 호버(PC)/탭(모바일) 시 열리는 읽기 전용 명단 팝오버
-function attachRosterPopover(triggerEl, anchorEl, scheduleId) {
+// 참가인원 호버 팝오버 명단 캐시 — 일정 조회 시점에 prefetchRoster로 미리 채워두고,
+// 30초 이내 호버는 캐시를 즉시 보여주며, 지나면 재조회해서 최신화한다.
+const ROSTER_CACHE_TTL_MS = 30 * 1000;
+let rosterCache = {}; // scheduleId -> { list, fetchedAt }
+
+// 참가자 명단을 기준으로 인원수 표시를 다시 계산 — 목록 조회 시 캐시된 confirmedCount와
+// 실제 명단(참가/취소 처리 이후 등)이 어긋날 수 있어, 명단을 확인하는 시점엔 항상 명단 기준으로 재계산한다.
+function countConfirmed(list) { return (list || []).filter(a => a.status === 'CONFIRMED').length; }
+function formatCapacity(count, max) { return max > 0 ? `${count}/${max}명` : `${count}명 / 제한없음`; }
+
+async function prefetchRoster(scheduleIds) {
+  const now = Date.now();
+  const need = (scheduleIds || []).filter(id => {
+    const c = rosterCache[id];
+    return !c || (now - c.fetchedAt) >= ROSTER_CACHE_TTL_MS;
+  });
+  if (need.length === 0) return;
+  try {
+    const res = await fetch('/api/groups/' + groupId + '/attendance/roster?scheduleIds=' + need.join(','), { credentials: 'same-origin' });
+    if (!res.ok) return;
+    const byId = await res.json();
+    const fetchedAt = Date.now();
+    need.forEach(id => { rosterCache[id] = { list: byId[id] || [], fetchedAt }; });
+  } catch (e) { /* 프리페치 실패는 조용히 무시 — 호버 시 attachRosterPopover가 단건 조회로 폴백 */ }
+}
+
+function attachRosterPopover(triggerEl, anchorEl, scheduleId, maxAttendance) {
   let box = null;
-  let loaded = false;
   const sL = { PENDING: '대기', CONFIRMED: '확정', REJECTED: '거부', CANCELLED: '취소' };
   const sC = { PENDING: 'background:#fef9c3;color:#854d0e;', CONFIRMED: 'background:#dcfce7;color:#166534;', REJECTED: 'background:#fee2e2;color:#991b1b;', CANCELLED: 'background:#f1f5f9;color:#64748b;' };
   function ensureBox() {
@@ -1078,27 +1143,35 @@ function attachRosterPopover(triggerEl, anchorEl, scheduleId) {
     anchorEl.appendChild(box);
     return box;
   }
-  async function ensureLoaded() {
-    if (loaded) return;
-    loaded = true;
+  function renderRoster(list) {
+    // 명단을 실제로 확인한 시점이므로, 캐시된 confirmedCount 대신 이 명단을 기준으로 인원수 표시를 맞춘다.
+    triggerEl.textContent = formatCapacity(countConfirmed(list), maxAttendance);
     const b = ensureBox();
+    const rows = list.filter(a => a.status === 'CONFIRMED' || a.status === 'PENDING');
+    b.innerHTML = '';
+    if (rows.length === 0) {
+      const em = document.createElement('div'); em.style.cssText = 'font-size:12px;color:#94a3b8;'; em.textContent = '참가자가 없습니다.'; b.appendChild(em);
+    } else {
+      rows.forEach(a => {
+        const row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0;';
+        const ns = document.createElement('span'); ns.textContent = a.displayName || '(알 수 없음)';
+        const sb = document.createElement('span'); sb.style.cssText = (sC[a.status] || '') + 'padding:1px 6px;border-radius:999px;font-size:11px;'; sb.textContent = sL[a.status] || a.status;
+        row.appendChild(ns); row.appendChild(sb); b.appendChild(row);
+      });
+    }
+  }
+  async function ensureLoaded() {
+    const cached = rosterCache[scheduleId];
+    const fresh = cached && (Date.now() - cached.fetchedAt) < ROSTER_CACHE_TTL_MS;
+    if (fresh) { renderRoster(cached.list); return; }
+    const b = ensureBox();
+    if (!cached) b.textContent = '불러오는 중...';
     try {
       const res = await fetch('/api/groups/' + groupId + '/schedules/' + scheduleId + '/attendance', { credentials: 'same-origin' });
       const list = res.ok ? await res.json() : [];
-      const rows = list.filter(a => a.status === 'CONFIRMED' || a.status === 'PENDING');
-      b.innerHTML = '';
-      if (rows.length === 0) {
-        const em = document.createElement('div'); em.style.cssText = 'font-size:12px;color:#94a3b8;'; em.textContent = '참가자가 없습니다.'; b.appendChild(em);
-      } else {
-        rows.forEach(a => {
-          const row = document.createElement('div'); row.style.cssText = 'display:flex;align-items:center;gap:6px;font-size:12px;padding:2px 0;';
-          const ns = document.createElement('span'); ns.textContent = a.displayName || '(알 수 없음)';
-          const sb = document.createElement('span'); sb.style.cssText = (sC[a.status] || '') + 'padding:1px 6px;border-radius:999px;font-size:11px;'; sb.textContent = sL[a.status] || a.status;
-          row.appendChild(ns); row.appendChild(sb); b.appendChild(row);
-        });
-      }
+      rosterCache[scheduleId] = { list, fetchedAt: Date.now() };
+      renderRoster(list);
     } catch (e) {
-      loaded = false;
       b.innerHTML = ''; const errEl = document.createElement('div'); errEl.style.cssText = 'font-size:12px;color:#dc2626;'; errEl.textContent = '명단을 불러오지 못했습니다.'; b.appendChild(errEl);
     }
   }
@@ -1732,7 +1805,7 @@ function createDateTimeField() {
             if (upcoming.length === 0){ recentEl.innerHTML = '<div class="muted">임박한 일정이 없습니다.</div>'; return; }
             upcoming.forEach(ev=>{
                 const row = document.createElement('div'); row.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #f0f0f0;cursor:pointer;';
-                const capValue = ev.maxAttendance > 0 ? `${ev.confirmedCount||0}/${ev.maxAttendance}명` : `${ev.confirmedCount||0}명 / 제한없음`;
+                const capValue = formatCapacity(ev.confirmedCount||0, ev.maxAttendance);
                 const dayLabel = formatRelativeDay(ev.start);
                 const info = document.createElement('div'); info.style.cssText='min-width:0;flex:1;display:flex;flex-direction:column;gap:2px;';
 
@@ -1759,7 +1832,8 @@ function createDateTimeField() {
                     side.appendChild(attBtn);
                     row.appendChild(side);
                     // 참가/취소 처리 후 confirmedCount 등이 최신 값이 되도록 캐시된 calendarEvents를 강제 재조회한 뒤 다시 그린다.
-                    loadMyAttendance(ev, side, attBtn, async () => { await getSchedules({ all: true, forceRefresh: true }); updateRecentSchedules(); }, { compact: true });
+                    // loadMyAttendance가 성공 시 이미 일정 캐시를 갱신해두므로 여기선 최신 calendarEvents로 다시 그리기만 하면 된다.
+                    loadMyAttendance(ev, side, attBtn, () => { updateRecentSchedules(); }, { compact: true });
                 }
                 recentEl.appendChild(row);
             });
@@ -1783,8 +1857,9 @@ function createDateTimeField() {
             const todayStr=_dk(new Date());
             for (let i=0;i<42;i++){ const cellDate = new Date(startDate); cellDate.setDate(cellDate.getDate()+i); const dateKey=_dk(cellDate); const isCurrentMonth = cellDate.getMonth()===month; const isToday = dateKey===todayStr; const cell = document.createElement('div'); cell.className = `cal-cell ${!isCurrentMonth? 'cal-cell-outside':''}`; const dayNum = document.createElement('span'); dayNum.className = `cal-day-num ${isToday ? 'cal-day-num-today' : ''}`; dayNum.textContent = cellDate.getDate(); cell.appendChild(dayNum);
                 const evs = eventsByDate[dateKey] || []; if (evs.length>0){ const _has=s=>evs.some(it=>it.status===s); const _top=_has('PENDING')?'PENDING':_has('CONFIRMED')?'CONFIRMED':_has('REJECTED')?'REJECTED':'CANCELLED'; const _sc='cal-badge-'+_top.toLowerCase(); const countBadge = document.createElement('span'); countBadge.className='cal-count-badge '+_sc; countBadge.textContent = (evs.length>99 ? '99+' : String(evs.length))+'건'; cell.appendChild(countBadge); }
-                // 날짜 클릭: 항상 일자별 목록 모달을 연다(빈 날짜 포함) — 일정 등록은 모달 내 "일정추가" 버튼으로
-                cell.onclick = ()=>{ openDayView(cellDate, evs); };
+                // 날짜 클릭: 일정이 정확히 1건이면 목록 없이 바로 상세로, 그 외(0건 포함)엔 일자별 목록 모달을 연다.
+                // 일정 등록은 목록 모달 내 "일정추가" 버튼으로.
+                cell.onclick = ()=>{ evs.length === 1 ? openEventDetail(evs[0]) : openDayView(cellDate, evs); };
                 grid.appendChild(cell);
             }
             cal.appendChild(grid);
@@ -1808,18 +1883,37 @@ async function loadSchedules(){ const cal = document.getElementById('calendarFul
           if (sorted.length===0){
             const em = document.createElement('div'); em.style.cssText='color:#94a3b8;font-size:14px;padding:8px 0;'; em.textContent='이 날짜에 등록된 일정이 없습니다.'; wrap.appendChild(em);
           } else {
+            const capElsByScheduleId = {};
+            // 명단 프리페치가 끝나는 대로, 호버 전이라도 실제 명단 기준으로 인원수 표시를 맞춘다
+            // (모달을 연 시점의 confirmedCount 캐시가 그 사이의 참가/취소 처리로 어긋나 있을 수 있음).
+            prefetchRoster(sorted.filter(it => it.status === 'CONFIRMED').map(it => it.id)).then(() => {
+              Object.keys(capElsByScheduleId).forEach(id => {
+                const cached = rosterCache[id];
+                const ref = capElsByScheduleId[id];
+                if (cached) ref.el.textContent = formatCapacity(countConfirmed(cached.list), ref.max);
+              });
+            });
             sorted.forEach(it=>{
               const row = document.createElement('div');
               row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px;border:1px solid #e2e8f0;border-left-color:'+(STATUS_BORDER_COLOR[it.status]||'#94a3b8')+';border-radius:8px;cursor:pointer;';
-              const capValue = it.maxAttendance > 0 ? `${it.confirmedCount||0}/${it.maxAttendance}명` : `${it.confirmedCount||0}명 / 제한없음`;
               const info = document.createElement('div'); info.style.cssText='min-width:0;flex:1;display:flex;flex-direction:column;gap:2px;';
               const title = document.createElement('div'); title.style.cssText='font-weight:700;font-size:14px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'; title.textContent = it.title||'일정';
               info.appendChild(title);
               info.appendChild(mkInfoLine('시작시간', it.start ? formatAmPmTime(it.start) : '-'));
               info.appendChild(mkInfoLine('모임장소', it.locationName || '-'));
-              info.appendChild(mkInfoLine('참가인원', capValue));
+              const capLine = mkInfoLine('참가인원', formatCapacity(it.confirmedCount||0, it.maxAttendance));
+              info.appendChild(capLine);
+              if (it.status === 'CONFIRMED' && isMember) {
+                const capValueEl = capLine.children[1];
+                capLine.style.position = 'relative';
+                capValueEl.style.cursor = 'pointer';
+                capValueEl.style.borderBottom = '1px dotted #94a3b8';
+                attachRosterPopover(capValueEl, capLine, it.id, it.maxAttendance);
+                capElsByScheduleId[it.id] = { el: capValueEl, max: it.maxAttendance };
+              }
               row.appendChild(info);
-              row.onclick = ()=>{ window.closeCommonModal && window.closeCommonModal(); openEventDetail(it); };
+              // 목록에서 들어온 상세 화면이므로 "닫기" 대신 "←"로 목록으로 되돌아갈 수 있게 한다.
+              row.onclick = ()=>{ openEventDetail(it, { onBack: () => openDayView(date, evs) }); };
 
               if (it.status === 'CONFIRMED' && isMember) {
                 const side = document.createElement('div');
@@ -1832,8 +1926,8 @@ async function loadSchedules(){ const cal = document.getElementById('calendarFul
                 side.appendChild(attBtn);
                 row.appendChild(side);
                 // 참가/취소 처리 후 이 날짜의 목록을 최신 calendarEvents 기준으로 다시 만들어 재오픈한다(오래된 evs 재사용 방지).
-                loadMyAttendance(it, side, attBtn, async () => {
-                  await getSchedules({ all: true, forceRefresh: true });
+                // loadMyAttendance가 성공 시 이미 일정 캐시를 갱신해두므로 여기선 최신 calendarEvents로 다시 그리기만 하면 된다.
+                loadMyAttendance(it, side, attBtn, () => {
                   const _dk2 = d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
                   const dayKey = _dk2(date);
                   const freshDayEvs = (calendarEvents || []).filter(e => e.start && _dk2(new Date(e.start)) === dayKey);

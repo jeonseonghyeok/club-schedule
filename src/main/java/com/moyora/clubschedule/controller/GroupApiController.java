@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -170,6 +171,31 @@ public class GroupApiController {
         return ResponseEntity.ok(result);
     }
 
+    // 참가인원 호버 팝오버 프리페치 — 여러 scheduleId의 명단을 한 번에 반환
+    @GetMapping("/{groupId}/attendance/roster")
+    public ResponseEntity<?> getRosterBulk(
+            @PathVariable Long groupId,
+            @RequestParam List<Long> scheduleIds,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (userDetails == null) return ResponseEntity.status(401).build();
+
+        Map<Long, List<ScheduleAttendanceVo>> byId =
+                scheduleAttendanceService.listActiveRosterByScheduleIds(groupId, scheduleIds);
+
+        Map<String, Object> result = new HashMap<>();
+        for (Map.Entry<Long, List<ScheduleAttendanceVo>> e : byId.entrySet()) {
+            List<Map<String,Object>> rows = new ArrayList<>();
+            for (ScheduleAttendanceVo v : e.getValue()) {
+                Map<String,Object> row = new HashMap<>();
+                row.put("displayName", v.getDisplayName());
+                row.put("status", v.getStatus().name());
+                rows.add(row);
+            }
+            result.put(String.valueOf(e.getKey()), rows);
+        }
+        return ResponseEntity.ok(result);
+    }
+
     // ── Schedules ─────────────────────────────────────────────────────────────
 
     @GetMapping("/{groupId}/schedules")
@@ -181,9 +207,28 @@ public class GroupApiController {
         Long userKey = userDetails != null ? userDetails.getUserKey() : null;
         List<GroupScheduleVo> schedules = groupScheduleService.listSchedules(
                 groupId, userKey, epochToLocalDateTime(from), epochToLocalDateTime(to));
+
+        List<Long> confirmedIds = schedules.stream()
+                .filter(s -> s.getStatus() == GroupScheduleVo.ScheduleStatus.CONFIRMED)
+                .map(GroupScheduleVo::getScheduleId)
+                .collect(Collectors.toList());
+
+        Map<Long, Integer> confirmedCountByScheduleId = Map.of();
+        Map<Long, String>  myStatusByScheduleId       = Map.of();
+        if (!confirmedIds.isEmpty()) {
+            confirmedCountByScheduleId = scheduleAttendanceMapper.countConfirmedByScheduleIds(confirmedIds).stream()
+                    .collect(Collectors.toMap(
+                            row -> ((Number) row.get("scheduleId")).longValue(),
+                            row -> ((Number) row.get("cnt")).intValue()));
+            if (userKey != null) {
+                myStatusByScheduleId = scheduleAttendanceMapper.selectMyLatestByScheduleIds(confirmedIds, userKey).stream()
+                        .collect(Collectors.toMap(ScheduleAttendanceVo::getScheduleId, v -> v.getStatus().name()));
+            }
+        }
+
         List<Map<String,Object>> result = new ArrayList<>();
         for (GroupScheduleVo s : schedules) {
-            result.add(toCalendarEvent(s));
+            result.add(toCalendarEvent(s, myStatusByScheduleId, confirmedCountByScheduleId));
         }
         return ResponseEntity.ok(result);
     }
@@ -226,7 +271,7 @@ public class GroupApiController {
         dto.setCreatedBy(operator);
 
         GroupScheduleVo created = groupScheduleService.createSchedule(dto);
-        return ResponseEntity.ok(toCalendarEvent(created));
+        return ResponseEntity.ok(toCalendarEvent(created, operator));
     }
 
     @PatchMapping("/{groupId}/schedules/{scheduleId}")
@@ -253,7 +298,7 @@ public class GroupApiController {
 
         try {
             GroupScheduleVo result = groupScheduleService.editSchedule(groupId, scheduleId, dto, operator);
-            return ResponseEntity.ok(toCalendarEvent(result));
+            return ResponseEntity.ok(toCalendarEvent(result, operator));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -267,7 +312,7 @@ public class GroupApiController {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
         if (operator == null) return ResponseEntity.status(401).build();
         GroupScheduleVo result = groupScheduleService.approveSchedule(groupId, scheduleId, operator);
-        return ResponseEntity.ok(toCalendarEvent(result));
+        return ResponseEntity.ok(toCalendarEvent(result, operator));
     }
 
     @PatchMapping("/{groupId}/schedules/{scheduleId}/reject")
@@ -278,7 +323,7 @@ public class GroupApiController {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
         if (operator == null) return ResponseEntity.status(401).build();
         GroupScheduleVo result = groupScheduleService.rejectSchedule(groupId, scheduleId, operator);
-        return ResponseEntity.ok(toCalendarEvent(result));
+        return ResponseEntity.ok(toCalendarEvent(result, operator));
     }
 
     @PatchMapping("/{groupId}/schedules/{scheduleId}/cancel")
@@ -289,12 +334,38 @@ public class GroupApiController {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
         if (operator == null) return ResponseEntity.status(401).build();
         GroupScheduleVo result = groupScheduleService.cancelSchedule(groupId, scheduleId, operator);
-        return ResponseEntity.ok(toCalendarEvent(result));
+        return ResponseEntity.ok(toCalendarEvent(result, operator));
     }
 
     // ── Shared helpers ────────────────────────────────────────────────────────
 
-    private Map<String,Object> toCalendarEvent(GroupScheduleVo s) {
+    /** 단건 액션(생성/수정/승인/거부/취소) 응답용 — 대상이 1건뿐이라 단건 조회로도 N+1이 아니다. */
+    private Map<String,Object> toCalendarEvent(GroupScheduleVo s, Long viewerUserKey) {
+        Map<String,Object> ev = baseCalendarEvent(s);
+        if (s.getStatus() == GroupScheduleVo.ScheduleStatus.CONFIRMED) {
+            ev.put("confirmedCount", scheduleAttendanceMapper.countConfirmedAttendees(s.getScheduleId()));
+            if (viewerUserKey != null) {
+                ScheduleAttendanceVo mine = scheduleAttendanceMapper.selectLatest(s.getScheduleId(), viewerUserKey);
+                ev.put("myAttendanceStatus", mine != null ? mine.getStatus().name() : null);
+            }
+        }
+        return ev;
+    }
+
+    /** 목록 조회 응답용 — 참가인원/내 참가여부를 스케줄 개수만큼 반복 조회하지 않도록 미리 벌크 조회한 맵을 사용한다. */
+    private Map<String,Object> toCalendarEvent(
+            GroupScheduleVo s,
+            Map<Long,String> myStatusByScheduleId,
+            Map<Long,Integer> confirmedCountByScheduleId) {
+        Map<String,Object> ev = baseCalendarEvent(s);
+        if (s.getStatus() == GroupScheduleVo.ScheduleStatus.CONFIRMED) {
+            ev.put("confirmedCount", confirmedCountByScheduleId.getOrDefault(s.getScheduleId(), 0));
+            ev.put("myAttendanceStatus", myStatusByScheduleId.get(s.getScheduleId()));
+        }
+        return ev;
+    }
+
+    private Map<String,Object> baseCalendarEvent(GroupScheduleVo s) {
         Map<String,Object> ev = new HashMap<>();
         ev.put("id",            s.getScheduleId());
         ev.put("title",         s.getTitle());
@@ -304,9 +375,6 @@ public class GroupApiController {
         ev.put("maxAttendance", s.getMaxAttendance());
         ev.put("createdBy",     s.getCreatedBy());
         ev.put("isCompleted",   s.isCompleted());
-        if (s.getStatus() == GroupScheduleVo.ScheduleStatus.CONFIRMED) {
-            ev.put("confirmedCount", scheduleAttendanceMapper.countConfirmedAttendees(s.getScheduleId()));
-        }
         ev.put("startAt", s.getStartAt().toString());
         ev.put("endAt",   s.getEndAt() != null ? s.getEndAt().toString() : null);
         ev.put("start",   toEpochMs(s.getStartAt()));

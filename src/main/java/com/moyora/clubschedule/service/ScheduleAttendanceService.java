@@ -2,6 +2,8 @@ package com.moyora.clubschedule.service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -95,6 +97,14 @@ public class ScheduleAttendanceService {
     public List<ScheduleAttendanceVo> listAttendees(Long groupId, Long scheduleId) {
         requireSchedule(scheduleId, groupId);
         return attendanceMapper.selectActiveList(scheduleId);
+    }
+
+    /** 여러 scheduleId의 참가자 명단을 한 번에 조회 — 참가인원 호버 팝오버 프리페치용. */
+    @Transactional(readOnly = true)
+    public Map<Long, List<ScheduleAttendanceVo>> listActiveRosterByScheduleIds(Long groupId, List<Long> scheduleIds) {
+        if (scheduleIds == null || scheduleIds.isEmpty()) return Map.of();
+        return attendanceMapper.selectActiveListByScheduleIds(groupId, scheduleIds).stream()
+                .collect(Collectors.groupingBy(ScheduleAttendanceVo::getScheduleId));
     }
 
     // ── 참가 이력(신청/승인/거부/취소) ────────────────────────────────────────────

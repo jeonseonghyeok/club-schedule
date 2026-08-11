@@ -49,6 +49,7 @@ CLI(Gradle Wrapper)로 구동하려면:
 - `build.gradle`을 최근에 변경했다면(`-parameters` 플래그 등) Eclipse에서 **우클릭 → Gradle → Refresh Gradle Project**를 먼저 해야 반영된다. `gradlew` CLI 실행은 매번 새로 컴파일하므로 이 문제와 무관하다.
 - 기동 로그에서 `Started MoyoraClubScheduleApplication in N seconds`가 뜨면 정상 기동이다.
 - 실패 시 `APPLICATION FAILED TO START`, `Web server failed to start`(포트 충돌), `Error creating bean`(주로 DB 연결 실패 — 터널이 안 열려 있는 경우가 대부분) 메시지를 확인한다.
+- ⚠️ **템플릿/정적 리소스(`src/main/resources/templates`, `static`)를 수정한 뒤에는 `bootRun`을 껐다가 다시 켜야 반영된다.** `spring.thymeleaf.cache=false`는 파싱 결과 캐시만 끌 뿐, 서버는 기동 시점에 `build/resources`로 복사된 스냅샷을 계속 서빙한다. 실행 중인 프로세스를 그대로 두고 `.html`/`.js`만 고치면 브라우저를 아무리 새로고침해도 예전 내용이 나온다.
 
 ### 3. 접속 확인
 
@@ -64,6 +65,7 @@ CLI(Gradle Wrapper)로 구동하려면:
 | DB는 붙는데 데이터가 이상함 | 3306(=`mariadb-prod`)으로 잘못 터널링 | `RemotePort`가 반드시 `3307`인지 확인 (3306 아님) |
 | 컨트롤러 파라미터 바인딩 500 오류 | `build.gradle`의 `-parameters` 플래그가 컴파일에 미반영 | Eclipse: Gradle Refresh 수행 / CLI(`gradlew`): 재빌드하면 자동 반영 |
 | 포트 8081 already in use | 기존 서버 프로세스가 남아 있음 | 기존 프로세스 종료 후 재기동 |
+| 화면(html/js)을 고쳤는데 브라우저에 반영 안 됨 | `bootRun` 프로세스가 기동 시점 리소스 스냅샷을 계속 서빙 중 | 서버 재시작(2단계 다시 실행) |
 
 ## 관련 문서
 

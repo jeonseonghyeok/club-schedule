@@ -7,6 +7,7 @@
 ```
 ~/workspace/club-schedule/            git 저장소 (모노레포)
 ├── backend/                          Spring Boot (gradlew, Dockerfile)
+├── frontend/                         Vite + React + TS (npm, Dockerfile, nginx.conf)
 ├── deploy/compose.yml                배포 정의 (dev/prod 공통)
 └── scripts/bootrun-dev.sh            호스트에서 백엔드 직접 실행
 
@@ -16,8 +17,9 @@
 ```
 
 ```
-브라우저 ─► NPM(443) ─► club-schedule-api-dev:8081 ─► mariadb-dev:3306     (배포본, CI)
-개발자   ─► 127.0.0.1:8081 (bootRun) ─────────────► 127.0.0.1:3307        (작업본)
+브라우저 ─► NPM(443) ─┬─ /api/**, (미전환 화면) → club-schedule-api-dev:8081 ─► mariadb-dev:3306
+                      └─ (React 로 전환한 화면)  → club-schedule-web-dev:80        (배포본, CI)
+개발자   ─► 127.0.0.1:5173 (vite) ─ /api ─► 127.0.0.1:8081 (bootRun) ─► 127.0.0.1:3307   (작업본)
 ```
 
 - 배포본 컨테이너는 호스트 포트를 열지 않는다. 호스트 8081 은 bootRun 전용이다.
@@ -37,6 +39,17 @@ scripts/bootrun-dev.sh
 - `Started MoyoraClubScheduleApplication` 이 뜨면 정상. 브라우저에서 보려면 SSH 터널: `ssh -L 8081:127.0.0.1:8081 ubuntu@<서버>` → `http://localhost:8081`
 - ⚠️ 템플릿/정적 리소스(`backend/src/main/resources/templates`, `static`)를 고친 뒤에는 bootRun 을 재시작해야 반영된다(기동 시점 스냅샷을 서빙).
 
+## 프론트엔드 실행
+
+```bash
+scripts/bootrun-dev.sh &          # 백엔드 (127.0.0.1:8081)
+cd frontend && npm run dev        # http://127.0.0.1:5173, /api 는 8081 로 프록시
+```
+
+- 브라우저에서 보려면 SSH 터널: `ssh -L 5173:127.0.0.1:5173 ubuntu@<서버>` → `http://localhost:5173`
+- 같은 출처로 프록시하므로 `AUTH_TOKEN` 쿠키 인증이 그대로 동작한다. 로그인은 `POST /api/login/test`.
+- 규약: CLAUDE.md "프론트엔드" 절.
+
 ## 빌드·테스트
 
 ```bash
@@ -44,14 +57,18 @@ cd backend
 ./gradlew bootJar           # 실행 jar
 ./gradlew test              # contextLoads 는 DB/환경변수 없이는 실패 (단위 테스트만 의미 있음)
 docker build -t club-schedule:local .
+
+cd frontend
+npm run typecheck && npm test && npm run build
+docker build -t club-schedule-web:local .
 ```
 
 ## 배포
 
 `master` push → GitHub Actions(`.github/workflows/deploy.yml`):
-1. `backend/` 를 linux/arm64 이미지로 빌드해 Docker Hub 에 push (`latest`, 커밋 SHA)
+1. `backend/`, `frontend/` 를 linux/arm64 이미지로 빌드해 Docker Hub 에 push (`club-schedule`, `club-schedule-web` × `latest`, 커밋 SHA)
 2. `deploy/compose.yml` 을 서버 `~/services/club-schedule/` 로 복사
-3. `APP_ENV=dev docker compose up -d` → 컨테이너 `club-schedule-api-dev`
+3. `APP_ENV=dev docker compose up -d` → 컨테이너 `club-schedule-api-dev`, `club-schedule-web-dev`
 
 수동 재배포/롤백:
 

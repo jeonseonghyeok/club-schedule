@@ -5,14 +5,15 @@
 
 ## 기술 스택
 - **Backend**: Spring Boot 3.4.7, Java 17, MyBatis, MariaDB
-- **Frontend**: Thymeleaf, 순수 JS (별도 프레임워크 없음)
+- **Frontend**: `frontend/` — React 18 + TS + Vite, TanStack Router/Query, Zustand, Tailwind v4 (Thymeleaf 화면에서 순차 이전 중)
 - **보안**: Spring Security + JWT (AUTH_TOKEN 쿠키)
 - **빌드**: Gradle (`backend/`), 개발은 서버에서 직접 (`docs/DEV_SERVER.md`)
 - **서버 포트**: 8081 (컨테이너 내부 전용, 외부 노출은 NPM)
 
 ## 저장소 구조 (모노레포)
 ```
-backend/     Spring Boot 앱 (gradlew, Dockerfile) — 아래 경로는 모두 backend/ 기준
+backend/     Spring Boot 앱 (gradlew, Dockerfile) — 아래 백엔드 경로는 모두 backend/ 기준
+frontend/    React SPA (npm, Dockerfile, nginx.conf)
 deploy/      compose.yml(배포 정의), .env.example
 docs/        설계·운영 문서
 scripts/     bootrun-dev.sh 등 개발 스크립트
@@ -62,6 +63,15 @@ com.moyora.clubschedule
   - `9900000000009` ~ `9900000000018`: 닉네임 "모임매니저01" ~ "모임매니저10" — 위와 동일하게 라벨일 뿐이며, 실제 MANAGER 권한은 그룹별로 `group_member.role`을 MANAGER로 지정해야 함
   - `9900000000019` ~ `9900000000048`: 닉네임 "일반멤버01" ~ "일반멤버30"인 일반 테스트 계정
 - 테스트 스크립트: `scripts/test-join-requests.ps1`
+
+## 프론트엔드
+- 규약은 `frontend-conventions` / `react-component` / `data-layer` 스킬을 따른다.
+- 구조: `src/routes/`(파일 기반 라우트, 얇게) · `src/components/<Feature>|common|layout/` · `src/modules/api/<domain>/`(axios) ·
+  `src/modules/stores/server/<domain>/`(queries·mutations) · `src/modules/stores/client/`(`createStore`) · `src/types/`
+- API 는 같은 출처 `/api/**` 만 호출한다(쿠키 인증). 에러 바디는 `ServerError {error, message}`.
+- React Compiler 활성 — `useMemo`/`useCallback`/`memo` 를 손수 추가하지 않는다.
+- `src/routeTree.gen.ts` 는 라우터 플러그인이 생성한다(커밋 대상, 직접 수정·포맷 금지).
+- `.npmrc` 의 `legacy-peer-deps` 때문에 피어 의존성이 자동 설치되지 않는다 — 필요하면 직접 추가한다.
 
 ## 주요 도메인 구분
 | 도메인 | 설명 |

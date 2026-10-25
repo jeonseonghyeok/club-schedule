@@ -27,6 +27,7 @@
 - 날짜/시간 문자열(`startAt`, `endAt` 등)은 **ISO 8601** (`yyyy-MM-ddTHH:mm:ss`) 형식입니다.
 - 인증은 JWT 기반이며, 쿠키(`AUTH_TOKEN`) 또는 Authorization 헤더로 전달합니다.
 - CSRF 보호는 현재 비활성화 상태입니다.
+- **모든 REST API는 `/api/**` 아래에 있습니다.** `/api` 가 아닌 경로(`/`, `/groups/{groupId}`, `/admin`, `/login/kakao/login_callback`, `/login/test`)는 화면입니다.
 
 ---
 
@@ -62,7 +63,7 @@
 
 > **권한**: `ADMIN` 역할 필요. 미충족 시 403 반환.
 
-### GET /admin/api/users
+### GET /api/admin/users
 
 회원 목록 조회 (검색·페이징 지원).
 
@@ -76,17 +77,17 @@
 
 **응답**: `PagingResponse<UserVo>`
 
-### GET /admin/api/groups
+### GET /api/admin/groups
 
-그룹 목록 조회. 파라미터·응답 구조는 `/admin/api/users`와 동일. 응답 타입: `PagingResponse<GroupVo>`.
+그룹 목록 조회. 파라미터·응답 구조는 `/api/admin/users`와 동일. 응답 타입: `PagingResponse<GroupVo>`.
 
-### GET /admin/api/group-joins
+### GET /api/admin/group-joins
 
 가입 요청 목록 조회. 응답 타입: `PagingResponse<GroupJoinRequestVo>`.
 
 > `page` 미전달 시 전체 목록을 서버에서 슬라이스하는 fallback 방식으로 동작합니다.
 
-### GET /admin/api/group-requests
+### GET /api/admin/group-requests
 
 모임 **생성 신청**(`group_create_request`) 목록 조회 (상태·모임명 필터, 페이징). 가입 요청(`group_join_request`)과는 별개 도메인이므로 혼동 주의.
 
@@ -101,13 +102,13 @@
 
 **응답**: `PagingResponse<Object>` (신청 항목: `requestId`, `groupName`, `userKey`, `requestedAt`, `status`)
 
-### POST /admin/api/group-requests/{requestId}/approve
+### POST /api/admin/group-requests/{requestId}/approve
 
 모임 생성 신청 승인. 승인 시 `group` 레코드가 생성된다.
 
 **응답**: `200 OK` — `{"groupId": Long}` / `409 Conflict` — `{"error": String}` (이미 처리된 신청 등)
 
-### POST /admin/api/group-requests/{requestId}/reject
+### POST /api/admin/group-requests/{requestId}/reject
 
 모임 생성 신청 거부.
 
@@ -123,7 +124,7 @@
 
 ## 그룹 API
 
-### GET /groups/recommended
+### GET /api/groups/recommended
 
 메인화면 "모임 검색" 섹션용 엔드포인트. `q` 유무에 따라 동작이 분기된다.
 
@@ -139,7 +140,7 @@
 
 > 향후 검색 엔진(ElasticSearch 등) 도입 시 `GroupService.searchByName()` 내부 구현만 교체하면 되도록 설계됨 (API·프론트 무변경).
 
-### GET /groups/me
+### GET /api/groups/me
 
 로그인 사용자가 속한 그룹 목록 조회.
 
@@ -147,7 +148,7 @@
 
 **응답**: `200 OK` — `GroupVo` 배열
 
-### PATCH /groups/{groupId}
+### PATCH /api/groups/{groupId}
 
 그룹 정보 수정 (이름·설명·정원·자동승인 여부·일정 등록 정책).
 
@@ -167,9 +168,9 @@
 
 ## 모임 생성 신청 API
 
-> `group_create_request` 도메인 (그룹 **가입** 요청과는 별개, [CLAUDE.md](../CLAUDE.md#주요-도메인-구분) 참고). 사용자가 신규 모임 생성을 신청하는 셀프서비스 API이며, 실제 승인/거부 처리는 관리자 패널([관리자 API](#관리자-api)의 `/admin/api/group-requests/*`)에서 이루어진다.
+> `group_create_request` 도메인 (그룹 **가입** 요청과는 별개, [CLAUDE.md](../CLAUDE.md#주요-도메인-구분) 참고). 사용자가 신규 모임 생성을 신청하는 셀프서비스 API이며, 실제 승인/거부 처리는 관리자 패널([관리자 API](#관리자-api)의 `/api/admin/group-requests/*`)에서 이루어진다.
 
-### POST /group-requests
+### POST /api/group-requests
 
 모임 생성 신청 등록.
 
@@ -179,17 +180,17 @@
 
 **응답**: `200 OK` — `{"requestId": Long}` / `409 Conflict` (신청 불가 상태)
 
-### GET /group-requests
+### GET /api/group-requests
 
 내 신청 현황 목록 조회.
 
-### PATCH /group-requests/{requestId}/cancel
+### PATCH /api/group-requests/{requestId}/cancel
 
 본인 신청 취소.
 
 **응답**: `200 OK` / `400 Bad Request` (신청 없음 또는 본인 신청 아님)
 
-> ⚠️ **알려진 이슈**: 이 컨트롤러에도 `POST /group-requests/{requestId}/approve`, `POST /group-requests/{requestId}/reject`가 정의되어 있으나 `@PreAuthorize("hasRole('ROLE_ADMIN')")`로 선언되어 있어 실제로는 `ROLE_ROLE_ADMIN` 권한을 요구한다(Spring `hasRole()`이 `ROLE_` 접두사를 자동으로 붙이기 때문). 실제 관리자 권한(`ROLE_ADMIN`)으로는 항상 403이 발생하며, 프론트엔드 어디에서도 호출하지 않는 죽은 코드다. 승인/거부는 반드시 `/admin/api/group-requests/*`를 사용할 것. 상세: [ROADMAP.md — 기술 부채](ROADMAP.md#기술-부채).
+> ⚠️ **알려진 이슈**: 이 컨트롤러에도 `POST /api/group-requests/{requestId}/approve`, `POST /api/group-requests/{requestId}/reject`가 정의되어 있으나 `@PreAuthorize("hasRole('ROLE_ADMIN')")`로 선언되어 있어 실제로는 `ROLE_ROLE_ADMIN` 권한을 요구한다(Spring `hasRole()`이 `ROLE_` 접두사를 자동으로 붙이기 때문). 실제 관리자 권한(`ROLE_ADMIN`)으로는 항상 403이 발생하며, 프론트엔드 어디에서도 호출하지 않는 죽은 코드다. 승인/거부는 반드시 `/api/admin/group-requests/*`를 사용할 것. 상세: [ROADMAP.md — 기술 부채](ROADMAP.md#기술-부채).
 
 ---
 
@@ -197,7 +198,7 @@
 
 > `group_join_request` 도메인 (모임 **생성** 신청과는 별개). 기존 그룹에 멤버로 가입 신청하는 API.
 
-### POST /groups/{groupId}/join-requests
+### POST /api/groups/{groupId}/join-requests
 
 가입 신청. 이미 멤버이거나, PENDING 신청이 이미 있거나, 이 그룹에서 차단된 사용자면
 거부된다(차단 판정 규칙: [DATABASE.md — 회원 상태 및 차단(벤) 규칙](DATABASE.md#회원-상태-및-차단벤-규칙)).
@@ -206,21 +207,21 @@
 
 **응답**: `200 OK` — `{"requestId": Long}` / `403 Forbidden` — 차단된 사용자
 
-### DELETE /groups/{groupId}/join-requests/{requestId}
+### DELETE /api/groups/{groupId}/join-requests/{requestId}
 
 본인 가입 신청 취소.
 
 **응답**: `200 OK` / `400 Bad Request`
 
-### GET /groups/{groupId}/join-requests/me
+### GET /api/groups/{groupId}/join-requests/me
 
 본인의 가입 신청 목록 조회.
 
-### GET /groups/joins/pending/{groupId}
+### GET /api/groups/joins/pending/{groupId}
 
 그룹의 대기 중(PENDING) 가입 신청 목록 조회 (승인 처리용).
 
-### PATCH /groups/joins/{requestId}/approve
+### PATCH /api/groups/joins/{requestId}/approve
 
 가입 신청 승인.
 
@@ -228,7 +229,7 @@
 
 **응답**: `200 OK` — `{"ok": true}` / `400 Bad Request` — `{"error": String}`
 
-### PATCH /groups/joins/{requestId}/reject
+### PATCH /api/groups/joins/{requestId}/reject
 
 가입 신청 거부.
 

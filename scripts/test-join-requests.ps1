@@ -6,7 +6,7 @@ function Get-AuthToken {
     param([string]$BaseUrl, [long]$KakaoApiId)
     $body = '{"kakaoApiId":' + $KakaoApiId + '}'
     try {
-        $res = Invoke-WebRequest -Uri "$BaseUrl/login/test" `
+        $res = Invoke-WebRequest -Uri "$BaseUrl/api/login/test" `
                     -Method Post `
                     -ContentType "application/json" `
                     -Body $body `
@@ -51,7 +51,7 @@ for ($i = 1; $i -le 20; $i++) {
     $bodyJson = '{"groupName":"' + $username + ' group","description":"' + $username + ' test request"}'
 
     try {
-        $res  = Invoke-WebRequest -Uri "$BaseUrl/group-requests" `
+        $res  = Invoke-WebRequest -Uri "$BaseUrl/api/group-requests" `
                     -Method Post `
                     -ContentType "application/json" `
                     -Body $bodyJson `

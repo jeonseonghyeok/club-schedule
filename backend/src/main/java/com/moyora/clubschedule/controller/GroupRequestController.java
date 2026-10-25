@@ -18,7 +18,7 @@ import com.moyora.clubschedule.vo.GroupRequest;
 import com.moyora.clubschedule.vo.GroupRequestDto;
 
 @RestController
-@RequestMapping("/group-requests")
+@RequestMapping("/api/group-requests")
 public class GroupRequestController {
 	 private static final Logger log = LoggerFactory.getLogger(GroupRequestController.class);
 

@@ -25,7 +25,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/admin/api")
+@RequestMapping("/api/admin")
 public class AdminApiController {
 
     @Autowired

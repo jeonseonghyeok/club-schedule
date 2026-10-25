@@ -24,7 +24,6 @@ import jakarta.servlet.http.HttpServletRequest;
 
 
 @Controller
-@RequestMapping("/login")
 public class LoginController {
     @Autowired
     private KakaoTokenUtil kakaoTokenUtil;
@@ -34,7 +33,7 @@ public class LoginController {
     /**
      * 로그인 콜백 페이지 뷰 (GET)
      */
-    @GetMapping("/kakao/login_callback")
+    @GetMapping("/login/kakao/login_callback")
     public String loginCallback(Model model) {
         // 뷰에 전달할 추가 데이터가 필요하면 model.addAttribute(...)로 삽입
         return "login_callback";
@@ -44,7 +43,7 @@ public class LoginController {
      * 카카오 인증을 통한 로그인 페이지
      * 카카오API를 통해 토큰을 발급하고 반환한다.
      */
-    @PostMapping("/kakao")
+    @PostMapping("/api/login/kakao")
 	public ResponseEntity<?> kakaoCallback(@RequestBody Map<String, String> body, HttpServletRequest request) {
 
         String code = body.get("code");

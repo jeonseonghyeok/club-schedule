@@ -18,7 +18,7 @@ import com.moyora.clubschedule.vo.GroupVo;
 import com.moyora.clubschedule.vo.UserVo;
 
 @RestController
-@RequestMapping("/groups")
+@RequestMapping("/api/groups")
 public class GroupController {
 
     @Autowired

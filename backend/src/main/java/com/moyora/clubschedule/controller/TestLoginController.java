@@ -9,7 +9,6 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.moyora.clubschedule.mapper.UserMapper;
@@ -23,7 +22,6 @@ import lombok.RequiredArgsConstructor;
  * 운영 환경에서는 test.auth.secret 을 비워두어 모든 요청이 503을 반환하도록 한다.
  */
 @Controller
-@RequestMapping("/login/test")
 @RequiredArgsConstructor
 public class TestLoginController {
 
@@ -31,7 +29,7 @@ public class TestLoginController {
     private final UserMapper   userMapper;
 
     /** 수동 로그인용 UI 페이지 */
-    @GetMapping
+    @GetMapping("/login/test")
     public String testLoginPage(Model model) {
         if (!testAuthUtil.isEnabled()) return "redirect:/";
         model.addAttribute("testAccounts", userMapper.selectTestAccounts());
@@ -44,7 +42,7 @@ public class TestLoginController {
      * 닉네임은 테스트 중 임의로 바뀔 수 있어 유니크하지 않으므로 kakaoApiId로 조회한다.
      * 성공 시 AUTH_TOKEN 쿠키를 설정하고 {userKey, nickname} 반환.
      */
-    @PostMapping
+    @PostMapping("/api/login/test")
     @ResponseBody
     public ResponseEntity<?> login(@RequestBody Map<String, Object> body) {
         if (!testAuthUtil.isEnabled()) {

@@ -13,7 +13,7 @@ import com.moyora.clubschedule.service.GroupJoinRequestService;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/groups/joins")
+@RequestMapping("/api/groups/joins")
 public class GroupJoinApprovalController {
 
     @Autowired

@@ -36,22 +36,22 @@
         usersPanel: {
             formSelector: '#users-search-form',
             pagingSelector: '.paging[data-panel-id="usersPanel"]',
-            endpoint: '/admin/api/users'
+            endpoint: '/api/admin/users'
         },
         groupsPanel: {
             formSelector: '#groups-search-form',
             pagingSelector: '.paging[data-panel-id="groupsPanel"]',
-            endpoint: '/admin/api/groups'
+            endpoint: '/api/admin/groups'
         },
         groupRequestsPanel: {
             formSelector: '#gr-search-form',
             pagingSelector: '.paging[data-panel-id="groupRequestsPanel"]',
-            endpoint: '/admin/api/group-requests'
+            endpoint: '/api/admin/group-requests'
         },
         groupJoinsPanel: {
             formSelector: '#gj-search-form',
             pagingSelector: '.paging[data-panel-id="groupJoinsPanel"]',
-            endpoint: '/admin/api/group-joins'
+            endpoint: '/api/admin/group-joins'
         }
     };
 

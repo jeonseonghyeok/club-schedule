@@ -17,8 +17,8 @@
 ```
 
 ```
-브라우저 ─► NPM(443) ─┬─ /api/**, (미전환 화면) → club-schedule-api-dev:8081 ─► mariadb-dev:3306
-                      └─ (React 로 전환한 화면)  → club-schedule-web-dev:80        (배포본, CI)
+브라우저 ─► NPM(443) ─┬─ 기본(React 화면)                 → club-schedule-web-dev:80        (배포본, CI)
+                      └─ deploy/api-routes(/api/, 미전환 화면) → club-schedule-api-dev:8081 ─► mariadb-dev:3306
 개발자   ─► 127.0.0.1:5173 (vite) ─ /api ─► 127.0.0.1:8081 (bootRun) ─► 127.0.0.1:3307   (작업본)
 ```
 
@@ -69,14 +69,15 @@ docker build -t club-schedule-web:local .
 1. `backend/`, `frontend/` 를 linux/arm64 이미지로 빌드해 Docker Hub 에 push (`club-schedule`, `club-schedule-web` × `latest`, 커밋 SHA)
 2. `deploy/compose.yml` 을 서버 `~/services/club-schedule/` 로 복사
 3. `APP_ENV=dev docker compose up -d` → 컨테이너 `club-schedule-api-dev`, `club-schedule-web-dev`
-4. `deploy/web-routes` 의 경로를 NPM custom location 으로 web 컨테이너에 연결 (`npm-site locations`)
+4. NPM: `deploy/api-routes` 의 경로를 api 컨테이너로(custom location), 나머지(기본)는 web 컨테이너로 (`npm-site locations` → `npm-site forward`)
 
 ### 화면을 React 로 옮길 때
 
 1. `frontend/src/routes/` 에 같은 URL 의 라우트를 만든다(기존 링크·카카오 redirect URI 를 그대로 쓰기 위해).
 2. 아직 Thymeleaf 인 화면으로 이동할 때는 `navigateToServerPage()`(전체 페이지 이동)를 쓴다.
-3. `deploy/web-routes` 에 경로를 추가한다 → master 배포 시 NPM 이 그 경로를 web 으로 보낸다.
-4. 롤백: 경로를 지우고 재배포하거나, 서버에서 `npm-site locations dev.crewhub.store club-schedule-web-dev 80 <남길 경로…>`
+3. `deploy/api-routes` 에서 그 화면의 Thymeleaf 경로를 지운다 → master 배포 시 NPM 이 그 경로를 web 으로 보낸다.
+4. 롤백(전부 Thymeleaf 로): 서버에서 `npm-site forward dev.crewhub.store club-schedule-api-dev 8081 && npm-site locations dev.crewhub.store x 0`
+   (특정 경로만 되돌리려면 api-routes 에 다시 넣고 재배포)
 
 수동 재배포/롤백:
 

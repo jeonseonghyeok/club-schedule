@@ -6,7 +6,14 @@ export interface AlertModal {
 	readonly message: string;
 }
 
-export type Modal = AlertModal;
+export interface ConfirmModal {
+	readonly type: typeof ModalType.CONFIRM;
+	readonly message: string;
+	readonly confirmLabel: string;
+	readonly onConfirm: () => void;
+}
+
+export type Modal = AlertModal | ConfirmModal;
 
 export interface ModalStore {
 	modal: Modal | null;

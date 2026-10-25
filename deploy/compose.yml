@@ -4,8 +4,8 @@
 #   APP_ENV=dev docker compose -p club-schedule-dev up -d
 #
 # - 호스트 포트를 열지 않는다. 외부 노출은 NPM Proxy Host 가 담당한다.
-#     /api/**  → club-schedule-api-<env>:8081
-#     그 외     → club-schedule-web-<env>:80   (React 로 옮긴 화면부터 순차 전환, docs/DEV_SERVER.md)
+#     기본      → club-schedule-web-<env>:80   (React SPA)
+#     api-routes → club-schedule-api-<env>:8081 (/api/ + 아직 Thymeleaf 인 화면, docs/DEV_SERVER.md)
 # - 이미지 태그는 IMAGE_TAG 로 고정할 수 있다(기본 latest, CI 는 커밋 SHA 를 넘긴다).
 name: club-schedule-${APP_ENV:?APP_ENV=dev|prod}
 

@@ -62,7 +62,7 @@
 ## 로그인 API
 
 ### POST /api/login/kakao
-카카오 인가 코드로 로그인(미가입 시 자동 가입). 성공 시 `AUTH_TOKEN` httpOnly 쿠키를 설정한다.
+카카오 인가 코드로 로그인(미가입 시 자동 가입). 성공 시 `AUTH_TOKEN` httpOnly 쿠키를 설정하고 `{"returnPath": "/"}` 를 반환한다(카카오 토큰은 본문에 싣지 않는다).
 - Body: `{"code": "...", "redirectUri": "https://<host>/login/kakao/login_callback", "returnTo": "/"}` — `redirectUri` 는 인가 요청 때와 같아야 하며 경로가 `KAKAO_REDIRECT_WHITELIST` 에 있어야 한다.
 - 에러: `403` redirect_uri 불허 · `502` 카카오 토큰 발급 실패 · `500` 자동 가입 실패 — 모두 `{error, message}`.
 

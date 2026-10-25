@@ -158,10 +158,9 @@ public class LoginController {
         } catch (Exception e) {
             if (finalReturn == null || finalReturn.isBlank()) finalReturn = "/";
         }
-        kakaoToken.put("return_path", finalReturn);
-
-        // return the response with cookie (if set) and return_path
-        return respBuilder.body(kakaoToken);
+        // 카카오 토큰(access/refresh/id)은 httpOnly 쿠키로만 전달하고 응답 본문에는 싣지 않는다
+        // (본문에 실으면 스크립트에서 읽을 수 있어 httpOnly 의 의미가 없어진다).
+        return respBuilder.body(Map.of("returnPath", finalReturn));
 
     }
     

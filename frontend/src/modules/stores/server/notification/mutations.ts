@@ -24,7 +24,7 @@ export const useReadAllNotifications = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: updateAllNotificationsRead,
+		mutationFn: () => updateAllNotificationsRead(),
 		onSuccess: () => {
 			queryClient.setQueryData(notificationQueries.recent().queryKey, prev =>
 				prev?.map(item => ({ ...item, isRead: true })),

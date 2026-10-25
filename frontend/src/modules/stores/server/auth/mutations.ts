@@ -3,6 +3,7 @@ import { ModalType } from '@/constants';
 import { createKakaoLogin, createTestLogin } from '@/modules/api/auth/login';
 import { useModalStore } from '@/modules/stores/client/modal';
 import { getErrorMessage } from '@/utils';
+import type { KakaoLoginRequest } from '@/types/Auth';
 import { authQueries } from './queries';
 
 // 로그인 응답에는 /api/auth/me 의 전체 정보(roles 등)가 없어 캐시를 직접 채울 수 없다.
@@ -14,7 +15,7 @@ export const useCreateTestLogin = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: createTestLogin,
+		mutationFn: (kakaoApiId: number) => createTestLogin(kakaoApiId),
 		onSuccess: () => queryClient.removeQueries(AUTH_QUERY_FILTER),
 		onError: error => {
 			openModal({ type: ModalType.ALERT, message: getErrorMessage(error.response?.data) });
@@ -27,7 +28,7 @@ export const useCreateKakaoLogin = () => {
 	const queryClient = useQueryClient();
 
 	return useMutation({
-		mutationFn: createKakaoLogin,
+		mutationFn: (request: KakaoLoginRequest) => createKakaoLogin(request),
 		onSuccess: () => queryClient.removeQueries(AUTH_QUERY_FILTER),
 	});
 };

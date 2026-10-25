@@ -1,12 +1,13 @@
 import type { ButtonHTMLAttributes } from 'react';
 import { cn } from '@/utils';
 
-export const BUTTON_VARIANT = { PRIMARY: 'primary', SECONDARY: 'secondary', KAKAO: 'kakao' } as const;
+export const BUTTON_VARIANT = { PRIMARY: 'primary', SECONDARY: 'secondary', DANGER: 'danger', KAKAO: 'kakao' } as const;
 export type ButtonVariant = (typeof BUTTON_VARIANT)[keyof typeof BUTTON_VARIANT];
 
 const VARIANT_CLASS = {
 	primary: 'bg-gray-900 text-white hover:bg-gray-700',
 	secondary: 'bg-white text-gray-800 ring-1 ring-gray-300 hover:bg-gray-50',
+	danger: 'bg-red-700 text-white hover:bg-red-800',
 	kakao: 'bg-yellow-300 text-gray-900 hover:bg-yellow-400',
 } as const satisfies Record<ButtonVariant, string>;
 

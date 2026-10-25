@@ -7,10 +7,20 @@ on:
 
 env:
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/club-schedule
+  WEB_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/club-schedule-web
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: api
+            context: ./backend
+            image: club-schedule
+          - name: web
+            context: ./frontend
+            image: club-schedule-web
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -27,17 +37,17 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push image
+      - name: Build and push image (${{ matrix.name }})
         uses: docker/build-push-action@v6
         with:
-          context: ./backend
+          context: ${{ matrix.context }}
           platforms: linux/arm64
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:latest
+            ${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.image }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.name }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.name }}
 
   deploy:
     needs: build-and-push
@@ -67,7 +77,7 @@ jobs:
           script: |
             set -e
             cd ~/services/club-schedule
-            export APP_ENV=dev IMAGE=${{ env.IMAGE_NAME }} IMAGE_TAG=${{ github.sha }}
+            export APP_ENV=dev IMAGE=${{ env.IMAGE_NAME }} WEB_IMAGE=${{ env.WEB_IMAGE_NAME }} IMAGE_TAG=${{ github.sha }}
             docker compose pull
             docker compose up -d
             # 구 방식(docker run, 호스트 8081 publish) 컨테이너 정리

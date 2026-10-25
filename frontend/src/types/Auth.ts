@@ -8,8 +8,11 @@ export interface GrantedAuthority {
 /** GET /api/auth/me — 인증된 요청은 항상 Spring Security 컨텍스트에서 응답한다 */
 export interface AuthMe {
 	readonly userKey: number;
+	readonly nickname: string | null;
 	readonly roles: readonly GrantedAuthority[];
 	readonly isAdmin: boolean;
+	/** 즐겨찾기(우선) 모임 — 있으면 메인 진입 시 그 모임 화면으로 이동한다 */
+	readonly favoriteGroupId: number | null;
 }
 
 /** GET /api/login/test/accounts — 개발 환경 전용 테스트 계정 */

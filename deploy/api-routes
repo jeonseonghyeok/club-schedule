@@ -1,0 +1,11 @@
+# 백엔드(api 컨테이너, Spring Boot)가 응답할 경로 — NPM custom location 으로 등록된다(prefix 일치).
+# 여기에 없는 경로는 기본 대상인 web 컨테이너(React SPA)가 응답한다.
+# 화면을 React 로 옮길 때마다 해당 Thymeleaf 경로를 지우고, 배포 시 CI 가 npm-site 로 반영한다.
+# 화면 이전이 끝나면 /api/ 만 남는다.
+/api/
+# --- 아직 Thymeleaf 인 화면과 그 정적 리소스 ---
+/groups/
+/admin
+/sample/
+/css/
+/js/

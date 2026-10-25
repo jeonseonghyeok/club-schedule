@@ -61,6 +61,11 @@
 
 ## 로그인 API
 
+### GET /api/auth/me
+로그인 사용자 정보. 비로그인은 `401`.
+`{"userKey": 1000108, "nickname": "모임리더01", "roles": [{"authority": "ROLE_USER"}], "isAdmin": false, "favoriteGroupId": 4 | null}`
+— `favoriteGroupId` 가 있으면 메인 화면이 그 모임으로 이동한다(`/?list=1` 이면 이동하지 않음).
+
 ### POST /api/login/kakao
 카카오 인가 코드로 로그인(미가입 시 자동 가입). 성공 시 `AUTH_TOKEN` httpOnly 쿠키를 설정하고 `{"returnPath": "/"}` 를 반환한다(카카오 토큰은 본문에 싣지 않는다).
 - Body: `{"code": "...", "redirectUri": "https://<host>/login/kakao/login_callback", "returnTo": "/"}` — `redirectUri` 는 인가 요청 때와 같아야 하며 경로가 `KAKAO_REDIRECT_WHITELIST` 에 있어야 한다.

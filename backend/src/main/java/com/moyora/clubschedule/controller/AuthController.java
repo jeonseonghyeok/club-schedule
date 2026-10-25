@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moyora.clubschedule.security.CustomUserDetails;
+import com.moyora.clubschedule.service.UserService;
 import com.moyora.clubschedule.util.KakaoTokenUtil;
+import com.moyora.clubschedule.vo.UserVo;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +26,9 @@ public class AuthController {
 
     @Autowired
     private KakaoTokenUtil kakaoTokenUtil;
+
+    @Autowired
+    private UserService userService;
 
     @GetMapping("/api/auth/me")
     public ResponseEntity<?> me(@AuthenticationPrincipal CustomUserDetails userDetails, HttpServletRequest request) {
@@ -35,6 +40,10 @@ public class AuthController {
             boolean isAdmin = userDetails.getAuthorities().stream()
                     .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
             resp.put("isAdmin", isAdmin);
+            // 메인 화면(SPA)이 헤더 표시와 즐겨찾기 모임 자동 이동에 쓴다
+            UserVo user = userService.getUserByUserKey(userDetails.getUserKey());
+            resp.put("nickname", user != null ? user.getNickname() : null);
+            resp.put("favoriteGroupId", user != null ? user.getFavoriteGroupId() : null);
             resp.put("source", "securityContext");
             return ResponseEntity.ok(resp);
         }

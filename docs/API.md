@@ -27,7 +27,7 @@
 - 날짜/시간 문자열(`startAt`, `endAt` 등)은 **ISO 8601** (`yyyy-MM-ddTHH:mm:ss`) 형식입니다.
 - 인증은 JWT 기반이며, 쿠키(`AUTH_TOKEN`) 또는 Authorization 헤더로 전달합니다.
 - CSRF 보호는 현재 비활성화 상태입니다.
-- **모든 REST API는 `/api/**` 아래에 있습니다.** `/api` 가 아닌 경로(`/`, `/groups/{groupId}`, `/admin`, `/login/kakao/login_callback`, `/login/test`)는 화면입니다.
+- **모든 REST API는 `/api/**` 아래에 있습니다.** 백엔드는 화면을 서빙하지 않습니다(화면은 `frontend/` SPA). 인증 실패는 항상 JSON 401.
 
 ---
 

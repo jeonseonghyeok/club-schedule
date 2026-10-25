@@ -90,7 +90,6 @@
 
 | 항목 | 설명 | 정책 확정(2026-07-10) |
 |------|------|------|
-| `group.html` JS 압축 | 스크립트 블록이 CR-only 한 줄로 압축 → 파일 분리 고려 | 이번 스프린트 **보류** |
 | `GroupApiController` 페이로드 파싱 | `Map<String,Object>` 직접 파싱 → 전용 Request DTO 교체 | 전체 일괄 교체 대신 **신규 엔드포인트부터 점진 적용** |
 | 예외 처리 세분화 | `GlobalExceptionHandler` 범용 핸들러 → 세부 예외 추가 | **가입/출석 등 도메인 예외 우선** 적용 |
 | 트랜잭션 동시성 | 일정 승인/취소 동시 요청 낙관적 락 미적용 | **참가 신청(schedule_attendance)까지 포함**해 적용 |
@@ -105,7 +104,6 @@
 backend/src/main/java/com/moyora/clubschedule/
 ├── controller/
 │   ├── GroupApiController.java
-│   ├── GroupViewController.java
 │   └── NotificationApiController.java
 ├── service/
 │   ├── GroupScheduleService.java
@@ -118,6 +116,9 @@ backend/src/main/java/com/moyora/clubschedule/
 └── vo/
     └── GroupScheduleVo.java
 
-backend/src/main/resources/templates/
-└── group.html   (script 블록 CR-only endings → PowerShell 전용)
+
+frontend/src/
+├── routes/groups/$groupId.tsx        모임 화면(홈·일정·관리 탭)
+├── components/Schedule/              달력·일정 상세·폼·참가자 관리
+└── components/Member/                회원·권한 관리
 ```

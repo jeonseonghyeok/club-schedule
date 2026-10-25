@@ -164,18 +164,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private void sendUnauthorized(HttpServletRequest request, HttpServletResponse response, String message) throws IOException {
-        String uri = request.getRequestURI();
-        String accept = request.getHeader("Accept");
-        boolean isPageRequest = !uri.startsWith("/api/")
-                && "GET".equalsIgnoreCase(request.getMethod())
-                && accept != null && accept.contains("text/html");
-
-        if (isPageRequest) {
-            // 토큰이 없거나 만료된 상태로 페이지에 접근한 경우, 401 JSON 대신 홈으로 이동시켜 로그인을 유도한다.
-            response.sendRedirect("/");
-            return;
-        }
-
+        // 화면은 프론트엔드가 서빙하므로 항상 JSON 401 을 준다(로그인 안내는 화면이 처리)
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());
         response.setContentType("application/json;charset=UTF-8");

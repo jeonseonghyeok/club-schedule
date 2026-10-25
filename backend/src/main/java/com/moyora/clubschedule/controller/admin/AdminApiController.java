@@ -76,6 +76,12 @@ public class AdminApiController {
     }
 
     // 사용자 목록: 간단한 서버측 페이징 및 검색(닉네임)
+    /** 다른 API 와 같은 에러 바디 {error, message}. 예외 메시지가 없으면 기본 문구 */
+    private static Map<String, String> conflict(RuntimeException ex) {
+        String message = ex.getMessage() != null ? ex.getMessage() : "처리할 수 없는 상태입니다.";
+        return Map.of("error", "Conflict", "message", message);
+    }
+
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/users")
     public ResponseEntity<?> apiUsers(@RequestParam(required = false) Integer page,
@@ -167,7 +173,7 @@ public class AdminApiController {
             Long groupId = groupRequestService.approveRequest(requestId, userDetails.getUserKey());
             return ResponseEntity.ok(Map.of("groupId", groupId));
         } catch (RuntimeException ex) {
-            return ResponseEntity.status(409).body(Map.of("error", ex.getMessage()));
+            return ResponseEntity.status(409).body(conflict(ex));
         }
     }
 
@@ -221,7 +227,7 @@ public class AdminApiController {
             groupJoinRequestService.approveJoin(requestId, userDetails.getUserKey());
             return ResponseEntity.ok().build();
         } catch (RuntimeException ex) {
-            return ResponseEntity.status(409).body(Map.of("error", ex.getMessage()));
+            return ResponseEntity.status(409).body(conflict(ex));
         }
     }
 
@@ -237,7 +243,7 @@ public class AdminApiController {
             groupJoinRequestService.rejectJoin(requestId, userDetails.getUserKey(), reason);
             return ResponseEntity.ok().build();
         } catch (RuntimeException ex) {
-            return ResponseEntity.status(409).body(Map.of("error", ex.getMessage()));
+            return ResponseEntity.status(409).body(conflict(ex));
         }
     }
 

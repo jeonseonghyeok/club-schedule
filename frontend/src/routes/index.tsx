@@ -1,11 +1,12 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute, Link, redirect } from '@tanstack/react-router';
 import { z } from 'zod';
 import { LoginRequiredDialog } from '@/components/Auth/organisms/LoginRequiredDialog';
 import { GroupSearchSection } from '@/components/Group/organisms/GroupSearchSection';
 import { MyGroupsSection } from '@/components/Group/organisms/MyGroupsSection';
 import type { MyGroupsState } from '@/components/Group/organisms/MyGroupsSection';
 import { GroupRequestLauncher } from '@/components/GroupRequest/organisms/GroupRequestLauncher';
+import { buttonClassName } from '@/components/common/atoms/Button';
 import { AppHeader } from '@/components/layout/AppHeader';
 import { authQueries } from '@/modules/stores/server/auth/queries';
 import { groupQueries } from '@/modules/stores/server/group/queries';
@@ -35,7 +36,16 @@ const MainPage = () => {
 
 	return (
 		<>
-			<AppHeader isLoggedIn={!!me} isAdmin={me?.isAdmin ?? false} />
+			<AppHeader
+				isLoggedIn={!!me}
+				actions={
+					me?.isAdmin && (
+						<Link to="/admin" search={{ tab: 'users' }} className={buttonClassName('secondary')}>
+							관리자
+						</Link>
+					)
+				}
+			/>
 			<main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
 				<MyGroupsSection
 					state={myGroups}

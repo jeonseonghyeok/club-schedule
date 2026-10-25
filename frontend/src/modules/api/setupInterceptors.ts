@@ -22,11 +22,20 @@ export const isServerError = (data: unknown): data is ServerError =>
 	'message' in data &&
 	typeof data.message === 'string';
 
-// 프록시 502·네트워크 오류처럼 바디가 ServerError 형태가 아닐 때도
+const hasMessage = (data: unknown): data is { message: string } =>
+	typeof data === 'object' && data !== null && 'message' in data && typeof data.message === 'string';
+
+// 프록시 502·네트워크 오류나 {message} 만 내려주는 일부 API 처럼 바디가 ServerError 형태가 아닐 때도
 // 호출부가 error.response.data 를 ServerError 로 다룰 수 있게 맞춘다.
+const toServerError = (data: unknown): ServerError => {
+	if (isServerError(data)) return data;
+	if (hasMessage(data)) return { error: UNKNOWN_SERVER_ERROR.error, message: data.message };
+	return UNKNOWN_SERVER_ERROR;
+};
+
 const normalizeError = (error: unknown): Promise<never> => {
-	if (error instanceof AxiosError && error.response && !isServerError(error.response.data)) {
-		error.response.data = UNKNOWN_SERVER_ERROR;
+	if (error instanceof AxiosError && error.response) {
+		error.response.data = toServerError(error.response.data);
 	}
 	return Promise.reject(error);
 };

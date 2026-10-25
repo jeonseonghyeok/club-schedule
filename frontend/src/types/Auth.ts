@@ -11,3 +11,22 @@ export interface AuthMe {
 	readonly roles: readonly GrantedAuthority[];
 	readonly isAdmin: boolean;
 }
+
+/** GET /api/login/test/accounts — 개발 환경 전용 테스트 계정 */
+export interface TestAccount {
+	readonly kakaoApiId: number;
+	readonly nickname: string;
+}
+
+/** POST /api/login/test 응답 */
+export interface TestLoginResult {
+	readonly userKey: number;
+	readonly nickname: string;
+}
+
+/** POST /api/login/kakao 요청 — redirectUri 는 인가 요청 때와 같아야 한다 */
+export interface KakaoLoginRequest {
+	readonly code: string;
+	readonly redirectUri: string;
+	readonly returnTo: string;
+}

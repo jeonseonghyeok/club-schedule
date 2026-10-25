@@ -8,6 +8,7 @@ on:
 env:
   IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/club-schedule
   WEB_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/club-schedule-web
+  DEPLOY_DOMAIN: dev.crewhub.store
 
 jobs:
   build-and-push:
@@ -56,7 +57,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 배포 정의(compose.yml)를 서버의 ~/services/club-schedule/ 로 복사한다.
+      # 배포 정의(compose.yml, web-routes)를 서버의 ~/services/club-schedule/ 로 복사한다.
       # 실제 환경변수(dev.env)는 서버에만 있고 저장소에는 없다.
       - name: Copy compose file to server
         uses: appleboy/scp-action@v0.1.7
@@ -64,7 +65,7 @@ jobs:
           host: ${{ secrets.DEPLOY_HOST }}
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
-          source: deploy/compose.yml
+          source: deploy/compose.yml,deploy/web-routes
           target: services/club-schedule
           strip_components: 1
 
@@ -80,6 +81,9 @@ jobs:
             export APP_ENV=dev IMAGE=${{ env.IMAGE_NAME }} WEB_IMAGE=${{ env.WEB_IMAGE_NAME }} IMAGE_TAG=${{ github.sha }}
             docker compose pull
             docker compose up -d
+            # React 로 옮긴 경로만 web 컨테이너로 보낸다(나머지는 api). 목록: deploy/web-routes
+            ~/infra/npm/bin/npm-site locations ${{ env.DEPLOY_DOMAIN }} club-schedule-web-dev 80 \
+              $(grep -vE '^[[:space:]]*(#|$)' web-routes)
             # 구 방식(docker run, 호스트 8081 publish) 컨테이너 정리
             docker rm -f club-schedule 2>/dev/null || true
             docker image prune -f

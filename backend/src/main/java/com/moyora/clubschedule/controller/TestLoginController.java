@@ -5,8 +5,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,20 +21,12 @@ import lombok.RequiredArgsConstructor;
  * 테스트 계정 로그인. test.auth.secret 이 설정된 경우에만 동작한다.
  * 운영 환경에서는 test.auth.secret 을 비워두어 모든 요청이 503을 반환하도록 한다.
  */
-@Controller
+@RestController
 @RequiredArgsConstructor
 public class TestLoginController {
 
     private final TestAuthUtil testAuthUtil;
     private final UserMapper   userMapper;
-
-    /** 수동 로그인용 UI 페이지 */
-    @GetMapping("/login/test")
-    public String testLoginPage(Model model) {
-        if (!testAuthUtil.isEnabled()) return "redirect:/";
-        model.addAttribute("testAccounts", userMapper.selectTestAccounts());
-        return "test_login";
-    }
 
     /**
      * 테스트 계정 목록 API (React 테스트 로그인 화면용).

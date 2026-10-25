@@ -15,8 +15,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
 import com.moyora.clubschedule.service.MemberService;
@@ -25,7 +23,7 @@ import com.moyora.clubschedule.util.KakaoTokenUtil;
 import jakarta.servlet.http.HttpServletRequest;
 
 
-@Controller
+@RestController
 public class LoginController {
     private static final Logger log = LoggerFactory.getLogger(LoginController.class);
 
@@ -38,15 +36,6 @@ public class LoginController {
     private KakaoTokenUtil kakaoTokenUtil;
     @Autowired
     private MemberService memberService;
-
-    /**
-     * 로그인 콜백 페이지 뷰 (GET)
-     */
-    @GetMapping("/login/kakao/login_callback")
-    public String loginCallback(Model model) {
-        // 뷰에 전달할 추가 데이터가 필요하면 model.addAttribute(...)로 삽입
-        return "login_callback";
-    }
 
 	/**
      * 카카오 인증을 통한 로그인 페이지

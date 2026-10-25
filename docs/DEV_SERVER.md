@@ -36,8 +36,7 @@ scripts/bootrun-dev.sh
 ```
 
 - `~/services/club-schedule/dev.env` 를 읽어 환경변수로 넘기고, DB 주소만 `mariadb-dev:3306` → `127.0.0.1:3307` 로 바꿔 `./gradlew bootRun` 을 실행한다.
-- `Started MoyoraClubScheduleApplication` 이 뜨면 정상. 브라우저에서 보려면 SSH 터널: `ssh -L 8081:127.0.0.1:8081 ubuntu@<서버>` → `http://localhost:8081`
-- ⚠️ 템플릿/정적 리소스(`backend/src/main/resources/templates`, `static`)를 고친 뒤에는 bootRun 을 재시작해야 반영된다(기동 시점 스냅샷을 서빙).
+- `Started MoyoraClubScheduleApplication` 이 뜨면 정상. 백엔드는 `/api/**` 만 응답한다 — 화면은 아래 프론트엔드 개발 서버로 본다.
 
 ## 프론트엔드 실행
 
@@ -71,13 +70,11 @@ docker build -t club-schedule-web:local .
 3. `APP_ENV=dev docker compose up -d` → 컨테이너 `club-schedule-api-dev`, `club-schedule-web-dev`
 4. NPM: `deploy/api-routes` 의 경로를 api 컨테이너로(custom location), 나머지(기본)는 web 컨테이너로 (`npm-site locations` → `npm-site forward`)
 
-### 화면을 React 로 옮길 때
+### 라우팅 메모
 
-1. `frontend/src/routes/` 에 같은 URL 의 라우트를 만든다(기존 링크·카카오 redirect URI 를 그대로 쓰기 위해).
-2. 아직 Thymeleaf 인 화면으로 이동할 때는 `navigateToServerPage()`(전체 페이지 이동)를 쓴다.
-3. `deploy/api-routes` 에서 그 화면의 Thymeleaf 경로를 지운다 → master 배포 시 NPM 이 그 경로를 web 으로 보낸다.
-4. 롤백(전부 Thymeleaf 로): 서버에서 `npm-site forward dev.crewhub.store club-schedule-api-dev 8081 && npm-site locations dev.crewhub.store x 0`
-   (특정 경로만 되돌리려면 api-routes 에 다시 넣고 재배포)
+- 화면 경로는 모두 web(SPA)이 응답하고, `deploy/api-routes` 의 `/api/` 만 api 로 간다.
+- 새 화면은 `frontend/src/routes/` 에 라우트만 추가하면 된다(NPM 설정 변경 불필요).
+- 백엔드에 화면이 아닌 새 경로(예: 웹훅)를 열 때만 `deploy/api-routes` 에 추가한다.
 
 수동 재배포/롤백:
 
@@ -88,7 +85,7 @@ APP_ENV=dev IMAGE_TAG=<커밋 SHA 또는 latest> docker compose up -d
 
 ## 테스트 로그인
 
-`/login/test` 에서 계정 선택 → 내부적으로 `POST /api/login/test` (`{"kakaoApiId": ...}`). 계정 범위·역할은 `CLAUDE.md` 참고.
+프론트엔드 `/login/test` 에서 계정 선택 → 내부적으로 `POST /api/login/test` (`{"kakaoApiId": ...}`). 계정 범위·역할은 `CLAUDE.md` 참고.
 
 ## 트러블슈팅
 
@@ -98,7 +95,6 @@ APP_ENV=dev IMAGE_TAG=<커밋 SHA 또는 latest> docker compose up -d
 | DB는 붙는데 데이터가 이상함 | 3306(=`mariadb-prod`)에 접속 | bootRun 은 3307, 컨테이너는 `mariadb-dev:3306` |
 | 포트 8081 already in use | 이전 bootRun 프로세스가 남아 있음 | `ss -ltnp \| grep 8081` 로 찾아 종료 |
 | dev.crewhub.store 502 | 컨테이너 미기동 또는 NPM 전달 대상 불일치 | `docker logs club-schedule-api-dev`, `npm-site list` |
-| 화면(html/js) 수정이 반영 안 됨 | bootRun 이 기동 시점 리소스를 서빙 중 | bootRun 재시작 |
 
 ## 관련 문서
 

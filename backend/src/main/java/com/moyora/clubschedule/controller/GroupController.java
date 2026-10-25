@@ -35,8 +35,8 @@ public class GroupController {
     private GroupPermissionService groupPermissionService;
 
     /**
-     * 모임 화면(SPA)용 상세: 모임 정보 + 현재 사용자 기준 권한/상태.
-     * 기존 GroupViewController 가 Thymeleaf 모델로 내려주던 값과 같다.
+     * 모임 화면용 상세: 모임 정보 + 현재 사용자 기준 권한/상태
+     * (리더·매니저·멤버 여부, 일정 등록/관리 권한, 공개 범위, 우선모임 여부).
      */
     @GetMapping("/{groupId}")
     public ResponseEntity<?> detail(@PathVariable Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails) {

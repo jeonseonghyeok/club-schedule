@@ -5,7 +5,7 @@
 
 ## 기술 스택
 - **Backend**: Spring Boot 3.4.7, Java 17, MyBatis, MariaDB
-- **Frontend**: `frontend/` — React 18 + TS + Vite, TanStack Router/Query, Zustand, Tailwind v4 (Thymeleaf 화면에서 순차 이전 중)
+- **Frontend**: `frontend/` — React 18 + TS + Vite, TanStack Router/Query, Zustand, Tailwind v4 — 모든 화면(2026-10-25 Thymeleaf 에서 이전 완료)
 - **보안**: Spring Security + JWT (AUTH_TOKEN 쿠키)
 - **빌드**: Gradle (`backend/`), 개발은 서버에서 직접 (`docs/DEV_SERVER.md`)
 - **서버 포트**: 8081 (컨테이너 내부 전용, 외부 노출은 NPM)
@@ -22,8 +22,8 @@ scripts/     bootrun-dev.sh 등 개발 스크립트
 ## 패키지 구조
 ```
 com.moyora.clubschedule
-├── controller/          # MVC 컨트롤러 (페이지 반환)
-│   ├── admin/           # 관리자 전용 (AdminApiController, AdminViewController)
+├── controller/          # REST 컨트롤러 (/api/** 만, 화면은 frontend/)
+│   ├── admin/           # 관리자 전용 (AdminApiController)
 │   └── group/           # 그룹 관련 하위 컨트롤러
 ├── service/             # 비즈니스 로직
 ├── mapper/              # MyBatis 매퍼 인터페이스
@@ -53,10 +53,11 @@ com.moyora.clubschedule
 
 ### 인증
 - JWT를 `AUTH_TOKEN` 쿠키에 저장, JWT 필터가 쿠키를 읽어 `Bearer` 헤더로 변환
-- `/admin/**` 경로는 JWT 필터 화이트리스트; 인가는 `@PreAuthorize("hasRole('ADMIN')")`로 처리
+- 토큰 없이 허용되는 경로는 `/api/login/**` 뿐(`WhitelistConfig`). 관리자 API(`/api/admin/**`) 인가는 `@PreAuthorize("hasRole('ADMIN')")`
+- 인증 실패는 항상 JSON 401 — 로그인 안내·이동은 프론트엔드가 처리
 
 ### 테스트 계정
-- `http://127.0.0.1:8081/login/test` 페이지에서 계정을 선택해 로그인(내부적으로 POST `/api/login/test`, body `{"kakaoApiId": ...}`)
+- 프론트엔드 `/login/test` 화면에서 계정을 선택해 로그인(내부적으로 POST `/api/login/test`, body `{"kakaoApiId": ...}`, 목록은 GET `/api/login/test/accounts`)
 - 테스트 계정은 kakaoApiId `9900000000001` ~ `9900000000048` 범위이며, 화면·API 응답에는 `nickname`으로 표시된다(로그인 식별자는 어디까지나 kakaoApiId이고 닉네임은 역할 구분용 라벨일 뿐). 시드 스크립트: `docs/test-data.sql`.
   - `9900000000001` ~ `9900000000003`: 닉네임 "관리자01" ~ "관리자03" — `system_role='ADMIN'` 실제 권한 보유 → 관리자 테스트 시 사용
   - `9900000000004` ~ `9900000000008`: 닉네임 "모임리더01" ~ "모임리더05" — 역할극용 라벨일 뿐 시스템 권한은 일반 USER. 실제 LEADER 권한을 테스트하려면 대상 그룹의 `group_member.role`을 별도로 LEADER로 지정해야 함
@@ -81,14 +82,14 @@ com.moyora.clubschedule
 
 두 도메인은 완전히 별개이며 혼동 주의.
 
-## 관리자 패널
-- URL: `/admin`
-- JS 구조:
-  - `admin.js` — 탭 전환, 패널 로드, 이벤트 버스
-  - `admin-renderer.js` — 각 패널 전용 렌더러 (`renderUsers`, `renderGroupRequests` 등)
-- 이벤트:
-  - `admin:search:results` — 검색 결과 렌더링 트리거
-  - `admin:reload:panel` — 승인/거부 후 패널 새로고침
+## 화면(frontend/src/routes)
+| URL | 화면 |
+|-----|------|
+| `/` | 메인 — 내 모임·모임 검색·모임 생성 신청 (우선모임이 있으면 그 모임으로, `?list=1` 이면 목록) |
+| `/groups/$groupId?tab=home\|schedule\|manage` | 모임 — 일정 달력·참가·참가자 관리·회원/권한 관리 |
+| `/admin?tab=users\|groups\|groupRequests\|groupJoins` | 관리자 대시보드 |
+| `/login/kakao/login_callback` | 카카오 로그인 콜백(카카오 콘솔 redirect URI) |
+| `/login/test` | 테스트 로그인(개발 전용) |
 
 ## 개발 환경
 - 개발은 서버(`~/workspace/club-schedule`)에서 직접 한다 — 상세는 `docs/DEV_SERVER.md`

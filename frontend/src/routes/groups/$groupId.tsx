@@ -238,10 +238,10 @@ const GroupNotFound = () => (
 
 export const Route = createFileRoute('/groups/$groupId')({
 	validateSearch: groupSearchSchema,
-	beforeLoad: async ({ context }) => {
+	beforeLoad: async ({ context, location }) => {
 		const me = await context.queryClient.ensureQueryData(authQueries.me());
-		// 비로그인은 메인으로 — 메인이 로그인 안내를 띄운다
-		if (!me) throw redirect({ to: '/' });
+		// 비로그인은 메인으로 — 메인의 로그인 안내가 로그인 후 이 주소로 돌아오게 한다
+		if (!me) throw redirect({ to: '/', search: { returnTo: location.href } });
 	},
 	loader: async ({ context, params }) => {
 		const groupId = parseGroupId(params.groupId);

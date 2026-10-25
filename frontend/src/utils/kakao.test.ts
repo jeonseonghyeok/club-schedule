@@ -1,4 +1,4 @@
-import { buildKakaoAuthorizeUrl, getKakaoRedirectUri } from '@/utils/kakao';
+import { buildKakaoAuthorizeUrl, getKakaoRedirectUri, getLoginReturnPath } from '@/utils/kakao';
 
 describe('kakao', () => {
 	it('redirect URI 는 현재 출처 + 등록된 콜백 경로다', () => {
@@ -23,5 +23,12 @@ describe('kakao', () => {
 			buildKakaoAuthorizeUrl({ clientId: 'k', redirectUri: 'https://a.test/cb', state: '/groups/4' }),
 		);
 		expect(url.searchParams.get('state')).toBe('/groups/4');
+	});
+
+	it('로그인 화면 자신으로는 돌아가지 않는다(인가 반복 방지)', () => {
+		expect(getLoginReturnPath('/login/kakao/login_callback')).toBe('/');
+		expect(getLoginReturnPath('/login/test')).toBe('/');
+		expect(getLoginReturnPath('/groups/42?tab=schedule')).toBe('/groups/42?tab=schedule');
+		expect(getLoginReturnPath('//evil.com')).toBe('/');
 	});
 });

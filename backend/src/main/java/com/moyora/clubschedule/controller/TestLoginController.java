@@ -9,7 +9,6 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.ResponseBody;
 
 import com.moyora.clubschedule.mapper.UserMapper;
 import com.moyora.clubschedule.util.TestAuthUtil;
@@ -33,7 +32,6 @@ public class TestLoginController {
      * 응답: [{"kakaoApiId": 9900000000001, "nickname": "관리자01"}, ...]
      */
     @GetMapping("/api/login/test/accounts")
-    @ResponseBody
     public ResponseEntity<?> testAccounts() {
         if (!testAuthUtil.isEnabled()) {
             return ResponseEntity.status(503).body(Map.of("message", "테스트 인증이 비활성화되어 있습니다."));
@@ -53,7 +51,6 @@ public class TestLoginController {
      * 성공 시 AUTH_TOKEN 쿠키를 설정하고 {userKey, nickname} 반환.
      */
     @PostMapping("/api/login/test")
-    @ResponseBody
     public ResponseEntity<?> login(@RequestBody Map<String, Object> body) {
         if (!testAuthUtil.isEnabled()) {
             return ResponseEntity.status(503).body(Map.of("message", "테스트 인증이 비활성화되어 있습니다."));

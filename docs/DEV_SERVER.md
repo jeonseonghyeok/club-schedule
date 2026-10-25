@@ -83,6 +83,20 @@ cd ~/services/club-schedule
 APP_ENV=dev IMAGE_TAG=<커밋 SHA 또는 latest> docker compose up -d
 ```
 
+- api·web 이미지는 같은 커밋 SHA 로 태그되므로, **화면 분리 이후(web 이미지가 있는) 커밋**이면 위 한 줄로 둘 다 되돌아간다.
+- **화면 분리 이전 커밋(Thymeleaf 가 화면을 그리던 버전)으로 되돌릴 때**는 web 이미지가 없고 NPM 이 화면 경로를 web 으로 보내므로,
+  NPM 도 함께 되돌려야 한다:
+
+```bash
+# 모든 경로를 api(Thymeleaf 포함 버전)로, custom location 해제
+npm-site forward dev.crewhub.store club-schedule-api-dev 8081
+npm-site locations dev.crewhub.store x 0
+# 해당 SHA 의 api 만 기동(web 서비스는 띄우지 않는다)
+APP_ENV=dev IMAGE_TAG=<SHA> docker compose up -d api
+```
+
+- 다시 최신으로 올리면 CI(또는 위 `docker compose up -d` + `npm-site locations … $(grep -vE '^[[:space:]]*(#|$)' api-routes)` → `npm-site forward … club-schedule-web-dev 80`)가 라우팅을 원래대로 맞춘다.
+
 ## 테스트 로그인
 
 프론트엔드 `/login/test` 에서 계정 선택 → 내부적으로 `POST /api/login/test` (`{"kakaoApiId": ...}`). 계정 범위·역할은 `CLAUDE.md` 참고.

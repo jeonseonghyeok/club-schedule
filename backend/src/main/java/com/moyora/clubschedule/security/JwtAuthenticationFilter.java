@@ -92,16 +92,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
             logger.debug("Missing or invalid Authorization header for uri={}", uri);
-            sendUnauthorized(request, response, "Missing or invalid Authorization header");
+            sendUnauthorized(response, "Missing or invalid Authorization header");
             return;
         }
 
         String token = header.substring(7);
 
+        // 인증 정보 확인만 try 안에서 한다. 체인 진행(chain.doFilter)을 try 안에 두면 컨트롤러·응답 쓰기
+        // 단계에서 난 예외까지 잡아 로그인한 사용자에게 401 을 주거나, 허용 경로 요청을 두 번 실행하게 된다.
+        Authentication authentication = null;
         try {
             // 1. 카카오 JWT 검증 시도
             Long kakaoApiId = kakaoTokenUtil.validateAndGetUserId(token);
-            Authentication authentication = null;
 
             if (kakaoApiId != null) {
                 // 1a. 카카오 토큰: kakaoApiId → userKey → Authentication
@@ -127,43 +129,40 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
 
-            if (authentication == null || !authentication.isAuthenticated()) {
-                logger.warn("Token validation failed for uri={}", uri);
-                if (isWhite) {
-                    chain.doFilter(request, response);
-                    return;
-                }
-                sendUnauthorized(request, response, "Invalid or expired token");
-                return;
-            }
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            chain.doFilter(request, response);
         } catch (Exception ex) {
-            // kakaoTokenUtil 내부에서 발생한 예외 등 모든 예외를 잡아 401로 응답
+            // kakaoTokenUtil 내부에서 발생한 예외 등 — 인증 실패로 다룬다
             logger.error("Error during JWT authentication for uri={}: {}", uri, ex.getMessage(), ex);
+            authentication = null;
+        }
+
+        if (authentication == null || !authentication.isAuthenticated()) {
+            logger.warn("Token validation failed for uri={}", uri);
             SecurityContextHolder.clearContext();
             if (isWhite) {
                 // 허용 경로라면 인증 없이 통과
                 chain.doFilter(request, response);
-            } else {
-                sendUnauthorized(request, response, "Authentication error");
+                return;
             }
+            sendUnauthorized(response, "Invalid or expired token");
+            return;
         }
+
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+        chain.doFilter(request, response);
     }
 
     private static final String[] AUTH_WHITELIST = WhitelistConfig.AUTH_WHITELIST;
 
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
+
     public boolean isWhiteList(String uri) {
-        AntPathMatcher matcher = new AntPathMatcher();
         for (String pattern : AUTH_WHITELIST) {
-            if (matcher.match(pattern, uri)) return true;
+            if (PATH_MATCHER.match(pattern, uri)) return true;
         }
         return false;
     }
 
-    private void sendUnauthorized(HttpServletRequest request, HttpServletResponse response, String message) throws IOException {
+    private void sendUnauthorized(HttpServletResponse response, String message) throws IOException {
         // 화면은 프론트엔드가 서빙하므로 항상 JSON 401 을 준다(로그인 안내는 화면이 처리)
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
         response.setCharacterEncoding(StandardCharsets.UTF_8.name());

@@ -1,8 +1,8 @@
 import { useEffect, useRef } from 'react';
 import { useCreateKakaoLogin } from '@/modules/stores/server/auth/mutations';
 import { getErrorMessage } from '@/utils';
-import { buildKakaoAuthorizeUrl, getKakaoRedirectUri } from '@/utils/kakao';
-import { getSafeReturnPath, navigateWithReload } from '@/utils/navigation';
+import { buildKakaoAuthorizeUrl, getKakaoRedirectUri, getLoginReturnPath } from '@/utils/kakao';
+import { navigateWithReload } from '@/utils/navigation';
 
 export interface KakaoCallbackParams {
 	/** 카카오가 돌려준 인가 코드 — 없으면 인가 요청부터 시작한다 */
@@ -38,13 +38,13 @@ export const useKakaoCallback = (params: KakaoCallbackParams): KakaoCallbackStat
 				buildKakaoAuthorizeUrl({
 					clientId: import.meta.env.VITE_KAKAO_REST_KEY,
 					redirectUri,
-					state: getSafeReturnPath(returnTo),
+					state: getLoginReturnPath(returnTo),
 				}),
 			);
 			return;
 		}
 
-		const returnPath = getSafeReturnPath(state);
+		const returnPath = getLoginReturnPath(state);
 		mutate({ code, redirectUri, returnTo: returnPath }, { onSuccess: () => navigateWithReload(returnPath) });
 	}, [code, error, state, returnTo, mutate]);
 

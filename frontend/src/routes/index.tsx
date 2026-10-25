@@ -12,12 +12,15 @@ import { authQueries } from '@/modules/stores/server/auth/queries';
 import { groupQueries } from '@/modules/stores/server/group/queries';
 import type { AuthMe } from '@/types/Auth';
 import { isLeaderOfAny } from '@/utils/group';
+import { getLoginReturnPath } from '@/utils/kakao';
 
 const HOME_PATH = '/';
 
 const mainSearchSchema = z.object({
 	/** 있으면 즐겨찾기 모임으로 자동 이동하지 않고 목록을 보여준다(값은 무관, 기존 ?list=1) */
 	list: z.unknown().optional(),
+	/** 로그인 안내에서 로그인한 뒤 돌아갈 주소(공유 링크로 들어온 경우) */
+	returnTo: z.string().optional(),
 });
 
 const useMyGroupsState = (me: AuthMe | null): MyGroupsState => {
@@ -30,6 +33,7 @@ const useMyGroupsState = (me: AuthMe | null): MyGroupsState => {
 
 const MainPage = () => {
 	const { data: me } = useSuspenseQuery({ ...authQueries.me() });
+	const { returnTo } = Route.useSearch();
 	const myGroups = useMyGroupsState(me);
 	// 이미 모임 리더면 새 모임을 신청할 수 없으므로 버튼을 숨긴다(목록을 불러온 뒤에 판단)
 	const canRequestGroup = !!me && myGroups.status === 'success' && !isLeaderOfAny(myGroups.groups, me.userKey);
@@ -54,7 +58,7 @@ const MainPage = () => {
 				/>
 				<GroupSearchSection isGuest={!me} />
 			</main>
-			{!me && <LoginRequiredDialog returnTo={HOME_PATH} />}
+			{!me && <LoginRequiredDialog returnTo={getLoginReturnPath(returnTo ?? HOME_PATH)} />}
 		</>
 	);
 };

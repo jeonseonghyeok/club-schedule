@@ -267,7 +267,7 @@
         if (!listEl) return;
         listEl.innerHTML = '<li class="muted">로딩 중...</li>';
         try {
-            const res = await fetch('/groups/me', { credentials: 'same-origin' });
+            const res = await fetch('/api/groups/me', { credentials: 'same-origin' });
             if (!res.ok) { listEl.innerHTML = '<li class="muted">모임 정보를 불러오는데 실패했습니다.</li>'; return; }
             const data = await res.json();
             renderGroups(data);
@@ -315,7 +315,7 @@
         const isLoading = listEl && String(listEl.textContent || '').includes('로딩');
         if (isLoading || !Array.isArray(cachedModalRequests)) {
             try {
-                const res = await fetch('/group-requests', { credentials: 'same-origin' });
+                const res = await fetch('/api/group-requests', { credentials: 'same-origin' });
                 if (res.ok) {
                     const data = await res.json();
                     cachedModalRequests = Array.isArray(data) ? data : [];
@@ -336,7 +336,7 @@
 
         // 2) 현재 사용자가 모임 리더면 제한
         try {
-            const res = await fetch('/groups/me', { credentials: 'same-origin' });
+            const res = await fetch('/api/groups/me', { credentials: 'same-origin' });
             if (!res.ok) throw new Error('groups/me failed');
 
             const groups = await res.json();
@@ -398,7 +398,7 @@
         const listEl = document.getElementById('modalRequestsList');
         listEl.innerHTML = '<li class="muted">로딩 중...</li>';
         try {
-            const res = await fetch('/group-requests', { credentials: 'same-origin' });
+            const res = await fetch('/api/group-requests', { credentials: 'same-origin' });
             if (!res.ok) { listEl.innerHTML = '<li class="muted">신청 현황을 불러오는데 실패했습니다.</li>'; return; }
             let data = await res.json();
             if (!Array.isArray(data) || data.length === 0) { cachedModalRequests = []; listEl.innerHTML = '<li class="muted">신청 내역이 없습니다.</li>'; return; }
@@ -465,7 +465,7 @@
                         e.stopPropagation();
                         if (!confirm('정말 신청을 취소하시겠습니까?')) return;
                         try {
-                            const r = await fetch('/group-requests/' + item.requestId + '/cancel', { method: 'PATCH', credentials: 'same-origin' });
+                            const r = await fetch('/api/group-requests/' + item.requestId + '/cancel', { method: 'PATCH', credentials: 'same-origin' });
                             if (r.ok) loadModalRequests(); else alert('취소 실패');
                         } catch (e) { console.error(e); alert('네트워크 오류'); }
                     });
@@ -482,7 +482,7 @@
         if (!listEl) return;
         listEl.innerHTML = '<li class="muted">로딩 중...</li>';
         try {
-            const url = '/groups/recommended' + (q ? '?q=' + encodeURIComponent(q) : '');
+            const url = '/api/groups/recommended' + (q ? '?q=' + encodeURIComponent(q) : '');
             const res = await fetch(url, { credentials: 'same-origin' });
             if (!res.ok) { listEl.innerHTML = '<li class="muted">불러오기 실패</li>'; return; }
             const data = await res.json();
@@ -516,7 +516,7 @@
         const name = document.getElementById('modalGroupName').value.trim(); const desc = document.getElementById('modalDescription').value.trim();
         if (!name) { document.getElementById('modalCreateError').textContent='모임 이름을 입력하세요.'; document.getElementById('modalCreateError').style.display='block'; return; }
         try {
-            const res = await fetch('/group-requests',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({groupName:name, description:desc})});
+            const res = await fetch('/api/group-requests',{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify({groupName:name, description:desc})});
             if (res.ok) {
                 document.getElementById('modalGroupName').value='';
                 document.getElementById('modalDescription').value='';

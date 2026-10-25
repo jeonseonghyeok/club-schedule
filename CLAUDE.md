@@ -55,7 +55,7 @@ com.moyora.clubschedule
 - `/admin/**` 경로는 JWT 필터 화이트리스트; 인가는 `@PreAuthorize("hasRole('ADMIN')")`로 처리
 
 ### 테스트 계정
-- `http://127.0.0.1:8081/login/test` 페이지에서 계정을 선택해 로그인(내부적으로 POST `/login/test`, body `{"kakaoApiId": ...}`)
+- `http://127.0.0.1:8081/login/test` 페이지에서 계정을 선택해 로그인(내부적으로 POST `/api/login/test`, body `{"kakaoApiId": ...}`)
 - 테스트 계정은 kakaoApiId `9900000000001` ~ `9900000000048` 범위이며, 화면·API 응답에는 `nickname`으로 표시된다(로그인 식별자는 어디까지나 kakaoApiId이고 닉네임은 역할 구분용 라벨일 뿐). 시드 스크립트: `docs/test-data.sql`.
   - `9900000000001` ~ `9900000000003`: 닉네임 "관리자01" ~ "관리자03" — `system_role='ADMIN'` 실제 권한 보유 → 관리자 테스트 시 사용
   - `9900000000004` ~ `9900000000008`: 닉네임 "모임리더01" ~ "모임리더05" — 역할극용 라벨일 뿐 시스템 권한은 일반 USER. 실제 LEADER 권한을 테스트하려면 대상 그룹의 `group_member.role`을 별도로 LEADER로 지정해야 함

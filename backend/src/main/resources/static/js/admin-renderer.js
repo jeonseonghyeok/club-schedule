@@ -282,7 +282,7 @@
     async function approveGroupRequest(requestId, groupName) {
         if (!confirm('[' + groupName + '] 신청을 승인하시겠습니까?')) return;
         try {
-            const res = await fetch('/admin/api/group-requests/' + requestId + '/approve', { method: 'POST' });
+            const res = await fetch('/api/admin/group-requests/' + requestId + '/approve', { method: 'POST' });
             if (res.ok) {
                 const data = await res.json();
                 const groupId = data.groupId;
@@ -458,7 +458,7 @@
     async function approveGroupJoin(requestId, groupName) {
         if (!confirm('[' + groupName + '] 가입 요청을 승인하시겠습니까?')) return;
         try {
-            const res = await fetch('/admin/api/group-joins/' + requestId + '/approve', { method: 'POST' });
+            const res = await fetch('/api/admin/group-joins/' + requestId + '/approve', { method: 'POST' });
             if (res.ok) {
                 window.dispatchEvent(new CustomEvent('admin:reload:panel', { detail: { panelId: 'groupJoinsPanel' } }));
             } else {
@@ -474,7 +474,7 @@
         const reason = prompt('[' + groupName + '] 거부 사유를 입력하세요(선택):', '');
         if (reason === null) return; // 취소
         try {
-            const res = await fetch('/admin/api/group-joins/' + requestId + '/reject', {
+            const res = await fetch('/api/admin/group-joins/' + requestId + '/reject', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ rejectReason: reason || null })
             });

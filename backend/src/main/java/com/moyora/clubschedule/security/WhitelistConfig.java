@@ -6,6 +6,7 @@ public class WhitelistConfig {
         "/admin",
         "/admin/**",
         "/login/**",
+        "/api/login/**",
         "/sample/**",
         "/favicon.ico",
         "/.well-known/**",

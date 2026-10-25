@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/debug")
+@RequestMapping("/api/debug")
 public class DebugController {
 
     @GetMapping("/whoami")

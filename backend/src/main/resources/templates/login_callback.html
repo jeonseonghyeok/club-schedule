@@ -35,7 +35,7 @@
 
     async function postCodeToServer(code, redirectUri, returnTo) {
         const payload = { code: code, redirectUri: redirectUri, returnTo: returnTo };
-        const resp = await fetch('/login/kakao', {
+        const resp = await fetch('/api/login/kakao', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'same-origin',

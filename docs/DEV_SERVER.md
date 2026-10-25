@@ -62,7 +62,7 @@ APP_ENV=dev IMAGE_TAG=<커밋 SHA 또는 latest> docker compose up -d
 
 ## 테스트 로그인
 
-`/login/test` 에서 계정 선택 → 내부적으로 `POST /login/test` (`{"kakaoApiId": ...}`). 계정 범위·역할은 `CLAUDE.md` 참고.
+`/login/test` 에서 계정 선택 → 내부적으로 `POST /api/login/test` (`{"kakaoApiId": ...}`). 계정 범위·역할은 `CLAUDE.md` 참고.
 
 ## 트러블슈팅
 

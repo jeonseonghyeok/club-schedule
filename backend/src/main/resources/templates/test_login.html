@@ -25,7 +25,7 @@ async function doLogin(){
   var kakaoApiId=document.getElementById('username').value;
   if(!kakaoApiId){showMsg('계정을 선택해주세요.','error');return;}
   try{
-    var r=await fetch('/login/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kakaoApiId:Number(kakaoApiId)})});
+    var r=await fetch('/api/login/test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({kakaoApiId:Number(kakaoApiId)})});
     var j=await r.json();
     if(r.ok){
       showMsg(j.nickname+'('+j.userKey+') 로그인 완료. 이동 중…','ok');

@@ -169,7 +169,7 @@
         if (!rejectReason) { alert('거부 사유를 입력하세요.'); return; }
 
         try {
-            const res = await fetch('/admin/api/group-requests/' + requestId + '/reject', {
+            const res = await fetch('/api/admin/group-requests/' + requestId + '/reject', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ rejectReason: rejectReason })

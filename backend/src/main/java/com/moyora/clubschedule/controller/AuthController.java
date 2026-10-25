@@ -25,7 +25,7 @@ public class AuthController {
     @Autowired
     private KakaoTokenUtil kakaoTokenUtil;
 
-    @GetMapping("/auth/me")
+    @GetMapping("/api/auth/me")
     public ResponseEntity<?> me(@AuthenticationPrincipal CustomUserDetails userDetails, HttpServletRequest request) {
         // If Spring Security already set the principal, prefer that
         if (userDetails != null) {

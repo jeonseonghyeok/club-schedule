@@ -288,18 +288,18 @@
                 const toast = (msg) => window.openCommonModal({ title:'완료', content: '<div>'+msg+'</div>', size:'sm' });
                 try {
                     if (isFavorite) {
-                        const r = await fetch('/groups/'+groupId+'/favorite', { method:'DELETE' });
+                        const r = await fetch('/api/groups/'+groupId+'/favorite', { method:'DELETE' });
                         if (!r.ok) throw new Error('failed');
                         setIcon(false); favoriteBtn.dataset.hasFavorite = 'false';
                         toast('우선모임이 해체되었습니다.');
                     } else if (!hasFavorite) {
-                        const r = await fetch('/groups/'+groupId+'/favorite', { method:'PUT' });
+                        const r = await fetch('/api/groups/'+groupId+'/favorite', { method:'PUT' });
                         if (!r.ok) throw new Error('failed');
                         setIcon(true); favoriteBtn.dataset.hasFavorite = 'true';
                         toast('우선모임으로 등록되었습니다.');
                     } else {
                         if (!confirm('우선모임을 변경하시겠습니까?')) return;
-                        const r = await fetch('/groups/'+groupId+'/favorite', { method:'PUT' });
+                        const r = await fetch('/api/groups/'+groupId+'/favorite', { method:'PUT' });
                         if (!r.ok) throw new Error('failed');
                         setIcon(true); favoriteBtn.dataset.hasFavorite = 'true';
                         toast('우선모임이 변경되었습니다.');
@@ -538,7 +538,7 @@
                     openYesNoConfirm('현재 가입신청 진행 중입니다.\n가입신청을 취소하시겠습니까?', async (yesBtn) => {
                         yesBtn.disabled = true;
                         try {
-                            const res = await fetch('/groups/' + groupId + '/join-requests/' + latestReq.requestId, { method: 'DELETE', credentials: 'same-origin' });
+                            const res = await fetch('/api/groups/' + groupId + '/join-requests/' + latestReq.requestId, { method: 'DELETE', credentials: 'same-origin' });
                             if (!res.ok) throw new Error('취소에 실패했습니다.');
                             window.closeCommonModal && window.closeCommonModal();
                             renderJoinButton(null);
@@ -564,7 +564,7 @@
                     openYesNoConfirm('이 모임에 가입 신청하시겠습니까?', async (yesBtn) => {
                         yesBtn.disabled = true;
                         try {
-                            const res = await fetch('/groups/' + groupId + '/join-requests', { method: 'POST', credentials: 'same-origin' });
+                            const res = await fetch('/api/groups/' + groupId + '/join-requests', { method: 'POST', credentials: 'same-origin' });
                             const body = await res.json().catch(() => ({}));
                             if (!res.ok) {
                                 window.closeCommonModal && window.closeCommonModal();
@@ -587,7 +587,7 @@
         }
         async function loadJoinStatus(){
             try {
-                const res = await fetch('/groups/' + groupId + '/join-requests/me', { credentials: 'same-origin', cache: 'no-store' });
+                const res = await fetch('/api/groups/' + groupId + '/join-requests/me', { credentials: 'same-origin', cache: 'no-store' });
                 if (!res.ok) { renderJoinButton(null); return; }
                 const list = await res.json();
                 const latest = Array.isArray(list) && list.length > 0 ? list[0] : null;
@@ -601,7 +601,7 @@
             if (!el) return;
             el.innerHTML = '<div class="muted">로딩 중...</div>';
             try {
-                const res = await fetch('/groups/joins/pending/' + groupId, { credentials: 'same-origin' });
+                const res = await fetch('/api/groups/joins/pending/' + groupId, { credentials: 'same-origin' });
                 if (!res.ok) throw new Error('Failed');
                 const list = await res.json();
                 el.innerHTML = '';
@@ -623,7 +623,7 @@
                 openYesNoConfirm('이 사용자의 가입 신청을 승인하시겠습니까?', async (yesBtn) => {
                     yesBtn.disabled = true;
                     try {
-                        const res = await fetch('/groups/joins/' + req.requestId + '/approve', { method: 'PATCH', credentials: 'same-origin' });
+                        const res = await fetch('/api/groups/joins/' + req.requestId + '/approve', { method: 'PATCH', credentials: 'same-origin' });
                         const body = await res.json().catch(() => ({}));
                         if (!res.ok) throw new Error(body.error || '승인 실패');
                         window.closeCommonModal && window.closeCommonModal();
@@ -651,7 +651,7 @@
                 if (!reason) { errDiv.textContent = '거부 사유를 입력해주세요.'; errDiv.style.display = 'block'; return; }
                 confirmBtn.disabled = true;
                 try {
-                    const res = await fetch('/groups/joins/' + req.requestId + '/reject', { method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rejectReason: reason }) });
+                    const res = await fetch('/api/groups/joins/' + req.requestId + '/reject', { method: 'PATCH', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rejectReason: reason }) });
                     const body = await res.json().catch(() => ({}));
                     if (!res.ok) throw new Error(body.error || '거부 실패');
                     window.closeCommonModal && window.closeCommonModal();

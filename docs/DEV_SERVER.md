@@ -17,8 +17,8 @@
 ```
 
 ```
-브라우저 ─► NPM(443) ─┬─ 기본(React 화면)                 → club-schedule-web-dev:80        (배포본, CI)
-                      └─ deploy/api-routes(/api/, 미전환 화면) → club-schedule-api-dev:8081 ─► mariadb-dev:3306
+브라우저 ─► NPM(443) ─┬─ 기본(모든 화면, React)  → club-schedule-web-dev:80        (배포본, CI)
+                      └─ /api/ (deploy/api-routes) → club-schedule-api-dev:8081 ─► mariadb-dev:3306
 개발자   ─► 127.0.0.1:5173 (vite) ─ /api ─► 127.0.0.1:8081 (bootRun) ─► 127.0.0.1:3307   (작업본)
 ```
 

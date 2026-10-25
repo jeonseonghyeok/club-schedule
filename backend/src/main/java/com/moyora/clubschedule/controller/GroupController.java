@@ -1,6 +1,8 @@
 package com.moyora.clubschedule.controller;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import jakarta.validation.Valid;
 
@@ -12,6 +14,7 @@ import org.springframework.web.bind.annotation.*;
 
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupManageService;
+import com.moyora.clubschedule.service.GroupPermissionService;
 import com.moyora.clubschedule.service.GroupService;
 import com.moyora.clubschedule.service.UserService;
 import com.moyora.clubschedule.vo.GroupVo;
@@ -27,6 +30,50 @@ public class GroupController {
     private GroupManageService groupManageService;
     @Autowired
     private UserService userService;
+
+    @Autowired
+    private GroupPermissionService groupPermissionService;
+
+    /**
+     * 모임 화면(SPA)용 상세: 모임 정보 + 현재 사용자 기준 권한/상태.
+     * 기존 GroupViewController 가 Thymeleaf 모델로 내려주던 값과 같다.
+     */
+    @GetMapping("/{groupId}")
+    public ResponseEntity<?> detail(@PathVariable Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails) {
+        GroupVo group = groupService.findById(groupId);
+        if (group == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "NotFound", "message", "모임을 찾을 수 없습니다."));
+        }
+        Long userKey = (userDetails != null) ? userDetails.getUserKey() : null;
+        boolean isLeader  = userKey != null && userKey.equals(group.getLeaderUserKey());
+        boolean isManager = isLeader || groupManageService.isManager(groupId, userKey);
+        boolean isMember  = groupManageService.isMember(groupId, userKey);
+        GroupPermissionService.SchedulePermissions sp = isLeader
+                ? new GroupPermissionService.SchedulePermissions(true, false, true)
+                : groupPermissionService.resolveSchedulePermissions(groupId, userKey);
+        Long favoriteGroupId = null;
+        if (userKey != null) {
+            UserVo user = userService.getUserByUserKey(userKey);
+            favoriteGroupId = (user != null) ? user.getFavoriteGroupId() : null;
+        }
+
+        Map<String, Object> viewer = new HashMap<>();
+        viewer.put("userKey", userKey);
+        viewer.put("isLeader", isLeader);
+        viewer.put("isManager", isManager);
+        viewer.put("isMember", isMember);
+        viewer.put("canCreateSchedule", sp.isCanCreate());
+        viewer.put("createNeedsApproval", sp.isCreateNeedsApproval());
+        viewer.put("canManageSchedule", sp.isCanManage());
+        viewer.put("isFavoriteGroup", groupId.equals(favoriteGroupId));
+        viewer.put("hasFavoriteGroup", favoriteGroupId != null);
+
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("group", group);
+        resp.put("visibilityType", groupPermissionService.resolveVisibilityType(groupId).name());
+        resp.put("viewer", viewer);
+        return ResponseEntity.ok(resp);
+    }
 
     @GetMapping("/me")
     public ResponseEntity<?> myGroups(@AuthenticationPrincipal CustomUserDetails userDetails) {

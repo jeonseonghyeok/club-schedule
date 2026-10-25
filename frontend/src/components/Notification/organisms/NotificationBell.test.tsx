@@ -9,7 +9,6 @@ import {
 } from '@/modules/api/notification/notification';
 import { renderWithProviders } from '@/test/render';
 import type { Notification } from '@/types/Notification';
-import { navigateToServerPage } from '@/utils/navigation';
 
 vi.mock('@/modules/api/notification/notification', () => ({
 	getNotifications: vi.fn(),
@@ -17,7 +16,11 @@ vi.mock('@/modules/api/notification/notification', () => ({
 	updateNotificationRead: vi.fn(),
 	updateAllNotificationsRead: vi.fn(),
 }));
-vi.mock('@/utils/navigation', () => ({ navigateToServerPage: vi.fn() }));
+const historyPush = vi.fn();
+vi.mock('@tanstack/react-router', async importOriginal => ({
+	...(await importOriginal<typeof import('@tanstack/react-router')>()),
+	useRouter: () => ({ history: { push: historyPush } }),
+}));
 
 const notification = (overrides: Partial<Notification>): Notification => ({
 	notificationId: 1,
@@ -41,7 +44,7 @@ describe('NotificationBell', () => {
 		]);
 		vi.mocked(updateNotificationRead).mockResolvedValue(undefined);
 		vi.mocked(updateAllNotificationsRead).mockResolvedValue(undefined);
-		vi.mocked(navigateToServerPage).mockReset();
+		historyPush.mockReset();
 	});
 
 	it('읽지 않은 개수를 버튼 이름으로 알려주고, 열면 목록을 보여준다', async () => {
@@ -66,13 +69,13 @@ describe('NotificationBell', () => {
 		expect(screen.getAllByRole('listitem')).toHaveLength(2);
 	});
 
-	it('안 읽은 알림을 누르면 읽음 처리하고 대상 화면으로 이동한다', async () => {
+	it('안 읽은 알림을 누르면 읽음 처리하고 대상 화면으로(SPA) 이동한다', async () => {
 		renderWithProviders(<NotificationBell />);
 		await userEvent.click(await screen.findByRole('button', { name: /알림/ }));
 		await userEvent.click(await screen.findByRole('button', { name: /가입 승인/ }));
 
 		await waitFor(() => expect(updateNotificationRead).toHaveBeenCalledWith(1));
-		expect(navigateToServerPage).toHaveBeenCalledWith('/groups/3');
+		expect(historyPush).toHaveBeenCalledWith('/groups/3');
 		expect(await screen.findByRole('button', { name: '알림 (읽지 않음 1개)' })).toBeInTheDocument();
 	});
 

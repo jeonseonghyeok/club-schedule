@@ -3,7 +3,7 @@ import { useId, useState } from 'react';
 import { AdminListStatus } from '@/components/Admin/molecules/AdminListStatus';
 import { AdminSearchBar } from '@/components/Admin/molecules/AdminSearchBar';
 import { GroupRequestReviewDialog } from '@/components/Admin/organisms/GroupRequestReviewDialog';
-import { RejectReasonDialog } from '@/components/Admin/organisms/RejectReasonDialog';
+import { ReasonDialog } from '@/components/common/organisms/ReasonDialog';
 import { Button } from '@/components/common/atoms/Button';
 import { Pagination } from '@/components/common/molecules/Pagination';
 import { DataTable } from '@/components/common/organisms/DataTable';
@@ -151,7 +151,7 @@ export const GroupRequestsPanel = () => {
 				/>
 			)}
 			{review?.step === 'reject' && (
-				<RejectReasonDialog
+				<ReasonDialog
 					title={`${requestLabel(review.request)} 거부 사유 선택`}
 					presets={GROUP_REQUEST_REJECT_PRESETS}
 					isReasonRequired

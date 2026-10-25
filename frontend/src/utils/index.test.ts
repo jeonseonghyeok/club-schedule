@@ -11,6 +11,15 @@ describe('getErrorMessage', () => {
 			'요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.',
 		);
 	});
+
+	it('서버가 메시지를 주지 않았으면 상황별 문구를 쓴다', () => {
+		expect(getErrorMessage({ error: 'Unknown', message: '일시적인 오류' }, '역할 변경에 실패했습니다.')).toBe(
+			'역할 변경에 실패했습니다.',
+		);
+		expect(getErrorMessage({ error: 'Conflict', message: '정원이 찼습니다.' }, '역할 변경에 실패했습니다.')).toBe(
+			'정원이 찼습니다.',
+		);
+	});
 });
 
 describe('cn', () => {

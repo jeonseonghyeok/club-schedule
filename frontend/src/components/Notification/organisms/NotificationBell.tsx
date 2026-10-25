@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from '@tanstack/react-router';
 import { useEffect, useId, useRef, useState } from 'react';
 import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
 import { useReadAllNotifications, useReadNotification } from '@/modules/stores/server/notification/mutations';
@@ -6,7 +7,6 @@ import { notificationQueries } from '@/modules/stores/server/notification/querie
 import type { Notification, NotificationCategory } from '@/types/Notification';
 import { cn } from '@/utils';
 import { formatDateTime } from '@/utils/date';
-import { navigateToServerPage } from '@/utils/navigation';
 
 const CATEGORY_ICON = { APPROVE: '✅', REJECT: '❌', NOTICE: '📢' } as const satisfies Record<
 	NotificationCategory,
@@ -54,6 +54,7 @@ const NotificationItem = (props: ItemProps) => {
 };
 
 export const NotificationBell = () => {
+	const router = useRouter();
 	const [isOpen, setIsOpen] = useState(false);
 	const [filter, setFilter] = useState<Filter>(FILTER.ALL);
 	const panelId = useId();
@@ -84,7 +85,8 @@ export const NotificationBell = () => {
 	const select = (notification: Notification) => {
 		if (!notification.isRead) readNotification(notification.notificationId);
 		setIsOpen(false);
-		if (notification.targetUrl) navigateToServerPage(notification.targetUrl);
+		// targetUrl 은 서버가 주는 화면 경로(/groups/3) — 라우터 기록에 넣어 SPA 안에서 이동한다
+		if (notification.targetUrl) router.history.push(notification.targetUrl);
 	};
 
 	const renderList = () => {

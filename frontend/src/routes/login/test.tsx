@@ -6,7 +6,7 @@ import { AuthLayout } from '@/components/layout/AuthLayout';
 import { useCreateTestLogin } from '@/modules/stores/server/auth/mutations';
 import { authQueries } from '@/modules/stores/server/auth/queries';
 import { getErrorMessage } from '@/utils';
-import { navigateToServerPage } from '@/utils/navigation';
+import { navigateWithReload } from '@/utils/navigation';
 
 const HOME_PATH = '/';
 
@@ -15,7 +15,7 @@ const TestLoginPage = () => {
 	const { data: accounts, error, isPending } = useQuery({ ...authQueries.testAccounts() });
 	const { mutate: login, isPending: isLoggingIn, data: loggedIn } = useCreateTestLogin();
 
-	const handleSubmit = (kakaoApiId: number) => login(kakaoApiId, { onSuccess: () => navigateToServerPage(HOME_PATH) });
+	const handleSubmit = (kakaoApiId: number) => login(kakaoApiId, { onSuccess: () => navigateWithReload(HOME_PATH) });
 
 	const renderContent = () => {
 		if (isPending) return <StatusMessage tone="pending" message="계정 목록을 불러오는 중입니다…" />;

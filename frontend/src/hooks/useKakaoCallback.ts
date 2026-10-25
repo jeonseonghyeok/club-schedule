@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useCreateKakaoLogin } from '@/modules/stores/server/auth/mutations';
 import { getErrorMessage } from '@/utils';
 import { buildKakaoAuthorizeUrl, getKakaoRedirectUri } from '@/utils/kakao';
-import { getSafeReturnPath, navigateToServerPage } from '@/utils/navigation';
+import { getSafeReturnPath, navigateWithReload } from '@/utils/navigation';
 
 export interface KakaoCallbackParams {
 	/** 카카오가 돌려준 인가 코드 — 없으면 인가 요청부터 시작한다 */
@@ -45,7 +45,7 @@ export const useKakaoCallback = (params: KakaoCallbackParams): KakaoCallbackStat
 		}
 
 		const returnPath = getSafeReturnPath(state);
-		mutate({ code, redirectUri, returnTo: returnPath }, { onSuccess: () => navigateToServerPage(returnPath) });
+		mutate({ code, redirectUri, returnTo: returnPath }, { onSuccess: () => navigateWithReload(returnPath) });
 	}, [code, error, state, returnTo, mutate]);
 
 	if (error) return { status: 'cancelled' };

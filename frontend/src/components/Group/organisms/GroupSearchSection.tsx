@@ -1,10 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import { useId, useState } from 'react';
 import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
 import { SectionCard } from '@/components/common/molecules/SectionCard';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import { groupQueries } from '@/modules/stores/server/group/queries';
-import { getDescriptionPreview, getGroupName, getGroupPath } from '@/utils/group';
+import { getDescriptionPreview, getGroupName } from '@/utils/group';
 
 const SEARCH_DEBOUNCE_MS = 300;
 
@@ -35,12 +36,14 @@ export const GroupSearchSection = (props: Props) => {
 			<ul className="divide-y divide-gray-100">
 				{groups.map(group => (
 					<li key={group.groupId} className="py-3">
-						<a
-							href={getGroupPath(group.groupId)}
+						<Link
+							to="/groups/$groupId"
+							params={{ groupId: String(group.groupId) }}
+							search={{ tab: 'home' }}
 							className="font-semibold text-gray-900 hover:underline focus-visible:outline-2 focus-visible:outline-gray-900"
 						>
 							{getGroupName(group)}
-						</a>
+						</Link>
 						<p className="mt-0.5 text-sm text-gray-500">{getDescriptionPreview(group.description)}</p>
 					</li>
 				))}

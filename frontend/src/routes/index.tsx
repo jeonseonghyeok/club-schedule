@@ -11,7 +11,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { authQueries } from '@/modules/stores/server/auth/queries';
 import { groupQueries } from '@/modules/stores/server/group/queries';
 import type { AuthMe } from '@/types/Auth';
-import { getGroupPath, isLeaderOfAny } from '@/utils/group';
+import { isLeaderOfAny } from '@/utils/group';
 
 const HOME_PATH = '/';
 
@@ -63,9 +63,13 @@ export const Route = createFileRoute('/')({
 	validateSearch: mainSearchSchema,
 	beforeLoad: async ({ context, search }) => {
 		const me = await context.queryClient.ensureQueryData(authQueries.me());
-		// 즐겨찾기 모임이 있으면 바로 그 모임으로 — 모임 화면은 아직 서버 렌더링이라 문서 전체를 다시 불러온다
+		// 즐겨찾기 모임이 있으면 바로 그 모임으로
 		if (me?.favoriteGroupId && search.list === undefined) {
-			throw redirect({ href: getGroupPath(me.favoriteGroupId), reloadDocument: true });
+			throw redirect({
+				to: '/groups/$groupId',
+				params: { groupId: String(me.favoriteGroupId) },
+				search: { tab: 'home' },
+			});
 		}
 	},
 	component: MainPage,

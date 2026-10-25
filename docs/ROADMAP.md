@@ -100,7 +100,7 @@
 ## 파일 위치 참고
 
 ```
-src/main/java/com/moyora/clubschedule/
+backend/src/main/java/com/moyora/clubschedule/
 ├── controller/
 │   ├── GroupApiController.java
 │   ├── GroupViewController.java
@@ -116,6 +116,6 @@ src/main/java/com/moyora/clubschedule/
 └── vo/
     └── GroupScheduleVo.java
 
-src/main/resources/templates/
+backend/src/main/resources/templates/
 └── group.html   (script 블록 CR-only endings → PowerShell 전용)
 ```

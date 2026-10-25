@@ -93,6 +93,7 @@ com.moyora.clubschedule
 
 ## 개발 환경
 - 개발은 서버(`~/workspace/club-schedule`)에서 직접 한다 — 상세는 `docs/DEV_SERVER.md`
+- 운영 현황·남은 작업(운영 환경 미구성, CI 개선, 기술 부채)은 `docs/OPERATIONS.md` — 작업을 마치면 갱신한다
 - **DB**: `mariadb-dev` / **`app_dev`** (MariaDB 11.2)
   - 컨테이너(배포본): `jdbc:mariadb://mariadb-dev:3306/app_dev` (`app-network`)
   - 호스트 bootRun: `127.0.0.1:3307` (`scripts/bootrun-dev.sh` 가 자동 치환)

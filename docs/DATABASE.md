@@ -1,6 +1,6 @@
 # 데이터베이스 스키마 (초안, MariaDB 기준)
 
-이 문서는 `src/main/java/com/moyora/clubschedule/vo/`의 VO들을 기반으로 작성한 데이터베이스 테이블 정의 초안입니다. 요청에 따라 MariaDB(MariaDB/MySQL) 문법과 한글 주석을 포함한 SQL 생성 쿼리를 반영했습니다.
+이 문서는 `backend/src/main/java/com/moyora/clubschedule/vo/`의 VO들을 기반으로 작성한 데이터베이스 테이블 정의 초안입니다. 요청에 따라 MariaDB(MariaDB/MySQL) 문법과 한글 주석을 포함한 SQL 생성 쿼리를 반영했습니다.
 
 주요 가정 및 규칙
 - 타겟 DB: MariaDB / MySQL (InnoDB, utf8mb4)

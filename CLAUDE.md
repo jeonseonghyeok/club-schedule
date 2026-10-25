@@ -7,8 +7,16 @@
 - **Backend**: Spring Boot 3.4.7, Java 17, MyBatis, MariaDB
 - **Frontend**: Thymeleaf, 순수 JS (별도 프레임워크 없음)
 - **보안**: Spring Security + JWT (AUTH_TOKEN 쿠키)
-- **빌드**: Gradle / IDE: Eclipse
-- **서버 포트**: 8081
+- **빌드**: Gradle (`backend/`), 개발은 서버에서 직접 (`docs/DEV_SERVER.md`)
+- **서버 포트**: 8081 (컨테이너 내부 전용, 외부 노출은 NPM)
+
+## 저장소 구조 (모노레포)
+```
+backend/     Spring Boot 앱 (gradlew, Dockerfile) — 아래 경로는 모두 backend/ 기준
+deploy/      compose.yml(배포 정의), .env.example
+docs/        설계·운영 문서
+scripts/     bootrun-dev.sh 등 개발 스크립트
+```
 
 ## 패키지 구조
 ```
@@ -35,14 +43,12 @@ com.moyora.clubschedule
 @RequestParam(required = false) Long from
 ```
 
-**주의**: 이 프로젝트는 Eclipse Buildship(Gradle 연동, `auto.sync=false`) 프로젝트라 `build.gradle`을 변경한 뒤에는 Eclipse에서 **우클릭 → Gradle → Refresh Gradle Project**를 반드시 해야 `-parameters` 플래그가 실제 컴파일에 반영된다. 새로고침 전이거나 순수 `javac`/다른 빌드 경로에서는 파라미터 이름 미명시 시 런타임 500 오류가 발생하므로, `build.gradle`을 pull 받은 후에는 항상 Gradle Refresh부터 수행한다.
+`-parameters` 플래그가 컴파일에 반영되지 않으면(Gradle 이외 경로로 컴파일 등) 파라미터 이름 미명시 시 런타임 500 오류가 발생한다. 항상 `./gradlew` 로 빌드한다.
 
 ### MyBatis
 - `mybatis.configuration.map-underscore-to-camel-case=true` 설정됨
   → 컬럼명 `snake_case` → 필드명 `camelCase` 자동 매핑
-- Mapper XML 위치: `src/main/resources/mapper/*.xml`
-- Eclipse 빌드 시 XML이 `bin/main/mapper/`로 복사됨
-  → **외부 편집 후 Eclipse가 감지 못하면 bin 파일도 동일하게 수동 복사 필요**
+- Mapper XML 위치: `backend/src/main/resources/mapper/*.xml`
 
 ### 인증
 - JWT를 `AUTH_TOKEN` 쿠키에 저장, JWT 필터가 쿠키를 읽어 `Bearer` 헤더로 변환
@@ -74,11 +80,11 @@ com.moyora.clubschedule
   - `admin:search:results` — 검색 결과 렌더링 트리거
   - `admin:reload:panel` — 승인/거부 후 패널 새로고침
 
-## 로컬 개발 환경
-- **DB**: 개발 서버 `mariadb-dev` / **`app_dev`** (MariaDB 11.2, `app-network`) — 로컬 Eclipse·`club-schedule` 컨테이너 동일 DB
-  - **Docker 앱**: `DATASOURCE_URL=jdbc:mariadb://mariadb-dev:3306/app_dev?allowMultiQueries=true` (`deploy.yml`의 `--network app-network` 필수)
-  - **로컬 Eclipse**: SSH `-L 3307:127.0.0.1:3306` (`scripts/start-db-tunnel.ps1`) — `mariadb-dev`가 Ubuntu 호스트 `127.0.0.1:3306`으로 publish 되어 있어야 함 (컨테이너 IP 172.19.0.4 는 SSH 터널 대상으로 쓰지 않음)
-- DB 접속 정보: `application-private.properties` (git 제외, 템플릿 `application-private.properties.example`)
-- 개발 서버 Docker: `/opt/club-schedule/.env` (`.env.example` 참고)
+## 개발 환경
+- 개발은 서버(`~/workspace/club-schedule`)에서 직접 한다 — 상세는 `docs/DEV_SERVER.md`
+- **DB**: `mariadb-dev` / **`app_dev`** (MariaDB 11.2)
+  - 컨테이너(배포본): `jdbc:mariadb://mariadb-dev:3306/app_dev` (`app-network`)
+  - 호스트 bootRun: `127.0.0.1:3307` (`scripts/bootrun-dev.sh` 가 자동 치환)
+- 환경변수: 서버 `~/services/club-schedule/dev.env` (git 제외, 템플릿 `deploy/.env.example`)
+- 배포: `master` push → CI → `deploy/compose.yml` 로 `club-schedule-api-dev` 컨테이너 기동
 - 스키마: `docs/club-schedue_DLL.sql` + `docs/DATABASE.md` migration 이력 — Flyway 없음, 수동 적용
-- 서버 실행: Eclipse에서 Spring Boot 앱 Run/Debug

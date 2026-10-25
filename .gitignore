@@ -4,7 +4,7 @@ build/
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
-src/main/resources/application-private.properties
+backend/src/main/resources/application-private.properties
 
 ### STS ###
 .apt_generated
@@ -41,3 +41,7 @@ out/
 .playwright-mcp/
 cookies.txt
 /Screenshot_*.jpg
+
+### 프론트엔드 ###
+node_modules/
+dist/

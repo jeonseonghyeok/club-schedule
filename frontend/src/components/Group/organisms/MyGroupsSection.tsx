@@ -1,8 +1,9 @@
+import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
 import { SectionCard } from '@/components/common/molecules/SectionCard';
 import type { Group } from '@/types/Group';
-import { formatMemberCount, getGroupName, getGroupPath, sortFavoriteFirst } from '@/utils/group';
+import { formatMemberCount, getGroupName, sortFavoriteFirst } from '@/utils/group';
 
 export type MyGroupsState =
 	{ status: 'guest' } | { status: 'loading' } | { status: 'error' } | { status: 'success'; groups: readonly Group[] };
@@ -23,9 +24,10 @@ const GroupItem = (props: GroupItemProps) => {
 	const { group, isFavorite } = props;
 	return (
 		<li className="py-3">
-			{/* 모임 화면은 아직 서버 렌더링이라 일반 링크(전체 페이지 이동)를 쓴다 */}
-			<a
-				href={getGroupPath(group.groupId)}
+			<Link
+				to="/groups/$groupId"
+				params={{ groupId: String(group.groupId) }}
+				search={{ tab: 'home' }}
 				className="font-semibold text-gray-900 hover:underline focus-visible:outline-2 focus-visible:outline-gray-900"
 			>
 				{isFavorite && (
@@ -35,7 +37,7 @@ const GroupItem = (props: GroupItemProps) => {
 					</>
 				)}
 				{getGroupName(group)}
-			</a>
+			</Link>
 			<p className="mt-0.5 text-sm text-gray-500">{formatMemberCount(group)}</p>
 		</li>
 	);

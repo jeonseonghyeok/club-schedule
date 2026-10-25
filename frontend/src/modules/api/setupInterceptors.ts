@@ -9,8 +9,11 @@ export interface ServerError {
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
+/** 서버가 읽을 수 있는 메시지를 주지 않았을 때의 에러 코드 — 화면은 상황별 문구로 대체한다 */
+export const UNKNOWN_ERROR_CODE = 'Unknown';
+
 const UNKNOWN_SERVER_ERROR: ServerError = {
-	error: 'Unknown',
+	error: UNKNOWN_ERROR_CODE,
 	message: '일시적인 오류가 발생했습니다. 잠시 후 다시 시도해주세요.',
 };
 
@@ -29,7 +32,7 @@ const hasMessage = (data: unknown): data is { message: string } =>
 // 호출부가 error.response.data 를 ServerError 로 다룰 수 있게 맞춘다.
 const toServerError = (data: unknown): ServerError => {
 	if (isServerError(data)) return data;
-	if (hasMessage(data)) return { error: UNKNOWN_SERVER_ERROR.error, message: data.message };
+	if (hasMessage(data)) return { error: 'Error', message: data.message };
 	return UNKNOWN_SERVER_ERROR;
 };
 

@@ -11,3 +11,12 @@ if (typeof HTMLDialogElement.prototype.showModal !== 'function') {
 		this.dispatchEvent(new Event('close'));
 	};
 }
+
+// jsdom 에는 ResizeObserver 가 없다(모임 설명 "더보기" 판단에 쓴다).
+if (typeof globalThis.ResizeObserver === 'undefined') {
+	globalThis.ResizeObserver = class {
+		observe() {}
+		unobserve() {}
+		disconnect() {}
+	};
+}

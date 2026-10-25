@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AdminListStatus } from '@/components/Admin/molecules/AdminListStatus';
 import { AdminSearchBar } from '@/components/Admin/molecules/AdminSearchBar';
-import { RejectReasonDialog } from '@/components/Admin/organisms/RejectReasonDialog';
+import { ReasonDialog } from '@/components/common/organisms/ReasonDialog';
 import { Button } from '@/components/common/atoms/Button';
 import { Pagination } from '@/components/common/molecules/Pagination';
 import { DataTable } from '@/components/common/organisms/DataTable';
@@ -92,7 +92,7 @@ export const GroupJoinsPanel = () => {
 				)}
 			</AdminListStatus>
 			{rejecting && (
-				<RejectReasonDialog
+				<ReasonDialog
 					title={`${joinLabel(rejecting)} 가입 요청 거부`}
 					isReasonRequired={false}
 					isSubmitting={isRejecting}

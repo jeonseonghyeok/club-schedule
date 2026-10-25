@@ -32,7 +32,7 @@ public class GroupJoinApprovalController {
             boolean ok = service.approveJoin(requestId, operatorKey);
             return ResponseEntity.ok(Map.of("ok", ok));
         } catch (RuntimeException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", "BadRequest", "message", ex.getMessage() != null ? ex.getMessage() : "처리할 수 없는 요청입니다."));
         }
     }
 
@@ -45,7 +45,7 @@ public class GroupJoinApprovalController {
             boolean ok = service.rejectJoin(requestId, operatorKey, reason);
             return ResponseEntity.ok(Map.of("ok", ok));
         } catch (RuntimeException ex) {
-            return ResponseEntity.badRequest().body(Map.of("error", ex.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", "BadRequest", "message", ex.getMessage() != null ? ex.getMessage() : "처리할 수 없는 요청입니다."));
         }
     }
 }

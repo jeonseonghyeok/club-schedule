@@ -4,12 +4,12 @@ import type { ReactNode } from 'react';
 import { StrictMode } from 'react';
 import { useKakaoCallback } from '@/hooks/useKakaoCallback';
 import { createKakaoLogin } from '@/modules/api/auth/login';
-import { navigateToServerPage } from '@/utils/navigation';
+import { navigateWithReload } from '@/utils/navigation';
 
 vi.mock('@/modules/api/auth/login', () => ({ createKakaoLogin: vi.fn() }));
 vi.mock('@/utils/navigation', async importOriginal => ({
 	...(await importOriginal<typeof import('@/utils/navigation')>()),
-	navigateToServerPage: vi.fn(),
+	navigateWithReload: vi.fn(),
 }));
 
 const createWrapper = () => {
@@ -27,7 +27,7 @@ describe('useKakaoCallback', () => {
 
 	beforeEach(() => {
 		vi.mocked(createKakaoLogin).mockReset();
-		vi.mocked(navigateToServerPage).mockReset();
+		vi.mocked(navigateWithReload).mockReset();
 		replace.mockReset();
 		vi.stubGlobal('location', { ...window.location, origin: 'https://dev.crewhub.store', replace });
 	});
@@ -59,14 +59,14 @@ describe('useKakaoCallback', () => {
 			redirectUri: 'https://dev.crewhub.store/login/kakao/login_callback',
 			returnTo: '/groups/4',
 		});
-		expect(navigateToServerPage).toHaveBeenCalledWith('/groups/4');
+		expect(navigateWithReload).toHaveBeenCalledWith('/groups/4');
 	});
 
 	it('외부 주소가 state 로 오면 메인으로 보낸다', async () => {
 		vi.mocked(createKakaoLogin).mockResolvedValue(undefined);
 		renderHook(() => useKakaoCallback({ code: 'abc', state: '//evil.com' }), { wrapper: createWrapper() });
 
-		await waitFor(() => expect(navigateToServerPage).toHaveBeenCalledWith('/'));
+		await waitFor(() => expect(navigateWithReload).toHaveBeenCalledWith('/'));
 	});
 
 	it('사용자가 동의를 취소하면 교환하지 않고 cancelled 를 돌려준다', () => {
@@ -82,6 +82,6 @@ describe('useKakaoCallback', () => {
 		const { result } = renderHook(() => useKakaoCallback({ code: 'abc' }), { wrapper: createWrapper() });
 
 		await waitFor(() => expect(result.current.status).toBe('error'));
-		expect(navigateToServerPage).not.toHaveBeenCalled();
+		expect(navigateWithReload).not.toHaveBeenCalled();
 	});
 });

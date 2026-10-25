@@ -19,12 +19,16 @@ interface Props {
 	presets?: readonly string[];
 	/** true 면 사유가 반드시 있어야 한다 */
 	isReasonRequired: boolean;
+	/** 확정 버튼 문구(기본 "거부 확정") */
+	confirmLabel?: string;
+	/** 사유 입력란 이름(기본 "거부 사유") */
+	reasonLabel?: string;
 	isSubmitting: boolean;
 	onSubmit: (reason: string) => void;
 	onClose: () => void;
 }
 
-const buildSchema = (params: { hasPresets: boolean; isReasonRequired: boolean }) =>
+const buildSchema = (params: { hasPresets: boolean; isReasonRequired: boolean; reasonLabel: string }) =>
 	z
 		.object({
 			preset: z.string(),
@@ -33,12 +37,21 @@ const buildSchema = (params: { hasPresets: boolean; isReasonRequired: boolean })
 		.superRefine((values, context) => {
 			const needsCustom = !params.hasPresets || values.preset === CUSTOM_REASON;
 			if (needsCustom && params.isReasonRequired && !values.custom) {
-				context.addIssue({ code: 'custom', path: ['custom'], message: '거부 사유를 입력하세요.' });
+				context.addIssue({ code: 'custom', path: ['custom'], message: `${params.reasonLabel}를 입력하세요.` });
 			}
 		});
 
-export const RejectReasonDialog = (props: Props) => {
-	const { title, presets, isReasonRequired, isSubmitting, onSubmit, onClose } = props;
+export const ReasonDialog = (props: Props) => {
+	const {
+		title,
+		presets,
+		isReasonRequired,
+		confirmLabel = '거부 확정',
+		reasonLabel = '거부 사유',
+		isSubmitting,
+		onSubmit,
+		onClose,
+	} = props;
 	const hasPresets = !!presets && presets.length > 0;
 	const presetId = useId();
 	const customId = useId();
@@ -49,7 +62,7 @@ export const RejectReasonDialog = (props: Props) => {
 		control,
 		formState: { errors },
 	} = useForm<RejectFormValues>({
-		resolver: zodResolver(buildSchema({ hasPresets, isReasonRequired })),
+		resolver: zodResolver(buildSchema({ hasPresets, isReasonRequired, reasonLabel })),
 		defaultValues: { preset: presets?.[0] ?? '', custom: '' },
 	});
 	// watch() 는 React Compiler 메모이제이션과 맞지 않아 useWatch 로 구독한다
@@ -64,7 +77,7 @@ export const RejectReasonDialog = (props: Props) => {
 				{hasPresets && (
 					<div className="flex flex-col gap-1">
 						<label htmlFor={presetId} className="text-sm font-medium text-gray-800">
-							거부 사유
+							{reasonLabel}
 						</label>
 						<select
 							id={presetId}
@@ -83,7 +96,7 @@ export const RejectReasonDialog = (props: Props) => {
 				{showCustom && (
 					<div className="flex flex-col gap-1">
 						<label htmlFor={customId} className="text-sm font-medium text-gray-800">
-							{hasPresets ? '직접 입력' : `거부 사유${isReasonRequired ? '' : ' (선택)'}`}
+							{hasPresets ? '직접 입력' : `${reasonLabel}${isReasonRequired ? '' : ' (선택)'}`}
 						</label>
 						<textarea
 							id={customId}
@@ -106,7 +119,7 @@ export const RejectReasonDialog = (props: Props) => {
 						취소
 					</Button>
 					<Button type="submit" variant="danger" disabled={isSubmitting}>
-						{isSubmitting ? '처리 중…' : '거부 확정'}
+						{isSubmitting ? '처리 중…' : confirmLabel}
 					</Button>
 				</div>
 			</form>

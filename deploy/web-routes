@@ -1,0 +1,6 @@
+# React(web 컨테이너)가 응답할 경로 — NPM custom location 으로 등록된다(prefix 일치).
+# 여기에 없는 경로는 api 컨테이너(Spring Boot, 아직 남은 Thymeleaf 화면 포함)가 응답한다.
+# 화면을 React 로 옮길 때마다 추가하고, 배포 시 CI 가 npm-site locations 로 반영한다.
+/assets/
+/login/test
+/login/kakao/login_callback

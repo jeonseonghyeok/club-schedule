@@ -1,5 +1,6 @@
 package com.moyora.clubschedule.controller;
 
+import java.util.List;
 import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
@@ -34,6 +35,24 @@ public class TestLoginController {
         if (!testAuthUtil.isEnabled()) return "redirect:/";
         model.addAttribute("testAccounts", userMapper.selectTestAccounts());
         return "test_login";
+    }
+
+    /**
+     * 테스트 계정 목록 API (React 테스트 로그인 화면용).
+     * 응답: [{"kakaoApiId": 9900000000001, "nickname": "관리자01"}, ...]
+     */
+    @GetMapping("/api/login/test/accounts")
+    @ResponseBody
+    public ResponseEntity<?> testAccounts() {
+        if (!testAuthUtil.isEnabled()) {
+            return ResponseEntity.status(503).body(Map.of("message", "테스트 인증이 비활성화되어 있습니다."));
+        }
+        List<Map<String, Object>> accounts = userMapper.selectTestAccounts().stream()
+                .map(u -> Map.<String, Object>of(
+                        "kakaoApiId", u.getKakaoApiId(),
+                        "nickname", u.getNickname() != null ? u.getNickname() : ""))
+                .toList();
+        return ResponseEntity.ok(accounts);
     }
 
     /**

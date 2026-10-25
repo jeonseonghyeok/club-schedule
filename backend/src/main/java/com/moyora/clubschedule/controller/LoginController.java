@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,6 +27,13 @@ import jakarta.servlet.http.HttpServletRequest;
 
 @Controller
 public class LoginController {
+    private static final Logger log = LoggerFactory.getLogger(LoginController.class);
+
+    /** 다른 API 와 같은 에러 바디 형식 {error, message} */
+    private static Map<String, String> error(String error, String message) {
+        return Map.of("error", error, "message", message);
+    }
+
     @Autowired
     private KakaoTokenUtil kakaoTokenUtil;
     @Autowired
@@ -65,7 +74,7 @@ public class LoginController {
 
         if (effectiveRedirect == null) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                .body("허용되지 않은 redirect_uri 접근입니다.");
+                .body(error("Forbidden", "허용되지 않은 redirect_uri 접근입니다."));
         }
 
         // 2. whitelist와 일치 여부 판별(경로만 등록하여 판별)
@@ -81,16 +90,16 @@ public class LoginController {
             // path만 비교
             if (!redirectWhitelist.contains(url.getPath())) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body("허용되지 않은 redirect_uri 접근입니다.");
+                    .body(error("Forbidden", "허용되지 않은 redirect_uri 접근입니다."));
             }
 
             // 클라이언트로 전달할 원래 리턴 경로(호스트 제외, 쿼리 포함 가능)
             returnPath = url.getPath() + (uri.getQuery() != null ? "?" + uri.getQuery() : "");
 
         } catch (URISyntaxException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("redirect_uri 구문 오류입니다.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error("Forbidden", "redirect_uri 구문 오류입니다."));
         } catch (MalformedURLException e) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body("redirect_uri 형식 오류입니다.");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error("Forbidden", "redirect_uri 형식 오류입니다."));
         }
 
         // 3. AccessToken 발급 요청
@@ -98,8 +107,9 @@ public class LoginController {
         try {
             kakaoToken = kakaoTokenUtil.getToken(code, effectiveRedirect);
         } catch (Exception e) {
+            log.warn("카카오 토큰 발급 실패: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_GATEWAY)
-                .body("카카오 토큰 발급 실패: " + e.getMessage());
+                .body(error("BadGateway", "카카오 인증에 실패했습니다. 다시 로그인해 주세요."));
         }
 
         // 4. 회원 자동가입/로그인 처리
@@ -107,8 +117,9 @@ public class LoginController {
         try {
             memberService.autoSignUpByKakaoApi(kakaoAccessToken,effectiveRedirect);
         } catch (Exception e) {
+            log.error("카카오 회원 자동가입 실패", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body("회원 자동가입 처리 중 오류: " + e.getMessage());
+                .body(error("InternalServerError", "회원 가입 처리 중 오류가 발생했습니다."));
         }
 
         // 5. 쿠키에 id_token을 HttpOnly로 저장하여 브라우저가 자동으로 인증에 사용하도록 함

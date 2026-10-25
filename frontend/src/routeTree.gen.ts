@@ -10,33 +10,54 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LoginTestRouteImport } from './routes/login/test'
+import { Route as LoginKakaoLogin_callbackRouteImport } from './routes/login/kakao/login_callback'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginTestRoute = LoginTestRouteImport.update({
+  id: '/login/test',
+  path: '/login/test',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginKakaoLogin_callbackRoute =
+  LoginKakaoLogin_callbackRouteImport.update({
+    id: '/login/kakao/login_callback',
+    path: '/login/kakao/login_callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/login/test': typeof LoginTestRoute
+  '/login/kakao/login_callback': typeof LoginKakaoLogin_callbackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/login/test': typeof LoginTestRoute
+  '/login/kakao/login_callback': typeof LoginKakaoLogin_callbackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/login/test': typeof LoginTestRoute
+  '/login/kakao/login_callback': typeof LoginKakaoLogin_callbackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/login/test' | '/login/kakao/login_callback'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/login/test' | '/login/kakao/login_callback'
+  id: '__root__' | '/' | '/login/test' | '/login/kakao/login_callback'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  LoginTestRoute: typeof LoginTestRoute
+  LoginKakaoLogin_callbackRoute: typeof LoginKakaoLogin_callbackRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +69,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login/test': {
+      id: '/login/test'
+      path: '/login/test'
+      fullPath: '/login/test'
+      preLoaderRoute: typeof LoginTestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login/kakao/login_callback': {
+      id: '/login/kakao/login_callback'
+      path: '/login/kakao/login_callback'
+      fullPath: '/login/kakao/login_callback'
+      preLoaderRoute: typeof LoginKakaoLogin_callbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  LoginTestRoute: LoginTestRoute,
+  LoginKakaoLogin_callbackRoute: LoginKakaoLogin_callbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

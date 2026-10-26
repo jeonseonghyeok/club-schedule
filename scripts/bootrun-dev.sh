@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 개발 서버(호스트)에서 백엔드를 직접 띄운다: app_dev(mariadb-dev, 127.0.0.1:3307) 에 접속.
-#   scripts/bootrun-dev.sh            # http://127.0.0.1:8081
+#   scripts/bootrun-dev.sh            # http://127.0.0.1:8080
 # 환경변수는 ~/services/club-schedule/dev.env 를 읽고, DB 호스트만 컨테이너명 → 호스트 포트로 바꾼다.
 set -euo pipefail
 

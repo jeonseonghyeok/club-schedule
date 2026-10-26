@@ -18,11 +18,11 @@
 
 ```
 브라우저 ─► NPM(443) ─┬─ 기본(모든 화면, React)  → club-schedule-web-dev:80        (배포본, CI)
-                      └─ /api/ (deploy/api-routes) → club-schedule-api-dev:8081 ─► mariadb-dev:3306
-개발자   ─► 127.0.0.1:5173 (vite) ─ /api ─► 127.0.0.1:8081 (bootRun) ─► 127.0.0.1:3307   (작업본)
+                      └─ /api/ (deploy/api-routes) → club-schedule-api-dev:8080 ─► mariadb-dev:3306
+개발자   ─► 127.0.0.1:5173 (vite) ─ /api ─► 127.0.0.1:8080 (bootRun) ─► 127.0.0.1:3307   (작업본)
 ```
 
-- 배포본 컨테이너는 호스트 포트를 열지 않는다. 호스트 8081 은 bootRun 전용이다.
+- 배포본 컨테이너는 호스트 포트를 열지 않는다. 호스트 8080 은 bootRun 전용이다.
 - `mariadb-dev` 는 호스트 `127.0.0.1:3307` 로 publish 되어 있다(3306 은 `mariadb-prod` — 혼동 주의).
 
 ## 도구
@@ -41,8 +41,8 @@ scripts/bootrun-dev.sh
 ## 프론트엔드 실행
 
 ```bash
-scripts/bootrun-dev.sh &          # 백엔드 (127.0.0.1:8081)
-cd frontend && npm run dev        # http://127.0.0.1:5173, /api 는 8081 로 프록시
+scripts/bootrun-dev.sh &          # 백엔드 (127.0.0.1:8080)
+cd frontend && npm run dev        # http://127.0.0.1:5173, /api 는 8080 로 프록시
 ```
 
 - 브라우저에서 보려면 SSH 터널: `ssh -L 5173:127.0.0.1:5173 ubuntu@<서버>` → `http://localhost:5173`
@@ -80,8 +80,12 @@ docker build -t club-schedule-web:local .
 
 ```bash
 cd ~/services/club-schedule
-APP_ENV=dev IMAGE_TAG=<커밋 SHA 또는 latest> docker compose up -d
+APP_ENV=dev IMAGE_TAG=<커밋 SHA> docker compose up -d   # 롤백 (컨테이너 이미지에 SHA 가 붙는다)
+APP_ENV=dev docker compose up -d                       # 최신(latest)으로 복귀
 ```
+
+- **포트 표준화(api 8081 → 8080) 이전 커밋**의 api 이미지는 8081 을 듣는다. 그 커밋으로 되돌릴 때는
+  `npm-site locations dev.crewhub.store club-schedule-api-dev 8081 /api/` 로 NPM 포트도 맞춘다.
 
 - api·web 이미지는 같은 커밋 SHA 로 태그되므로, **화면 분리 이후(web 이미지가 있는) 커밋**이면 위 한 줄로 둘 다 되돌아간다.
 - **화면 분리 이전 커밋(Thymeleaf 가 화면을 그리던 버전)으로 되돌릴 때**는 web 이미지가 없고 NPM 이 화면 경로를 web 으로 보내므로,
@@ -89,7 +93,7 @@ APP_ENV=dev IMAGE_TAG=<커밋 SHA 또는 latest> docker compose up -d
 
 ```bash
 # 모든 경로를 api(Thymeleaf 포함 버전)로, custom location 해제
-npm-site forward dev.crewhub.store club-schedule-api-dev 8081
+npm-site forward dev.crewhub.store club-schedule-api-dev 8081   # 옛 이미지는 8081
 npm-site locations dev.crewhub.store x 0
 # 해당 SHA 의 api 만 기동(web 서비스는 띄우지 않는다)
 APP_ENV=dev IMAGE_TAG=<SHA> docker compose up -d api
@@ -107,7 +111,7 @@ APP_ENV=dev IMAGE_TAG=<SHA> docker compose up -d api
 |------|------|------|
 | `Error creating bean ... DataSource` | DB 연결 실패 | `docker ps` 로 `mariadb-dev` 확인, `dev.env` 의 DB 계정 확인 |
 | DB는 붙는데 데이터가 이상함 | 3306(=`mariadb-prod`)에 접속 | bootRun 은 3307, 컨테이너는 `mariadb-dev:3306` |
-| 포트 8081 already in use | 이전 bootRun 프로세스가 남아 있음 | `ss -ltnp \| grep 8081` 로 찾아 종료 |
+| 포트 8080 already in use | 이전 bootRun 프로세스가 남아 있음 | `ss -ltnp \| grep 8080` 로 찾아 종료 |
 | dev.crewhub.store 502 | 컨테이너 미기동 또는 NPM 전달 대상 불일치 | `docker logs club-schedule-api-dev`, `npm-site list` |
 
 ## 관련 문서

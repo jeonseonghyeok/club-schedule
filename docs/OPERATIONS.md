@@ -6,7 +6,7 @@
 
 ```
 브라우저 ─► NPM(443, Let's Encrypt) ─┬─ 기본(모든 화면)  → club-schedule-web-dev:80   React SPA (nginx)
-          dev.crewhub.store         └─ /api/            → club-schedule-api-dev:8081 Spring Boot ─► mariadb-dev
+          dev.crewhub.store         └─ /api/            → club-schedule-api-dev:8080 Spring Boot ─► mariadb-dev
 ```
 
 | 항목 | 상태 |
@@ -34,7 +34,7 @@
 
 ### 운영 환경(prod) — 미구성
 - [ ] `crewhub.store` 는 NPM 이 `my-app-prod:8080`(존재하지 않음)을 가리켜 **502**
-- [ ] 필요한 것: `~/services/club-schedule/prod.env`(mariadb-prod 접속), `mariadb-prod` 를 `app-network` 에 연결(현재 dev 만 연결),
+- [ ] 필요한 것: `~/services/club-schedule/prod.env`(mariadb-prod 접속), api-prod 는 `db-prod` 망으로 `mariadb-prod` 에 접속(망은 서버 ~/infra/mariadb 가 제공),
   운영 배포 트리거(태그·브랜치 등) 결정, CI 의 `DEPLOY_DOMAIN`·`APP_ENV` 를 운영용으로 분기, NPM `crewhub.store` 를 `club-schedule-web-prod` 로
 - [ ] 운영에서는 `TEST_AUTH_SECRET` 을 비워 테스트 로그인 비활성화
 

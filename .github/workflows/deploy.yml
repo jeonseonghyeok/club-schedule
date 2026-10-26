@@ -78,14 +78,15 @@ jobs:
           script: |
             set -e
             cd ~/services/club-schedule
-            export APP_ENV=dev IMAGE=${{ env.IMAGE_NAME }} WEB_IMAGE=${{ env.WEB_IMAGE_NAME }} IMAGE_TAG=${{ github.sha }}
+            # 태그 없이(latest) 실행한다 — 커밋 SHA 태그는 Docker Hub 에 남아 롤백용으로 쓴다.
+            export APP_ENV=dev IMAGE=${{ env.IMAGE_NAME }} WEB_IMAGE=${{ env.WEB_IMAGE_NAME }} IMAGE_TAG=
             docker compose pull
             docker compose up -d
             # 기본은 web(React), deploy/api-routes 의 경로만 api 로 보낸다.
             # 경로를 먼저 등록한 뒤 기본 대상을 바꿔 /api 가 잠시라도 web 으로 가지 않게 한다.
-            ~/infra/npm/bin/npm-site locations ${{ env.DEPLOY_DOMAIN }} club-schedule-api-dev 8081 \
+            ~/infra/npm/bin/npm-site locations ${{ env.DEPLOY_DOMAIN }} club-schedule-api-dev 8080 \
               $(grep -vE '^[[:space:]]*(#|$)' api-routes)
             ~/infra/npm/bin/npm-site forward ${{ env.DEPLOY_DOMAIN }} club-schedule-web-dev 80
-            # 구 방식(docker run, 호스트 8081 publish) 컨테이너 정리
+            # 구 방식(docker run, 호스트 포트 publish) 컨테이너 정리
             docker rm -f club-schedule 2>/dev/null || true
             docker image prune -f

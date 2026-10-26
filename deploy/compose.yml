@@ -5,25 +5,28 @@
 #
 # - 호스트 포트를 열지 않는다. 외부 노출은 NPM Proxy Host 가 담당한다.
 #     기본(모든 화면)      → club-schedule-web-<env>:80   (React SPA)
-#     /api/ (api-routes)  → club-schedule-api-<env>:8081 (Spring Boot, 화면 없음)
-# - 이미지 태그는 IMAGE_TAG 로 고정할 수 있다(기본 latest, CI 는 커밋 SHA 를 넘긴다).
+#     /api/ (api-routes)  → club-schedule-api-<env>:8080 (Spring Boot, 화면 없음)
+# - 네트워크: web·api 는 app-network(NPM 과 공유), DB 는 db-<env> 망에만 있고 api 만 붙는다.
+# - 평소에는 태그 없이(latest) 실행한다. 롤백할 때만 IMAGE_TAG=<커밋 SHA> 로 고정한다
+#   (CI 는 latest 와 커밋 SHA 태그를 함께 push 한다).
 name: club-schedule-${APP_ENV:?APP_ENV=dev|prod}
 
 services:
   api:
-    image: ${IMAGE:-tony3389/club-schedule}:${IMAGE_TAG:-latest}
+    image: ${IMAGE:-tony3389/club-schedule}${IMAGE_TAG:+:${IMAGE_TAG}}
     container_name: club-schedule-api-${APP_ENV}
     restart: unless-stopped
     env_file: ./${APP_ENV}.env
     environment:
       TZ: Asia/Seoul
     expose:
-      - "8081"
+      - "8080"
     networks:
       - app-network
+      - db
 
   web:
-    image: ${WEB_IMAGE:-tony3389/club-schedule-web}:${IMAGE_TAG:-latest}
+    image: ${WEB_IMAGE:-tony3389/club-schedule-web}${IMAGE_TAG:+:${IMAGE_TAG}}
     container_name: club-schedule-web-${APP_ENV}
     restart: unless-stopped
     expose:
@@ -33,4 +36,7 @@ services:
 
 networks:
   app-network:
+    external: true
+  db:
+    name: db-${APP_ENV}   # ~/infra/mariadb 가 만든 환경별 DB 망
     external: true

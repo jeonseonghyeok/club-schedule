@@ -174,6 +174,7 @@
 		    status_updated_at = NOW()
 		WHERE request_id = #{requestId}
 		AND user_key = #{userKey}
+		AND status = 'PENDING'
 	</update>	
 	<!-- 그룹 신청 거부 (상태 변경) -->
     <update id="updateStatusToRejected">
@@ -183,6 +184,7 @@
             updated_by = #{userKey},
             status_updated_at = NOW()
         WHERE request_id = #{requestId}
+        AND status = 'PENDING'
     </update> 
 	<!-- 요청자의 user_key 조회 -->
 	<select id="selectRequesterUserKey" parameterType="long" resultType="long">

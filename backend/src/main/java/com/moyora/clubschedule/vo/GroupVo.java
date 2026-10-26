@@ -12,6 +12,7 @@ public class GroupVo {
     private Integer capacity;
     private Integer currentMemberCount;
     private Boolean autoApprove;
+    private Boolean allowSelfNickname; // 회원 본인이 모임 닉네임을 바꿀 수 있는지
 
     // 추가 필드: 스케줄 정책 및 부방장 기본 권한
     private String schedulePolicy; // ALL, LEADERS_ONLY, APPROVAL_REQUIRED

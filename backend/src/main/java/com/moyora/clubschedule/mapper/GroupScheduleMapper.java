@@ -25,7 +25,8 @@ public interface GroupScheduleMapper {
     int updateScheduleStatus(
             @Param("scheduleId") Long scheduleId,
             @Param("status")     GroupScheduleVo.ScheduleStatus status,
-            @Param("approvedBy") Long approvedBy);
+            @Param("approvedBy") Long approvedBy,
+            @Param("statusReason") String statusReason);
 
     /** 일정 내용 수정 */
     int updateSchedule(GroupScheduleEditDto dto);

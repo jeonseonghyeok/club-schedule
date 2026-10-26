@@ -112,6 +112,7 @@ public class GroupController {
         toUpdate.setDescription(dto.getDescription());
         toUpdate.setCapacity(dto.getCapacity());
         toUpdate.setAutoApprove(dto.getAutoApprove());
+        toUpdate.setAllowSelfNickname(dto.getAllowSelfNickname());
         try {
             if (!groupManageService.updateGroupBasicInfo(groupId, toUpdate)) {
                 return ApiErrors.notFound("모임을 찾을 수 없습니다.");

@@ -18,6 +18,7 @@ public class GroupScheduleVo {
              private final LocalDateTime endAt;   // nullable
              private final int maxAttendance;     // 0 = 무제한
     @NonNull private final ScheduleStatus status;
+             private final String statusReason;   // nullable — 반려·취소 사유(migration_v9)
     @NonNull private final Long createdBy;
              private final Long approvedBy;       // nullable (승인 전)
     @NonNull private final LocalDateTime createdAt;

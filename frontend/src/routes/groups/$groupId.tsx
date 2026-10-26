@@ -17,6 +17,7 @@ import { AppHeader } from '@/components/layout/AppHeader';
 import { MemberInfoDialog } from '@/components/Member/organisms/MemberInfoDialog';
 import { MembersManageSection } from '@/components/Member/organisms/MembersManageSection';
 import { MyAttendanceDialog } from '@/components/Member/organisms/MyAttendanceDialog';
+import { MyNicknameForm } from '@/components/Member/organisms/MyNicknameForm';
 import { PermissionsSection } from '@/components/Member/organisms/PermissionsSection';
 import { ScheduleCalendar } from '@/components/Schedule/organisms/ScheduleCalendar';
 import { ScheduleDialogs } from '@/components/Schedule/organisms/ScheduleDialogs';
@@ -246,7 +247,19 @@ const GroupPage = () => {
 					onKick={() => {}}
 					onWithdraw={confirmWithdraw}
 					onClose={() => setMyInfo(null)}
-				/>
+				>
+					{/* 모임이 막아둬도 리더는 자기 닉네임을 바꿀 수 있다 */}
+					{(viewer.isLeader || detail.group.allowSelfNickname) && (
+						<MyNicknameForm
+							groupId={groupId}
+							groupNickname={myInfo.groupNickname}
+							onSaved={() => {
+								setMyInfo(null);
+								openModal({ type: ModalType.ALERT, message: '모임 닉네임이 저장되었습니다.' });
+							}}
+						/>
+					)}
+				</MemberInfoDialog>
 			)}
 		</>
 	);

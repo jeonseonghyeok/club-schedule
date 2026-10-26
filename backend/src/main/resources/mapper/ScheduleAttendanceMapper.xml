@@ -60,11 +60,14 @@
           </foreach>
     </select>
 
+    <!-- 표시 이름: 모임 닉네임(group_member.nickname)이 있으면 그것, 없으면 계정 닉네임 -->
     <select id="selectActiveList" resultMap="attendanceRM">
         SELECT sa.*,
-               u.nickname AS display_name
+               COALESCE(gm.nickname, u.nickname) AS display_name
         FROM schedule_attendance sa
         JOIN `user` u ON u.user_key = sa.user_key
+        JOIN group_schedule gs ON gs.schedule_id = sa.schedule_id
+        LEFT JOIN group_member gm ON gm.group_id = gs.group_id AND gm.user_key = sa.user_key
         WHERE sa.schedule_id = #{scheduleId}
           AND sa.is_latest   = 1
         ORDER BY sa.created_at ASC
@@ -72,10 +75,11 @@
 
     <select id="selectActiveListByScheduleIds" resultMap="attendanceRM">
         SELECT sa.*,
-               u.nickname AS display_name
+               COALESCE(gm.nickname, u.nickname) AS display_name
         FROM schedule_attendance sa
         JOIN `user` u            ON u.user_key = sa.user_key
         JOIN group_schedule gs   ON gs.schedule_id = sa.schedule_id
+        LEFT JOIN group_member gm ON gm.group_id = gs.group_id AND gm.user_key = sa.user_key
         WHERE gs.group_id    = #{groupId}
           AND sa.is_latest   = 1
           AND sa.status IN ('CONFIRMED', 'PENDING')
@@ -123,11 +127,14 @@
          신청(PENDING)/확정(CONFIRMED)/거부(REJECTED)/취소(CANCELLED) 액션을 의미한다. -->
     <select id="selectHistoryByScheduleId" resultMap="attendanceHistoryRM">
         SELECT sa.*,
-               u.nickname AS display_name,
-               a.nickname AS actor_display_name
+               COALESCE(gm.nickname, u.nickname) AS display_name,
+               COALESCE(agm.nickname, a.nickname) AS actor_display_name
         FROM schedule_attendance sa
         JOIN `user` u ON u.user_key = sa.user_key
+        JOIN group_schedule gs ON gs.schedule_id = sa.schedule_id
+        LEFT JOIN group_member gm  ON gm.group_id = gs.group_id AND gm.user_key = sa.user_key
         LEFT JOIN `user` a ON a.user_key = sa.updated_by
+        LEFT JOIN group_member agm ON agm.group_id = gs.group_id AND agm.user_key = sa.updated_by
         WHERE sa.schedule_id = #{scheduleId}
         ORDER BY sa.created_at ASC
     </select>

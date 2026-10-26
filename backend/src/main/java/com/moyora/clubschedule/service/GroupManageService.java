@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.moyora.clubschedule.dto.GroupPolicyUpdateDto;
+import com.moyora.clubschedule.exception.GroupAccessDeniedException;
 import com.moyora.clubschedule.mapper.GroupJoinBanMapper;
 import com.moyora.clubschedule.mapper.GroupMapper;
 import com.moyora.clubschedule.mapper.GroupMemberMapper;
@@ -74,6 +75,7 @@ public class GroupManageService {
         settings.put("description", group.getDescription());
         settings.put("capacity", group.getCapacity());
         settings.put("autoApprove", Boolean.TRUE.equals(group.getAutoApprove()));
+        settings.put("allowSelfNickname", Boolean.TRUE.equals(group.getAllowSelfNickname()));
         settings.put("activeMemberCount", groupMemberMapper.countActiveMembers(groupId));
         settings.put("policy", policyMap);
         return settings;
@@ -123,6 +125,31 @@ public class GroupManageService {
      */
     public java.util.List<com.moyora.clubschedule.vo.GroupMemberVo> listMembers(Long groupId) {
         return groupMemberMapper.selectMembersByGroup(groupId);
+    }
+
+    public static final int GROUP_NICKNAME_MAX = 30; // group_member.nickname VARCHAR(30)
+
+    /**
+     * 모임 닉네임 변경. 비우면(null·공백) 계정 닉네임으로 돌아간다.
+     * 모임이 본인 수정을 막아두면(allow_self_nickname=0) 리더만 바꿀 수 있다.
+     * 다른 활동 회원과 같은 표시 이름은 쓸 수 없다(참가 명단에서 구분되지 않으므로).
+     */
+    @Transactional
+    public String updateMyNickname(Long groupId, Long userKey, String nickname) {
+        if (!isMember(groupId, userKey)) throw new IllegalStateException("이 모임의 회원이 아닙니다.");
+        GroupVo group = groupMapper.findById(groupId);
+        if (!Boolean.TRUE.equals(group.getAllowSelfNickname()) && !isLeader(groupId, userKey)) {
+            throw new GroupAccessDeniedException("이 모임은 회원이 닉네임을 바꿀 수 없도록 설정되어 있습니다.");
+        }
+        String normalized = (nickname == null || nickname.isBlank()) ? null : nickname.trim();
+        if (normalized != null && normalized.length() > GROUP_NICKNAME_MAX) {
+            throw new IllegalArgumentException("닉네임은 " + GROUP_NICKNAME_MAX + "자까지 입력할 수 있습니다.");
+        }
+        if (normalized != null && groupMemberMapper.countDisplayNameTaken(groupId, userKey, normalized) > 0) {
+            throw new IllegalStateException("이 모임에서 이미 쓰는 이름입니다.");
+        }
+        groupMemberMapper.updateNickname(groupId, userKey, normalized);
+        return normalized;
     }
 
     /**

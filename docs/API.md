@@ -121,7 +121,7 @@
 ```json
 {
   "groupId": 4, "name": "모임01", "description": null, "capacity": 50, "autoApprove": false,
-  "activeMemberCount": 17,
+  "allowSelfNickname": true, "activeMemberCount": 17,
   "policy": {
     "minRoleToCreate": "LEADER | MANAGER | MEMBER",
     "requiresApproval": false,
@@ -138,7 +138,7 @@
 
 ### PATCH /api/groups/{groupId}
 기본 정보 수정. **권한**: 리더·매니저. Body 는 모두 선택: `name`(1~100자, 공백만 불가), `description`(≤5000자),
-`capacity`(1~1000, 현재 활동 회원 수 이상), `autoApprove`. 응답: 저장된 settings(위와 같은 형태).
+`capacity`(1~1000, 현재 활동 회원 수 이상), `autoApprove`, `allowSelfNickname`(회원 본인의 모임 닉네임 수정 허용). 응답: 저장된 settings(위와 같은 형태).
 
 `autoApprove` 가 켜져 있으면 가입 신청이 정원 안에서 즉시 승인된다([가입 요청](#그룹-가입-요청-api)).
 
@@ -188,6 +188,7 @@
 | `id` | Number | 일정 PK |
 | `title` / `description` / `locationName` | String | `description` 은 요청의 `content` |
 | `status` | String | `PENDING` \| `CONFIRMED` \| `REJECTED` \| `CANCELLED` |
+| `statusReason` | String\|null | 거부·취소 사유(그 밖의 상태에서는 null) |
 | `maxAttendance` | Number | 0 = 무제한 |
 | `createdBy` | Number | 작성자 userKey |
 | `isCompleted` | Boolean | |
@@ -220,6 +221,7 @@
 
 ### PATCH /api/groups/{groupId}/schedules/{scheduleId}/approve · /reject · /cancel
 승인(`PENDING`→`CONFIRMED`) · 반려(`PENDING`→`REJECTED`) · 취소(→`CANCELLED`). 변경된 일정을 반환한다.
+- 반려·취소는 Body `{reason}`(선택, 500자 이하 — 넘으면 400)을 받아 `statusReason` 에 남기고, 작성자(반려)·참가 확정 회원(취소) 알림에 붙인다.
 - 승인·반려: 리더 또는 일정 관리 권한 매니저.
 - 취소: 본인의 PENDING 일정은 작성자, 그 외는 승인 권한과 같다.
 - 상태가 맞지 않으면 409.
@@ -258,14 +260,20 @@
 
 ```json
 [{
-  "userKey": 1000001, "displayName": "홍길동", "role": "MANAGER", "status": "ACTIVE",
+  "userKey": 1000001, "displayName": "길동이", "groupNickname": "길동이", "role": "MANAGER", "status": "ACTIVE",
   "joinedAt": "2025-01-01T12:00", "leftAt": null, "banned": false, "banReason": null,
   "presets": ["SCHEDULE_MANAGER"]
 }]
 ```
 
+`displayName` 은 모임 닉네임(`groupNickname`)이 있으면 그것, 없으면 계정 닉네임이다 — 참가자·명단·이력의 `displayName` 도 같다.
 `presets` 는 활동 중인 매니저에게만 있다. `banned` 는 `group_join_ban.active=1` 여부
 ([DATABASE.md — 회원 상태 및 차단(벤) 규칙](DATABASE.md#회원-상태-및-차단벤-규칙)).
+
+### PATCH /api/groups/{groupId}/members/me/nickname
+내 모임 닉네임. Body `{nickname}` — 비우면(null·공백) 계정 닉네임으로 돌아간다. 응답 `{groupNickname}`.
+30자 초과 400, 같은 모임의 다른 활동 회원이 쓰는 표시 이름이면 409, 회원이 아니면 409,
+모임이 `allowSelfNickname=false` 면 리더가 아닌 회원은 403.
 
 ### DELETE /api/groups/{groupId}/members/me
 본인 탈퇴. **리더는 409**(먼저 다른 회원에게 리더 승계). 처리 내용:

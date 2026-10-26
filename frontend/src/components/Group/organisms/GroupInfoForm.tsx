@@ -31,6 +31,7 @@ const buildSchema = (activeMemberCount: number) =>
 			.min(Math.max(1, activeMemberCount), `현재 회원 수(${activeMemberCount}명)보다 작게 할 수 없습니다.`)
 			.max(CAPACITY_MAX, `정원은 최대 ${CAPACITY_MAX}명까지 허용됩니다.`),
 		autoApprove: z.boolean(),
+		allowSelfNickname: z.boolean(),
 	});
 
 const toFormValues = (settings: GroupSettings): GroupInfoPayload => ({
@@ -38,6 +39,7 @@ const toFormValues = (settings: GroupSettings): GroupInfoPayload => ({
 	description: settings.description ?? '',
 	capacity: settings.capacity,
 	autoApprove: settings.autoApprove,
+	allowSelfNickname: settings.allowSelfNickname,
 });
 
 interface Props {
@@ -138,6 +140,13 @@ export const GroupInfoForm = (props: Props) => {
 					<span className="block text-xs text-gray-500">
 						켜면 정원 안에서 가입 신청이 바로 승인됩니다. 정원이 차면 리더가 직접 처리합니다.
 					</span>
+				</span>
+			</label>
+			<label className="flex items-start gap-2 text-sm text-gray-800">
+				<input type="checkbox" className="mt-1" {...register('allowSelfNickname')} />
+				<span>
+					회원이 모임 닉네임을 직접 바꿀 수 있음
+					<span className="block text-xs text-gray-500">끄면 리더만 자기 닉네임을 바꿀 수 있습니다.</span>
 				</span>
 			</label>
 			<div className="flex justify-end">

@@ -53,6 +53,7 @@ export const useUpdateGroupInfo = (groupId: number) => {
 								description: settings.description,
 								capacity: settings.capacity,
 								autoApprove: settings.autoApprove,
+								allowSelfNickname: settings.allowSelfNickname,
 							},
 						}
 					: prev,

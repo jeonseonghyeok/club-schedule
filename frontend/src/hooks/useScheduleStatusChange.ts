@@ -3,12 +3,12 @@ import { useModalStore } from '@/modules/stores/client/modal';
 import { useChangeScheduleStatus } from '@/modules/stores/server/schedule/mutations';
 import type { ScheduleAction } from '@/types/Schedule';
 
-/** 되돌릴 수 없는 처리(거부·취소)는 한 번 더 묻는다. 승인은 바로 처리한다 */
-const CONFIRMATION = {
+/** 되돌릴 수 없는 처리(거부·취소)는 사유를 받는다 — 작성자·참가자 알림에 함께 간다. 승인은 바로 처리한다 */
+const REASON_PROMPT = {
 	approve: null,
-	reject: { message: '이 일정을 거부하시겠습니까? 거부 후에는 되돌릴 수 없습니다.', confirmLabel: '거부' },
-	cancel: { message: '이 일정을 취소하시겠습니까? 취소 후에는 복구할 수 없습니다.', confirmLabel: '일정 취소' },
-} as const satisfies Record<ScheduleAction, { message: string; confirmLabel: string } | null>;
+	reject: { title: '일정 거부', reasonLabel: '거부 사유', confirmLabel: '거부' },
+	cancel: { title: '일정 취소', reasonLabel: '취소 사유', confirmLabel: '일정 취소' },
+} as const satisfies Record<ScheduleAction, { title: string; reasonLabel: string; confirmLabel: string } | null>;
 
 const SUCCESS_MESSAGE = {
 	approve: '일정이 승인되었습니다.',
@@ -21,16 +21,16 @@ export const useScheduleStatusChange = (groupId: number) => {
 	const { mutate } = useChangeScheduleStatus(groupId);
 
 	return (scheduleId: number, action: ScheduleAction) => {
-		const run = () =>
+		const run = (reason: string | null) =>
 			mutate(
-				{ scheduleId, action },
+				{ scheduleId, action, reason },
 				{ onSuccess: () => openModal({ type: ModalType.ALERT, message: SUCCESS_MESSAGE[action] }) },
 			);
-		const confirmation = CONFIRMATION[action];
-		if (!confirmation) {
-			run();
+		const prompt = REASON_PROMPT[action];
+		if (!prompt) {
+			run(null);
 			return;
 		}
-		openModal({ type: ModalType.CONFIRM, ...confirmation, onConfirm: run });
+		openModal({ type: ModalType.REASON, ...prompt, onSubmit: run });
 	};
 };

@@ -11,6 +11,7 @@ const source: Schedule = {
 	start: new Date(2026, 9, 1, 19, 15).getTime(),
 	end: new Date(2026, 9, 1, 21, 15).getTime(),
 	status: 'CONFIRMED',
+	statusReason: null,
 	createdBy: 1,
 	maxAttendance: 8,
 	confirmedCount: 3,

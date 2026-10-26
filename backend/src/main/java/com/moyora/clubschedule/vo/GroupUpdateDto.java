@@ -25,4 +25,7 @@ public class GroupUpdateDto {
     private Integer capacity;
 
     private Boolean autoApprove;
+
+    /** 회원 본인의 모임 닉네임 수정 허용 */
+    private Boolean allowSelfNickname;
 }

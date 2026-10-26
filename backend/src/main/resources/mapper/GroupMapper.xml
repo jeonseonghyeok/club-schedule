@@ -22,6 +22,7 @@
             <if test="description != null">description = #{description},</if>
             <if test="capacity != null">capacity = #{capacity},</if>
             <if test="autoApprove != null">auto_approve = #{autoApprove},</if>
+            <if test="allowSelfNickname != null">allow_self_nickname = #{allowSelfNickname},</if>
             <if test="schedulePolicy != null">schedule_policy = #{schedulePolicy},</if>
         </set>
         WHERE group_id = #{groupId}

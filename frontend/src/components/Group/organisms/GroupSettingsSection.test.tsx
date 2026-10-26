@@ -19,6 +19,7 @@ const settings: GroupSettings = {
 	description: null,
 	capacity: 50,
 	autoApprove: false,
+	allowSelfNickname: true,
 	activeMemberCount: 17,
 	policy: {
 		minRoleToCreate: 'LEADER',
@@ -61,7 +62,7 @@ describe('GroupSettingsSection', () => {
 		await waitFor(() =>
 			expect(updateGroup).toHaveBeenCalledWith({
 				groupId: 4,
-				payload: { name: '독서 모임', description: '', capacity: 50, autoApprove: true },
+				payload: { name: '독서 모임', description: '', capacity: 50, autoApprove: true, allowSelfNickname: true },
 			}),
 		);
 		expect(await screen.findByRole('dialog', { description: '모임 정보가 저장되었습니다.' })).toBeInTheDocument();

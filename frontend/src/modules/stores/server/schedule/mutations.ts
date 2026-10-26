@@ -64,7 +64,7 @@ export const useChangeScheduleStatus = (groupId: number) => {
 	const openModal = useModalStore(state => state.actions.openModal);
 
 	return useMutation({
-		mutationFn: (params: { scheduleId: number; action: ScheduleAction }) =>
+		mutationFn: (params: { scheduleId: number; action: ScheduleAction; reason: string | null }) =>
 			updateScheduleStatus({ groupId, ...params }),
 		onSuccess: replace,
 		onError: (error, { action }) =>

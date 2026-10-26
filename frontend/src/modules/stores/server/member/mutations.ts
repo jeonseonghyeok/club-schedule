@@ -6,8 +6,10 @@ import {
 	updateMemberBan,
 	updateMemberPermissions,
 	updateMemberRole,
+	updateMyNickname,
 } from '@/modules/api/member/member';
 import { useModalStore } from '@/modules/stores/client/modal';
+import { attendanceQueries } from '@/modules/stores/server/attendance/queries';
 import { authQueries } from '@/modules/stores/server/auth/queries';
 import { groupQueries } from '@/modules/stores/server/group/queries';
 import { GROUP_ROLE, MEMBER_STATUS } from '@/types/Member';
@@ -111,5 +113,20 @@ export const useWithdrawGroup = (groupId: number) => {
 			void queryClient.invalidateQueries({ queryKey: authQueries.me().queryKey });
 		},
 		onError: error => alertError(error.response?.data, '탈퇴에 실패했습니다.'),
+	});
+};
+
+/** 내 모임 닉네임 — 회원 목록과 참가 명단에 보이는 이름이 바뀌므로 다시 받는다 */
+export const useUpdateMyNickname = (groupId: number) => {
+	const queryClient = useQueryClient();
+	const alertError = useAlertError();
+
+	return useMutation({
+		mutationFn: (nickname: string) => updateMyNickname({ groupId, nickname }),
+		onSuccess: () => {
+			void queryClient.invalidateQueries({ queryKey: memberQueries.list(groupId).queryKey });
+			void queryClient.invalidateQueries({ queryKey: attendanceQueries.ofGroup(groupId) });
+		},
+		onError: error => alertError(error.response?.data, '닉네임 저장에 실패했습니다.'),
 	});
 };

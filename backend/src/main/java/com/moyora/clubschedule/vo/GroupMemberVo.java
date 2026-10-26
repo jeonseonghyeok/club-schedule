@@ -8,7 +8,8 @@ import lombok.Data;
 public class GroupMemberVo {
     private Long groupId;
     private Long userKey;
-    private String displayName;
+    private String displayName;   // 모임 닉네임이 있으면 그것, 없으면 user.nickname
+    private String groupNickname; // group_member.nickname (migration_v9, 없으면 null)
     private String role;   // 'LEADER', 'MANAGER', 'MEMBER'
     private String status; // 'ACTIVE', 'WITHDRAWN', 'KICKED'
     private LocalDateTime joinedAt;

@@ -7,6 +7,7 @@ import type { GroupMember } from '@/types/Member';
 const member: GroupMember = {
 	userKey: 7,
 	displayName: '일반멤버01',
+	groupNickname: null,
 	role: 'MEMBER',
 	status: 'ACTIVE',
 	joinedAt: '2026-07-25T10:00:00',

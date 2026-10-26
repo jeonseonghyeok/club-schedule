@@ -9,6 +9,7 @@ const member = (
 ): GroupMember => ({
 	userKey,
 	displayName: `회원${userKey}`,
+	groupNickname: null,
 	role,
 	status,
 	joinedAt: '2026-07-01T00:00:00',

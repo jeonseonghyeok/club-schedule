@@ -122,7 +122,7 @@ public class GroupScheduleService {
         requireStatus(schedule, ScheduleStatus.PENDING, "승인");
 
         groupPermissionService.validateApprovePermission(groupId, operatorUserKey);
-        groupScheduleMapper.updateScheduleStatus(scheduleId, ScheduleStatus.CONFIRMED, operatorUserKey);
+        groupScheduleMapper.updateScheduleStatus(scheduleId, ScheduleStatus.CONFIRMED, operatorUserKey, null);
 
         scheduleAttendanceService.attend(groupId, scheduleId, schedule.getCreatedBy());
 
@@ -142,14 +142,15 @@ public class GroupScheduleService {
     /**
      * 일정 반려 (PENDING → REJECTED).
      * LEADER 또는 MANAGE_SCHEDULE 권한을 가진 MANAGER만 가능.
+     * reason(nullable)은 status_reason 에 남기고 작성자 알림에 붙인다.
      */
     @Transactional
-    public GroupScheduleVo rejectSchedule(Long groupId, Long scheduleId, Long operatorUserKey) {
+    public GroupScheduleVo rejectSchedule(Long groupId, Long scheduleId, Long operatorUserKey, String reason) {
         GroupScheduleVo schedule = getAndValidateGroup(scheduleId, groupId);
         requireStatus(schedule, ScheduleStatus.PENDING, "반려");
 
         groupPermissionService.validateApprovePermission(groupId, operatorUserKey);
-        groupScheduleMapper.updateScheduleStatus(scheduleId, ScheduleStatus.REJECTED, operatorUserKey);
+        groupScheduleMapper.updateScheduleStatus(scheduleId, ScheduleStatus.REJECTED, operatorUserKey, reason);
 
         notificationService.createNotification(Notification.builder()
                 .userKey(schedule.getCreatedBy())
@@ -157,7 +158,7 @@ public class GroupScheduleService {
                 .sourceId(scheduleId)
                 .category("REJECT")
                 .title("일정 신청이 거부되었습니다")
-                .content(schedule.getTitle() + " 일정 신청이 거부되었습니다.")
+                .content(withReason(schedule.getTitle() + " 일정 신청이 거부되었습니다.", reason))
                 .isRead(false)
                 .build());
 
@@ -223,9 +224,10 @@ public class GroupScheduleService {
      * 일정 취소 (PENDING·CONFIRMED → CANCELLED).
      * - 본인 PENDING 일정: 누구나 취소 가능
      * - 그 외: LEADER 또는 MANAGE_SCHEDULE 권한을 가진 MANAGER만 가능
+     * reason(nullable)은 status_reason 에 남기고 참가 확정 회원 알림에 붙인다.
      */
     @Transactional
-    public GroupScheduleVo cancelSchedule(Long groupId, Long scheduleId, Long operatorUserKey) {
+    public GroupScheduleVo cancelSchedule(Long groupId, Long scheduleId, Long operatorUserKey, String reason) {
         GroupScheduleVo schedule = getAndValidateGroup(scheduleId, groupId);
 
         if (schedule.getStatus() == ScheduleStatus.CANCELLED
@@ -237,11 +239,12 @@ public class GroupScheduleService {
                 groupId, operatorUserKey,
                 schedule.getCreatedBy(), schedule.getStatus());
 
-        groupScheduleMapper.updateScheduleStatus(scheduleId, ScheduleStatus.CANCELLED, null);
+        // 승인자 기록은 그대로 두고 상태·사유만 바꾼다
+        groupScheduleMapper.updateScheduleStatus(scheduleId, ScheduleStatus.CANCELLED, schedule.getApprovedBy(), reason);
 
         notifyConfirmedAttendees(scheduleId, schedule.getTitle(), operatorUserKey,
                 "참가 중인 일정이 취소되었습니다",
-                schedule.getTitle() + " 일정이 취소되었습니다.");
+                withReason(schedule.getTitle() + " 일정이 취소되었습니다.", reason));
 
         return groupScheduleMapper.selectByScheduleId(scheduleId);
     }
@@ -269,6 +272,10 @@ public class GroupScheduleService {
                     .isRead(false)
                     .build());
         }
+    }
+
+    private static String withReason(String message, String reason) {
+        return reason == null ? message : message + " 사유: " + reason;
     }
 
     /** scheduleId로 조회 후, 해당 그룹 소속인지 검증 */

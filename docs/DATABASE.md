@@ -11,7 +11,7 @@
   - Boolean -> TINYINT(1)
   - java.time.LocalDateTime / java.util.Date -> DATETIME
 - 문서에 포함된 CREATE TABLE 문은 제공하신 MariaDB 쿼리를 그대로 사용했습니다. 필요한 경우 제약이나 인덱스를 더 보강할 수 있습니다.
-- 아래 스키마는 [`migration_v2.sql`](migration_v2.sql)(처리자 컬럼 표준화 + `group_schedule_history` 신설), migration_v4(처리자/기록 관련 컬럼 정리), [`migration_v5.sql`](migration_v5.sql)(`user.favorite_group_id` 신설 — 우선모임/즐겨찾기), [`migration_v6.sql`](migration_v6.sql)(`group_join_request`에 `(group_id,user_key)` 조회 인덱스 추가), migration_v7(`group_join_ban`에 `active`/`unbanned_at`/`unbanned_by_user_key` 추가 — 벤 해제 시 행을 삭제하지 않고 이력 보존), migration_v8(`notification`에 `(user_key,created_at)` 조회 인덱스 추가) 적용 이후 기준입니다. 코드(`ScheduleAttendanceVo` 등)도 이 컬럼명을 사용합니다. (`migration_v3.sql`은 `schedule_attendance_check_history` 테이블 신설을 위한 것이었으나 실제 DB에 적용된 적이 없고, 이 테이블에 의존하던 기능도 제거되어 더 이상 유효하지 않다. 참고로 `group_join_request.uniq_group_user` UNIQUE 제약도 문서에는 있었지만 실제 DB에는 처음부터 존재한 적이 없었다 — 재가입 시 재신청이 막히는 문제 자체가 없었음을 확인했다.)
+- 아래 스키마는 [`migration_v2.sql`](migration_v2.sql)(처리자 컬럼 표준화 + `group_schedule_history` 신설), migration_v4(처리자/기록 관련 컬럼 정리), [`migration_v5.sql`](migration_v5.sql)(`user.favorite_group_id` 신설 — 우선모임/즐겨찾기), [`migration_v6.sql`](migration_v6.sql)(`group_join_request`에 `(group_id,user_key)` 조회 인덱스 추가), migration_v7(`group_join_ban`에 `active`/`unbanned_at`/`unbanned_by_user_key` 추가 — 벤 해제 시 행을 삭제하지 않고 이력 보존), migration_v8(`notification`에 `(user_key,created_at)` 조회 인덱스 추가), [`migration_v9.sql`](migration_v9.sql)(`group_schedule.status_reason` 반려·취소 사유, `group_member.nickname` 모임별 닉네임) 적용 이후 기준입니다. 코드(`ScheduleAttendanceVo` 등)도 이 컬럼명을 사용합니다. (`migration_v3.sql`은 `schedule_attendance_check_history` 테이블 신설을 위한 것이었으나 실제 DB에 적용된 적이 없고, 이 테이블에 의존하던 기능도 제거되어 더 이상 유효하지 않다. 참고로 `group_join_request.uniq_group_user` UNIQUE 제약도 문서에는 있었지만 실제 DB에는 처음부터 존재한 적이 없었다 — 재가입 시 재신청이 막히는 문제 자체가 없었음을 확인했다.)
 
 ---
 
@@ -135,6 +135,7 @@ CREATE TABLE `group_member` (
   `group_id` bigint(20) unsigned NOT NULL COMMENT '모임그룹 키',
   `user_key` bigint(20) unsigned NOT NULL COMMENT '회원 유저 키',
   `role` enum('LEADER','MANAGER','MEMBER') NOT NULL DEFAULT 'MEMBER' COMMENT '역할 (LEADER > MANAGER > MEMBER 3단계)',
+  `nickname` varchar(30) DEFAULT NULL COMMENT '모임별 닉네임(NULL 이면 user.nickname) — migration_v9',
   `status` enum('ACTIVE','WITHDRAWN','KICKED') NOT NULL DEFAULT 'ACTIVE' COMMENT '회원 상태',
   `joined_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '참여일시',
   `left_at` datetime DEFAULT NULL COMMENT '탈퇴/강퇴 일시',
@@ -179,6 +180,7 @@ CREATE TABLE `group_schedule` (
   `end_at` datetime DEFAULT NULL COMMENT '모임 종료 시간',
   `max_attendance` int(10) unsigned DEFAULT 0 COMMENT '최대 인원 제한 (0: 무제한)',
   `status` enum('PENDING','CONFIRMED','REJECTED','CANCELLED') NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING: 승인대기, CONFIRMED: 확정, REJECTED: 반려, CANCELLED: 취소',
+  `status_reason` varchar(500) DEFAULT NULL COMMENT '반려·취소 사유 — migration_v9',
   `created_by` bigint(20) unsigned NOT NULL COMMENT '작성자 (user_key)',
   `approved_by_user_key` bigint(20) unsigned DEFAULT NULL COMMENT '승인/반려 처리자 (user_key) — migration_v2: approved_by → approved_by_user_key',
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),

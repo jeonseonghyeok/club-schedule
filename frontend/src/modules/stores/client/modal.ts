@@ -13,7 +13,16 @@ export interface ConfirmModal {
 	readonly onConfirm: () => void;
 }
 
-export type Modal = AlertModal | ConfirmModal;
+/** 사유를 받아 처리하는 확인 창(일정 거부·취소 등) — 사유는 필수 */
+export interface ReasonModal {
+	readonly type: typeof ModalType.REASON;
+	readonly title: string;
+	readonly reasonLabel: string;
+	readonly confirmLabel: string;
+	readonly onSubmit: (reason: string) => void;
+}
+
+export type Modal = AlertModal | ConfirmModal | ReasonModal;
 
 export interface ModalStore {
 	modal: Modal | null;

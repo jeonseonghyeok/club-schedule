@@ -1,5 +1,5 @@
 param(
-    [string]$BaseUrl = "http://localhost:8081"
+    [string]$BaseUrl = "http://localhost:8080"
 )
 
 function Get-AuthToken {

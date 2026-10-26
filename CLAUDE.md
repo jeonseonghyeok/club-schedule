@@ -8,7 +8,7 @@
 - **Frontend**: `frontend/` — React 18 + TS + Vite, TanStack Router/Query, Zustand, Tailwind v4 — 모든 화면(2026-10-25 Thymeleaf 에서 이전 완료)
 - **보안**: Spring Security + JWT (AUTH_TOKEN 쿠키)
 - **빌드**: Gradle (`backend/`), 개발은 서버에서 직접 (`docs/DEV_SERVER.md`)
-- **서버 포트**: 8081 (컨테이너 내부 전용, 외부 노출은 NPM)
+- **서버 포트**: 8080 (서버 공통 규칙: api 8080·web 80. 컨테이너 내부 전용, 외부 노출은 NPM)
 
 ## 저장소 구조 (모노레포)
 ```

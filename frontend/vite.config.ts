@@ -5,9 +5,9 @@ import babel from '@rolldown/plugin-babel';
 import react, { reactCompilerPreset } from '@vitejs/plugin-react';
 import { defineConfig } from 'vitest/config';
 
-// 개발 중에는 백엔드(scripts/bootrun-dev.sh, 127.0.0.1:8081)로 API 를 프록시한다.
+// 개발 중에는 백엔드(scripts/bootrun-dev.sh, 127.0.0.1:8080)로 API 를 프록시한다.
 // 배포 시에는 NPM 이 같은 도메인에서 /api → api 컨테이너로 보내므로 동일 출처가 유지된다.
-const BACKEND_URL = process.env.BACKEND_URL ?? 'http://127.0.0.1:8081';
+const BACKEND_URL = process.env.BACKEND_URL ?? 'http://127.0.0.1:8080';
 
 export default defineConfig({
 	plugins: [

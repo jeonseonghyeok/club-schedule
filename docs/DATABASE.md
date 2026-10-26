@@ -59,12 +59,12 @@ CREATE TABLE `group` (
   `description` text NOT NULL COMMENT '모임 설명',
   `leader_user_key` bigint(20) unsigned NOT NULL COMMENT '리더 유저 키',
   `capacity` int(10) unsigned NOT NULL DEFAULT 50 COMMENT '정원 (기본 50명)',
-  `auto_approve` tinyint(1) NOT NULL DEFAULT 0 COMMENT '회원 자동 승인 여부 (0: 수동, 1 : 자동)',
+  `auto_approve` tinyint(1) NOT NULL DEFAULT 0 COMMENT '회원 자동 승인 여부 (0: 수동, 1 : 자동)', -- 1이면 가입 신청을 정원 안에서 즉시 승인(GroupJoinRequestService.requestJoin)
   `allow_self_nickname` tinyint(1) NOT NULL DEFAULT 1 COMMENT '멤버 본인의 별명 직접 수정 허용 여부',
   `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '생성일시',
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '수정일시',
   `group_create_request_id` bigint(20) NOT NULL COMMENT '모입그룹 요청 키',
-  `schedule_policy` enum('ALL','LEADERS_ONLY','APPROVAL_REQUIRED') NOT NULL DEFAULT 'ALL' COMMENT '일정 등록 권한 정책 (누구나/리더급만/승인후등록)',
+  `schedule_policy` enum('ALL','LEADERS_ONLY','APPROVAL_REQUIRED') NOT NULL DEFAULT 'ALL' COMMENT '일정 등록 권한 정책 (누구나/리더급만/승인후등록)', -- 레거시: 코드에서 읽지 않는다. 실제 정책은 group_schedule_policy
   PRIMARY KEY (`group_id`),
   UNIQUE KEY `group_unique` (`group_create_request_id`),
   KEY `idx_leader` (`leader_user_key`),

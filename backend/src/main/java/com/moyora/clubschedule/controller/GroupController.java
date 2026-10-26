@@ -12,12 +12,14 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.moyora.clubschedule.dto.GroupPolicyUpdateDto;
 import com.moyora.clubschedule.exception.ApiErrors;
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupManageService;
 import com.moyora.clubschedule.service.GroupPermissionService;
 import com.moyora.clubschedule.service.GroupService;
 import com.moyora.clubschedule.service.UserService;
+import com.moyora.clubschedule.vo.GroupUpdateDto;
 import com.moyora.clubschedule.vo.GroupVo;
 import com.moyora.clubschedule.vo.UserVo;
 
@@ -92,18 +94,45 @@ public class GroupController {
         return ResponseEntity.ok(groupService.findRecentBySchedule(3));
     }
 
+    /** 모임 설정 화면 — 기본 정보 + 일정 운영 정책. 리더·매니저만 */
+    @GetMapping("/{groupId}/settings")
+    @PreAuthorize("@groupManageService.isManager(#groupId, principal.userKey)")
+    public ResponseEntity<?> settings(@PathVariable Long groupId) {
+        Map<String, Object> settings = groupManageService.getSettings(groupId);
+        if (settings == null) return ApiErrors.notFound("모임을 찾을 수 없습니다.");
+        return ResponseEntity.ok(settings);
+    }
+
+    /** 기본 정보(이름·설명·정원·가입 자동 승인) 수정 — 리더·매니저. 저장 후 설정 전체를 돌려준다 */
     @PatchMapping("/{groupId}")
     @PreAuthorize("@groupManageService.isManager(#groupId, principal.userKey)")
-    public ResponseEntity<?> updateGroup(@PathVariable Long groupId, @Valid @RequestBody com.moyora.clubschedule.vo.GroupUpdateDto dto) {
-        com.moyora.clubschedule.vo.GroupVo toUpdate = new com.moyora.clubschedule.vo.GroupVo();
-        toUpdate.setName(dto.getName());
+    public ResponseEntity<?> updateGroup(@PathVariable Long groupId, @Valid @RequestBody GroupUpdateDto dto) {
+        GroupVo toUpdate = new GroupVo();
+        toUpdate.setName(dto.getName() != null ? dto.getName().trim() : null);
         toUpdate.setDescription(dto.getDescription());
         toUpdate.setCapacity(dto.getCapacity());
         toUpdate.setAutoApprove(dto.getAutoApprove());
-        toUpdate.setSchedulePolicy(dto.getSchedulePolicy());
-        boolean ok = groupManageService.updateGroupBasicInfo(groupId, toUpdate);
-        if (ok) return ResponseEntity.ok().build();
-        return ApiErrors.notFound("모임을 찾을 수 없습니다.");
+        try {
+            if (!groupManageService.updateGroupBasicInfo(groupId, toUpdate)) {
+                return ApiErrors.notFound("모임을 찾을 수 없습니다.");
+            }
+        } catch (IllegalArgumentException e) {
+            return ApiErrors.badRequest(e.getMessage());
+        }
+        return ResponseEntity.ok(groupManageService.getSettings(groupId));
+    }
+
+    /** 일정 운영 정책 수정 — 리더 전용. 저장 후 설정 전체를 돌려준다 */
+    @PutMapping("/{groupId}/policy")
+    @PreAuthorize("@groupManageService.isLeader(#groupId, principal.userKey)")
+    public ResponseEntity<?> updatePolicy(
+            @PathVariable Long groupId,
+            @Valid @RequestBody GroupPolicyUpdateDto dto,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        if (!groupManageService.updatePolicy(groupId, dto, userDetails.getUserKey())) {
+            return ApiErrors.notFound("모임을 찾을 수 없습니다.");
+        }
+        return ResponseEntity.ok(groupManageService.getSettings(groupId));
     }
 
     @PutMapping("/{groupId}/favorite")

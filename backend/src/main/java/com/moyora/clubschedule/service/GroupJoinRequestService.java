@@ -27,7 +27,15 @@ public class GroupJoinRequestService {
     private final GroupMapper groupMapper;
     private final GroupManageService groupManageService;
 
-    public Long requestJoin(Long groupId, Long userKey) {
+    /** 가입 신청 결과 — 자동 승인 모임이면 status 가 APPROVED(이미 회원이 됨) */
+    public record JoinRequestResult(Long requestId, String status) {}
+
+    /**
+     * 가입 신청. 모임의 auto_approve 가 켜져 있고 정원에 여유가 있으면 같은 트랜잭션에서 바로 승인한다
+     * (처리자 updated_by 는 NULL — 자동 승인). 정원이 찼으면 대기(PENDING)로 남겨 리더가 처리한다.
+     */
+    @Transactional
+    public JoinRequestResult requestJoin(Long groupId, Long userKey) {
         // 1) 이미 ACTIVE 멤버인지 확인
         int alreadyMember = groupMemberMapper.countByGroupAndUser(groupId, userKey);
         if (alreadyMember > 0) {
@@ -51,7 +59,18 @@ public class GroupJoinRequestService {
                 .status("PENDING")
                 .build();
         mapper.insert(vo);
-        return vo.getRequestId();
+
+        com.moyora.clubschedule.vo.GroupVo group = groupMapper.findById(groupId);
+        if (group != null && Boolean.TRUE.equals(group.getAutoApprove()) && hasVacancy(groupId)) {
+            approveJoin(vo.getRequestId(), null);
+            return new JoinRequestResult(vo.getRequestId(), "APPROVED");
+        }
+        return new JoinRequestResult(vo.getRequestId(), "PENDING");
+    }
+
+    private boolean hasVacancy(Long groupId) {
+        int capacity = groupMemberMapper.getGroupCapacity(groupId);
+        return capacity <= 0 || groupMemberMapper.countActiveMembers(groupId) < capacity;
     }
 
     public List<GroupJoinRequestVo> getMyRequests(Long userKey, Long groupId) {

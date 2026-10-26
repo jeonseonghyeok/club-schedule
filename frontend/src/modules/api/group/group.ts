@@ -1,5 +1,6 @@
 import type { Group } from '@/types/Group';
 import type { GroupDetail } from '@/types/GroupDetail';
+import type { GroupInfoPayload, GroupPolicy, GroupSettings } from '@/types/GroupSettings';
 import { groupApi } from '.';
 
 export const getMyGroups = async (): Promise<Group[]> => {
@@ -26,4 +27,22 @@ export const createGroupFavorite = async (groupId: number): Promise<void> => {
 
 export const deleteGroupFavorite = async (groupId: number): Promise<void> => {
 	await groupApi.delete(`/api/groups/${groupId}/favorite`);
+};
+
+/** 리더·매니저: 모임 기본 정보 + 일정 운영 정책 */
+export const getGroupSettings = async (groupId: number): Promise<GroupSettings> => {
+	const { data } = await groupApi.get<GroupSettings>(`/api/groups/${groupId}/settings`);
+	return data;
+};
+
+/** 리더·매니저: 이름·설명·정원·가입 자동 승인 — 저장된 설정 전체를 돌려준다 */
+export const updateGroup = async (params: { groupId: number; payload: GroupInfoPayload }): Promise<GroupSettings> => {
+	const { data } = await groupApi.patch<GroupSettings>(`/api/groups/${params.groupId}`, params.payload);
+	return data;
+};
+
+/** 리더 전용: 일정 운영 정책 전체 교체 */
+export const updateGroupPolicy = async (params: { groupId: number; policy: GroupPolicy }): Promise<GroupSettings> => {
+	const { data } = await groupApi.put<GroupSettings>(`/api/groups/${params.groupId}/policy`, params.policy);
+	return data;
 };

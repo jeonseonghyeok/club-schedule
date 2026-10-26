@@ -112,9 +112,35 @@
 
 화면의 권한 분기는 `viewer` 로 한다.
 
+### GET /api/groups/{groupId}/settings
+모임 설정(관리 탭 "모임 기본 정보"·"운영 정책"). **권한**: 리더·매니저.
+
+```json
+{
+  "groupId": 4, "name": "모임01", "description": null, "capacity": 50, "autoApprove": false,
+  "activeMemberCount": 17,
+  "policy": {
+    "minRoleToCreate": "LEADER | MANAGER | MEMBER",
+    "requiresApproval": false,
+    "defManagerCanManageSchedule": true,
+    "requiresAttendanceApproval": false,
+    "visibilityType": "PUBLIC | PARTIAL | PRIVATE"
+  }
+}
+```
+
+`policy` 는 `group_schedule_policy` 로, 일정 등록·승인·참가 승인·공개 범위 판단에 실제로 쓰인다
+([DATABASE.md](DATABASE.md#일정-권한-검증-우선순위)). `minRoleToCreate` 가 `LEADER`·`MANAGER` 면 일반회원만 등록할 수 없고
+(매니저는 항상 등록 가능, 일정관리자 권한이 없으면 승인 대기), `MEMBER` 면 모든 회원이 등록할 수 있다.
+
 ### PATCH /api/groups/{groupId}
-모임 기본 정보 수정. **권한**: 리더·매니저(`@PreAuthorize`). Body 는 모두 선택:
-`name`(≤100자), `description`(≤5000자), `capacity`(1~1000), `autoApprove`, `schedulePolicy`.
+기본 정보 수정. **권한**: 리더·매니저. Body 는 모두 선택: `name`(1~100자, 공백만 불가), `description`(≤5000자),
+`capacity`(1~1000, 현재 활동 회원 수 이상), `autoApprove`. 응답: 저장된 settings(위와 같은 형태).
+
+`autoApprove` 가 켜져 있으면 가입 신청이 정원 안에서 즉시 승인된다([가입 요청](#그룹-가입-요청-api)).
+
+### PUT /api/groups/{groupId}/policy
+일정 운영 정책 전체 교체. **권한**: 리더. Body 는 `policy` 의 다섯 필드 모두 필수. 응답: 저장된 settings.
 
 ### PUT / DELETE /api/groups/{groupId}/favorite
 우선모임(즐겨찾기) 지정 / 해제. 지정은 그 모임 회원만(아니면 403).
@@ -139,7 +165,7 @@
 
 | Method | Path | 권한 | 설명 |
 |---|---|---|---|
-| POST | `/api/groups/{groupId}/join-requests` | 로그인 | `{requestId}`. 이미 회원·중복 신청 409, 차단된 사용자 403 ([차단 규칙](DATABASE.md#회원-상태-및-차단벤-규칙)) |
+| POST | `/api/groups/{groupId}/join-requests` | 로그인 | `{requestId, status}` — 자동 승인 모임이고 정원이 남아 있으면 `APPROVED`(바로 회원), 아니면 `PENDING`. 이미 회원·중복 신청 409, 차단된 사용자 403 ([차단 규칙](DATABASE.md#회원-상태-및-차단벤-규칙)) |
 | DELETE | `/api/groups/{groupId}/join-requests/{requestId}` | 본인 | 신청 취소 |
 | GET | `/api/groups/{groupId}/join-requests/me` | 로그인 | 내 신청 목록(최신순) |
 | GET | `/api/groups/joins/pending/{groupId}` | **리더** | 대기 중 신청 목록 |

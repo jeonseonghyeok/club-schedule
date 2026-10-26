@@ -1,5 +1,5 @@
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
-import { getGroupDetail, getMyGroups, getRecommendedGroups } from '@/modules/api/group/group';
+import { getGroupDetail, getGroupSettings, getMyGroups, getRecommendedGroups } from '@/modules/api/group/group';
 
 export const groupQueries = {
 	all: () => ['groups'],
@@ -20,5 +20,10 @@ export const groupQueries = {
 			queryKey: [...groupQueries.all(), 'detail', groupId],
 			queryFn: () => getGroupDetail(groupId),
 			retry: false,
+		}),
+	settings: (groupId: number) =>
+		queryOptions({
+			queryKey: [...groupQueries.all(), 'settings', groupId],
+			queryFn: () => getGroupSettings(groupId),
 		}),
 };

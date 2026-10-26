@@ -21,16 +21,23 @@ export const useCreateJoinRequest = (params: { groupId: number; userKey: number 
 
 	return useMutation({
 		mutationFn: () => createJoinRequest(params.groupId),
-		onSuccess: ({ requestId }) => {
+		onSuccess: ({ requestId, status }) => {
 			const created: JoinRequest = {
 				requestId,
 				userKey: params.userKey,
 				nickname: null,
-				status: JOIN_STATUS.PENDING,
+				status,
 				requestedAt: toLocalDateTimeString(new Date()),
 				rejectReason: null,
 			};
 			queryClient.setQueryData(joinRequestQueries.mine(params.groupId).queryKey, prev => [created, ...(prev ?? [])]);
+			if (status === JOIN_STATUS.APPROVED) {
+				// 자동 승인 모임 — 이미 회원이 되었으므로 모임 화면 권한과 내 모임 목록을 다시 받는다
+				void queryClient.invalidateQueries({ queryKey: groupQueries.detail(params.groupId).queryKey });
+				void queryClient.invalidateQueries({ queryKey: groupQueries.myGroups().queryKey });
+				openModal({ type: ModalType.ALERT, message: '가입되었습니다.' });
+				return;
+			}
 			openModal({ type: ModalType.ALERT, message: '가입 신청이 완료되었습니다.' });
 		},
 		onError: error =>

@@ -22,8 +22,8 @@ public class GroupJoinRequestController {
     @PostMapping
     public ResponseEntity<?> requestJoin(@PathVariable Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userDetails.getUserKey();
-        Long requestId = service.requestJoin(groupId, userKey);
-        return ResponseEntity.ok().body(java.util.Collections.singletonMap("requestId", requestId));
+        GroupJoinRequestService.JoinRequestResult result = service.requestJoin(groupId, userKey);
+        return ResponseEntity.ok(java.util.Map.of("requestId", result.requestId(), "status", result.status()));
     }
 
     @DeleteMapping("/{requestId}")

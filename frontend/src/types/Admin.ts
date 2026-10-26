@@ -38,10 +38,22 @@ export interface AdminGroupJoin {
 	readonly requestedAt: string | null;
 }
 
-export interface AdminListParams {
-	readonly page: number;
+/** 관리자 목록 공통 검색 조건 — 빈 문자열이면 조건 없음 */
+export interface AdminSearchCriteria {
 	/** 회원: 닉네임·가입 경로, 그룹: 그룹명, 그룹 신청: 모임명, 가입 요청: 닉네임·그룹명 */
 	readonly q: string;
+	/** yyyy-MM-dd — 회원 가입일·그룹 생성일·신청일 범위(양 끝 포함) */
+	readonly from: string;
+	readonly to: string;
+}
+
+export interface AdminListParams extends AdminSearchCriteria {
+	readonly page: number;
+}
+
+export interface AdminUserListParams extends AdminListParams {
+	/** 빈 문자열이면 전체 */
+	readonly role: SystemRole | '';
 }
 
 export interface AdminGroupRequestListParams extends AdminListParams {

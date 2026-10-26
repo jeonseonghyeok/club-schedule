@@ -127,6 +127,12 @@
 			<if test="groupName != null and groupName != ''">
 				AND gcr.group_name LIKE CONCAT('%', #{groupName}, '%')
 			</if>
+			<if test="from != null">
+				AND gcr.requested_at &gt;= #{from}
+			</if>
+			<if test="to != null">
+				AND gcr.requested_at &lt; DATE_ADD(#{to}, INTERVAL 1 DAY)
+			</if>
 		</where>
 		ORDER BY gcr.requested_at DESC
 		LIMIT #{limit} OFFSET #{offset}
@@ -144,6 +150,12 @@
 			</if>
 			<if test="groupName != null and groupName != ''">
 				AND group_name LIKE CONCAT('%', #{groupName}, '%')
+			</if>
+			<if test="from != null">
+				AND requested_at &gt;= #{from}
+			</if>
+			<if test="to != null">
+				AND requested_at &lt; DATE_ADD(#{to}, INTERVAL 1 DAY)
 			</if>
 		</where>
 	</select>

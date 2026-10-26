@@ -33,3 +33,8 @@ export const updateMemberBan = async (target: MemberTarget & { reason: string })
 export const deleteMemberBan = async (target: MemberTarget): Promise<void> => {
 	await memberApi.delete(`${memberPath(target)}/ban`);
 };
+
+/** 본인 탈퇴 — 리더는 409(먼저 리더 승계) */
+export const deleteMyMembership = async (groupId: number): Promise<void> => {
+	await memberApi.delete(`/api/groups/${groupId}/members/me`);
+};

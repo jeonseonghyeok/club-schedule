@@ -10,12 +10,15 @@ import com.moyora.clubschedule.dto.GroupPolicyUpdateDto;
 import com.moyora.clubschedule.mapper.GroupJoinBanMapper;
 import com.moyora.clubschedule.mapper.GroupMapper;
 import com.moyora.clubschedule.mapper.GroupMemberMapper;
+import com.moyora.clubschedule.mapper.GroupMemberPermissionMapper;
 import com.moyora.clubschedule.mapper.GroupSchedulePolicyMapper;
+import com.moyora.clubschedule.mapper.UserMapper;
 import com.moyora.clubschedule.vo.GroupJoinBanVo;
 import com.moyora.clubschedule.vo.GroupMemberVo;
 import com.moyora.clubschedule.vo.GroupRole;
 import com.moyora.clubschedule.vo.GroupSchedulePolicyVo;
 import com.moyora.clubschedule.vo.GroupVo;
+import com.moyora.clubschedule.vo.UserVo;
 
 import lombok.RequiredArgsConstructor;
 
@@ -27,6 +30,9 @@ public class GroupManageService {
     private final GroupMemberMapper groupMemberMapper;
     private final GroupJoinBanMapper groupJoinBanMapper;
     private final GroupSchedulePolicyMapper groupSchedulePolicyMapper;
+    private final GroupMemberPermissionMapper groupMemberPermissionMapper;
+    private final UserMapper userMapper;
+    private final ScheduleAttendanceService scheduleAttendanceService;
 
     /**
      * 그룹 기본 정보 업데이트 (리더·매니저 권한 필요). 정원은 현재 활동 회원 수보다 작게 줄일 수 없다.
@@ -117,6 +123,29 @@ public class GroupManageService {
      */
     public java.util.List<com.moyora.clubschedule.vo.GroupMemberVo> listMembers(Long groupId) {
         return groupMemberMapper.selectMembersByGroup(groupId);
+    }
+
+    /**
+     * 본인 탈퇴. 리더는 먼저 다른 회원에게 리더를 넘겨야 한다(모임에 리더가 항상 1명 있어야 하므로).
+     * 상태를 WITHDRAWN 으로 바꾸고 직책·개인 권한을 지우며, 앞으로의 참가 신청을 취소하고,
+     * 이 모임이 우선모임이면 해제한다. 탈퇴는 차단이 아니므로 언제든 다시 가입 신청할 수 있다.
+     */
+    @Transactional
+    public void withdraw(Long groupId, Long userKey) {
+        GroupMemberVo me = groupMemberMapper.selectMemberAnyStatus(groupId, userKey);
+        if (me == null || !"ACTIVE".equals(me.getStatus())) {
+            throw new IllegalStateException("이 모임의 회원이 아닙니다.");
+        }
+        if (isLeader(groupId, userKey)) {
+            throw new IllegalStateException("리더는 다른 회원에게 리더를 넘긴 뒤 탈퇴할 수 있습니다.");
+        }
+        groupMemberMapper.withdrawMember(groupId, userKey);
+        groupMemberPermissionMapper.deleteAllPermissions(groupId, userKey);
+        scheduleAttendanceService.cancelUpcomingForLeavingMember(groupId, userKey);
+        UserVo user = userMapper.selectByUserKey(userKey);
+        if (user != null && groupId.equals(user.getFavoriteGroupId())) {
+            userMapper.updateFavoriteGroup(userKey, null);
+        }
     }
 
     /**

@@ -91,6 +91,17 @@ public class ScheduleAttendanceService {
         insertNewRow(scheduleId, userKey, AttendanceStatus.CANCELLED, null, userKey);
     }
 
+    /** 모임 탈퇴 시: 아직 시작하지 않은 일정의 신청 중·확정 참가를 본인 취소로 정리한다 */
+    @Transactional
+    public int cancelUpcomingForLeavingMember(Long groupId, Long userKey) {
+        List<ScheduleAttendanceVo> upcoming = attendanceMapper.selectUpcomingActiveByGroupAndUser(groupId, userKey);
+        for (ScheduleAttendanceVo att : upcoming) {
+            attendanceMapper.invalidateLatest(att.getScheduleId(), userKey);
+            insertNewRow(att.getScheduleId(), userKey, AttendanceStatus.CANCELLED, null, userKey);
+        }
+        return upcoming.size();
+    }
+
     // ── 참가자 목록 ───────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)

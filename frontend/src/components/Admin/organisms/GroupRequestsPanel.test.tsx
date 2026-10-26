@@ -56,13 +56,23 @@ describe('GroupRequestsPanel', () => {
 	it('기본은 승인대기만 조회하고, 상태·키워드로 다시 조회한다', async () => {
 		renderWithProviders(<GroupRequestsPanel />);
 		expect(await screen.findByText('총 1건')).toBeInTheDocument();
-		expect(getAdminGroupRequests).toHaveBeenLastCalledWith({ page: 1, q: '', status: 'PENDING' });
+		expect(getAdminGroupRequests).toHaveBeenLastCalledWith({ page: 1, q: '', from: '', to: '', status: 'PENDING' });
 
 		await userEvent.selectOptions(screen.getByLabelText('상태'), '전체 이력');
 		await userEvent.type(screen.getByLabelText('모임명'), '독서');
+		await userEvent.type(screen.getByLabelText('신청일 시작'), '2026-10-01');
+		await userEvent.type(screen.getByLabelText('신청일 끝'), '2026-10-31');
 		await userEvent.click(screen.getByRole('button', { name: '조회' }));
 
-		await waitFor(() => expect(getAdminGroupRequests).toHaveBeenLastCalledWith({ page: 1, q: '독서', status: '' }));
+		await waitFor(() =>
+			expect(getAdminGroupRequests).toHaveBeenLastCalledWith({
+				page: 1,
+				q: '독서',
+				from: '2026-10-01',
+				to: '2026-10-31',
+				status: '',
+			}),
+		);
 	});
 
 	it('상세에서 승인하면 확인을 거쳐 승인하고, 새 모임을 열지 묻는다', async () => {

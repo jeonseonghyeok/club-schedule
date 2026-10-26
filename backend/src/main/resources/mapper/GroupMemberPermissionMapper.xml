@@ -34,6 +34,12 @@
           AND permission_type = #{permissionType}
     </delete>
 
+    <delete id="deleteAllPermissions">
+        DELETE FROM group_member_permission
+        WHERE group_id = #{groupId}
+          AND user_key = #{userKey}
+    </delete>
+
     <select id="selectAllowedTypes" resultType="string">
         SELECT permission_type
         FROM group_member_permission

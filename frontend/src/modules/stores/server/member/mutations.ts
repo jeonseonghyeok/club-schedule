@@ -2,11 +2,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ModalType } from '@/constants';
 import {
 	deleteMemberBan,
+	deleteMyMembership,
 	updateMemberBan,
 	updateMemberPermissions,
 	updateMemberRole,
 } from '@/modules/api/member/member';
 import { useModalStore } from '@/modules/stores/client/modal';
+import { authQueries } from '@/modules/stores/server/auth/queries';
 import { groupQueries } from '@/modules/stores/server/group/queries';
 import { GROUP_ROLE, MEMBER_STATUS } from '@/types/Member';
 import type { GroupMember, GroupRole, PermissionPreset } from '@/types/Member';
@@ -93,5 +95,21 @@ export const useUnbanMember = (groupId: number) => {
 		mutationFn: (userKey: number) => deleteMemberBan({ groupId, userKey }),
 		onSuccess: (_, userKey) => updateCache(userKey, member => ({ ...member, banned: false, banReason: null })),
 		onError: error => alertError(error.response?.data, '벤 해제에 실패했습니다.'),
+	});
+};
+
+/** 본인 탈퇴 — 모임 권한·내 모임 목록·우선모임(서버가 해제)이 바뀌므로 다시 받는다 */
+export const useWithdrawGroup = (groupId: number) => {
+	const queryClient = useQueryClient();
+	const alertError = useAlertError();
+
+	return useMutation({
+		mutationFn: () => deleteMyMembership(groupId),
+		onSuccess: () => {
+			queryClient.removeQueries({ queryKey: memberQueries.list(groupId).queryKey });
+			void queryClient.invalidateQueries({ queryKey: groupQueries.all() });
+			void queryClient.invalidateQueries({ queryKey: authQueries.me().queryKey });
+		},
+		onError: error => alertError(error.response?.data, '탈퇴에 실패했습니다.'),
 	});
 };

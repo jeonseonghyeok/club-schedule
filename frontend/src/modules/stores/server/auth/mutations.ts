@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ModalType } from '@/constants';
+import { deleteAuthSession } from '@/modules/api/auth/auth';
 import { createKakaoLogin, createTestLogin } from '@/modules/api/auth/login';
 import { useModalStore } from '@/modules/stores/client/modal';
 import { getErrorMessage } from '@/utils';
@@ -30,5 +31,18 @@ export const useCreateKakaoLogin = () => {
 	return useMutation({
 		mutationFn: (request: KakaoLoginRequest) => createKakaoLogin(request),
 		onSuccess: () => queryClient.removeQueries(AUTH_QUERY_FILTER),
+	});
+};
+
+/** 로그아웃 — 다른 사용자 정보가 화면에 남지 않도록 서버 상태 캐시를 모두 비운다 */
+export const useDeleteAuthSession = () => {
+	const openModal = useModalStore(state => state.actions.openModal);
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: deleteAuthSession,
+		onSuccess: () => queryClient.clear(),
+		onError: error =>
+			openModal({ type: ModalType.ALERT, message: getErrorMessage(error.response?.data, '로그아웃에 실패했습니다.') }),
 	});
 };

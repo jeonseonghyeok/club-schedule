@@ -11,6 +11,7 @@ import com.moyora.clubschedule.vo.GroupMemberVo;
 import com.moyora.clubschedule.vo.Notification;
 import lombok.RequiredArgsConstructor;
 
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -184,13 +185,16 @@ public class GroupRequestService {
      * @param size page size (default 10)
      * @return Map with keys: "items" -> List<GroupRequest>, "total" -> Integer total count, "page" -> Integer current page, "size" -> Integer page size
      */
-    public Map<String,Object> getRequestsByFilters(String status, String groupName, Integer page, Integer size){
+    public Map<String,Object> getRequestsByFilters(String status, String groupName, LocalDate from, LocalDate to,
+                                                   Integer page, Integer size){
         int p = (page == null || page < 1) ? 1 : page;
         int s = (size == null || size < 1) ? DEFAULT_PAGE_SIZE : size;
         int offset = (p - 1) * s;
         Map<String,Object> params = new HashMap<>();
         params.put("status", (status != null && !status.isBlank()) ? status : null);
         params.put("groupName", (groupName != null && !groupName.isBlank()) ? groupName : null);
+        params.put("from", from);
+        params.put("to", to);
         params.put("limit", s);
         params.put("offset", offset);
         List<GroupRequest> items = groupRequestMapper.selectByFilters(params);

@@ -33,6 +33,9 @@ public interface GroupMemberMapper {
     // 새로 추가: 특정 멤버의 상태 업데이트 (예: KICKED, WITHDRAWN)
     int updateMemberStatus(@Param("groupId") Long groupId, @Param("userKey") Long userKey, @Param("status") String status);
 
+    // 본인 탈퇴 — ACTIVE 행만 WITHDRAWN + role=MEMBER 로 바꾼다
+    int withdrawMember(@Param("groupId") Long groupId, @Param("userKey") Long userKey);
+
     // 새로 추가: 특정 멤버의 역할 업데이트 (LEADER/MANAGER/MEMBER)
     int updateMemberRole(@Param("groupId") Long groupId, @Param("userKey") Long userKey, @Param("role") String role);
 }

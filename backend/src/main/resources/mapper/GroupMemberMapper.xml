@@ -65,6 +65,12 @@
         UPDATE group_member SET status = #{status}, left_at = NOW() WHERE group_id = #{groupId} AND user_key = #{userKey}
     </update>
 
+    <!-- 본인 탈퇴: 직책은 일반회원으로 되돌린다(재가입 승인 때 reactivateMember 가 role 을 건드리지 않으므로) -->
+    <update id="withdrawMember">
+        UPDATE group_member
+        SET status = 'WITHDRAWN', role = 'MEMBER', left_at = NOW(), updated_by = #{userKey}
+        WHERE group_id = #{groupId} AND user_key = #{userKey} AND status = 'ACTIVE'
+    </update>
     <!-- 상태 무관 기존 행 조회 (재가입 판단용) -->
     <select id="selectMemberAnyStatus" resultType="com.moyora.clubschedule.vo.GroupMemberVo">
         SELECT group_id AS groupId, user_key AS userKey, role, status,

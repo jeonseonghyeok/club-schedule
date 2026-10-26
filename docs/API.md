@@ -23,7 +23,7 @@
 - 모든 API 는 `/api/**` 아래에 있다. 백엔드는 화면을 서빙하지 않는다(화면은 `frontend/` SPA).
 - 요청·응답 바디는 `application/json`.
 - **인증**: httpOnly `AUTH_TOKEN` 쿠키(JWT). `Authorization: Bearer` 헤더도 받는다.
-  토큰 없이 허용되는 경로는 `/api/login/**` 뿐이며, **그 외 모든 API 는 로그인이 필요하다**(없으면 401).
+  토큰 없이 허용되는 경로는 `/api/login/**` 와 `/api/auth/logout` 뿐이며, **그 외 모든 API 는 로그인이 필요하다**(없으면 401).
 - CSRF 보호는 비활성화되어 있다(쿠키 `SameSite=Lax`).
 - **시각 형식**
   | 구분 | 형식 |
@@ -80,6 +80,9 @@
 카카오 인가 코드로 로그인(미가입 시 자동 가입). 성공 시 `AUTH_TOKEN` 쿠키를 설정하고 `{"returnPath": "/"}` 를 반환한다.
 - Body: `{"code", "redirectUri", "returnTo"}` — `redirectUri` 는 인가 요청 때와 같아야 하고 경로가 `KAKAO_REDIRECT_WHITELIST` 에 있어야 한다.
 - 에러: 403 redirect_uri 불허 · 502 카카오 토큰 발급 실패 · 500 자동 가입 실패.
+
+### POST /api/auth/logout
+로그아웃 — `AUTH_TOKEN` 을 만료 쿠키(`Max-Age=0`)로 덮어쓰고 204. 토큰이 만료돼도 호출할 수 있도록 인증 없이 허용한다.
 
 ### GET /api/login/test/accounts · POST /api/login/test
 테스트 계정 목록 `[{"kakaoApiId", "nickname"}]` / Body `{"kakaoApiId"}` 로 로그인 → `{"userKey", "nickname"}` + 쿠키.
@@ -264,6 +267,11 @@
 `presets` 는 활동 중인 매니저에게만 있다. `banned` 는 `group_join_ban.active=1` 여부
 ([DATABASE.md — 회원 상태 및 차단(벤) 규칙](DATABASE.md#회원-상태-및-차단벤-규칙)).
 
+### DELETE /api/groups/{groupId}/members/me
+본인 탈퇴. **리더는 409**(먼저 다른 회원에게 리더 승계). 처리 내용:
+`status=WITHDRAWN`·`left_at` 기록·직책은 MEMBER 로·개인 권한 삭제, 아직 시작하지 않은 일정의 신청 중·확정 참가를 본인 취소,
+이 모임이 우선모임이면 해제. 차단이 아니므로 다시 가입 신청할 수 있다. 회원이 아니면 409.
+
 ### PATCH /api/groups/{groupId}/members/{userKey}/role
 Body `{role: LEADER|MANAGER|MEMBER}`. **리더 전용**. `LEADER` 로 지정하면 리더 승계(기존 리더는 MANAGER).
 
@@ -301,13 +309,14 @@ ACTIVE 면 `KICKED` 로 바꾸고, 이미 탈퇴(WITHDRAWN)한 회원이면 상�
 
 | Method | Path | 설명 |
 |---|---|---|
-| GET | `/api/admin/users?page=&size=&q=` | 회원 — `q`: 닉네임 |
-| GET | `/api/admin/groups?page=&size=&q=` | 모임 — `q`: 모임명 |
-| GET | `/api/admin/group-requests?page=&size=&status=&q=` | 모임 생성 신청 — `status`: PENDING\|APPROVED\|REJECTED\|CANCELLED, `q`: 모임명 |
+| GET | `/api/admin/users?page=&size=&q=&role=&from=&to=` | 회원 — `q`: 닉네임·가입 경로, `role`: USER\|ADMIN, 기간: 가입일 |
+| GET | `/api/admin/groups?page=&size=&q=&from=&to=` | 모임 — `q`: 모임명, 기간: 생성일 |
+| GET | `/api/admin/group-requests?page=&size=&status=&q=&from=&to=` | 모임 생성 신청 — `status`: PENDING\|APPROVED\|REJECTED\|CANCELLED, `q`: 모임명, 기간: 신청일 |
 | POST | `/api/admin/group-requests/{requestId}/approve` | 승인 → `{groupId}`(모임 생성). 처리 불가 409 |
 | POST | `/api/admin/group-requests/{requestId}/reject` | Body `{rejectReason}`. 이미 처리됨 409 |
-| GET | `/api/admin/group-joins?page=&size=&q=` | 대기 중 가입 요청 — `q`: 닉네임·모임명 |
+| GET | `/api/admin/group-joins?page=&size=&q=&from=&to=` | 대기 중 가입 요청 — `q`: 닉네임·모임명, 기간: 신청일 |
 | POST | `/api/admin/group-joins/{requestId}/approve` | 모임 리더가 아니어도 처리 |
 | POST | `/api/admin/group-joins/{requestId}/reject` | Body `{rejectReason}`(선택) |
 
-목록은 모두 `PagingResponse<T>`. `page` 를 주면 DB 페이징, 없으면 전체를 메모리에서 자른다(하위 호환).
+목록은 모두 `PagingResponse<T>`. `from`/`to` 는 `yyyy-MM-dd`(양 끝 포함, 시작일 > 종료일이면 400).
+`page` 를 주면 DB 페이징·필터, 없으면 전체를 메모리에서 자른다(하위 호환 — 기간·권한 필터는 적용되지 않음).

@@ -1,6 +1,7 @@
 package com.moyora.clubschedule.controller.admin;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -20,6 +21,7 @@ import com.moyora.clubschedule.service.GroupService;
 import com.moyora.clubschedule.service.GroupJoinRequestService;
 import com.moyora.clubschedule.vo.PagingResponse;
 
+import java.time.LocalDate;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -83,17 +85,37 @@ public class AdminApiController {
         return Map.of("error", "Conflict", "message", message);
     }
 
+    /** 기간 필터 검증 — 시작일이 종료일보다 늦으면 400 */
+    private static ResponseEntity<?> invalidRange(LocalDate from, LocalDate to) {
+        if (from != null && to != null && from.isAfter(to)) {
+            return ApiErrors.badRequest("시작일이 종료일보다 늦습니다.");
+        }
+        return null;
+    }
+
+    private static final List<String> SYSTEM_ROLES = List.of("USER", "ADMIN");
+
+    // from/to: 가입일 범위(yyyy-MM-dd, 양 끝 포함), role: USER|ADMIN
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/users")
     public ResponseEntity<?> apiUsers(@RequestParam(required = false) Integer page,
                                       @RequestParam(required = false) Integer size,
-                                      @RequestParam(required = false) String q) {
+                                      @RequestParam(required = false) String q,
+                                      @RequestParam(required = false) String role,
+                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                      @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        ResponseEntity<?> rangeError = invalidRange(from, to);
+        if (rangeError != null) return rangeError;
+        String roleFilter = (role == null || role.isBlank()) ? null : role.trim().toUpperCase();
+        if (roleFilter != null && !SYSTEM_ROLES.contains(roleFilter)) {
+            return ApiErrors.badRequest("role 은 USER 또는 ADMIN 이어야 합니다.");
+        }
         // If page parameter provided, use DB-level paging via UserService.findUsersPaged
         if (page != null){
             int sz = (size == null || size < 1) ? 25 : size;
             int pg = Math.max(1, page);
-            List<?> items = userService.findUsersPaged(q, pg, sz);
-            int total = userService.countUsersFiltered(q);
+            List<?> items = userService.findUsersPaged(q, roleFilter, from, to, pg, sz);
+            int total = userService.countUsersFiltered(q, roleFilter, from, to);
             PagingResponse<Object> resp = new PagingResponse<>();
             resp.setTotalCount(total);
             resp.setCurrentPage(pg);
@@ -116,12 +138,16 @@ public class AdminApiController {
     @GetMapping("/groups")
     public ResponseEntity<?> apiGroups(@RequestParam(required = false) Integer page,
                                        @RequestParam(required = false) Integer size,
-                                       @RequestParam(required = false) String q) {
+                                       @RequestParam(required = false) String q,
+                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                       @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        ResponseEntity<?> rangeError = invalidRange(from, to);
+        if (rangeError != null) return rangeError;
         if (page != null){
             int sz = (size == null || size < 1) ? 25 : size;
             int pg = Math.max(1, page);
-            List<?> items = groupService.findGroupsPaged(q, pg, sz);
-            int total = groupService.countGroupsFiltered(q);
+            List<?> items = groupService.findGroupsPaged(q, from, to, pg, sz);
+            int total = groupService.countGroupsFiltered(q, from, to);
             PagingResponse<Object> resp = new PagingResponse<>();
             resp.setTotalCount(total);
             resp.setCurrentPage(pg);
@@ -145,9 +171,13 @@ public class AdminApiController {
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
             @RequestParam(required = false) String status,
-            @RequestParam(required = false) String q) {
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        ResponseEntity<?> rangeError = invalidRange(from, to);
+        if (rangeError != null) return rangeError;
 
-        Map<String, Object> result = groupRequestService.getRequestsByFilters(status, q, page, size);
+        Map<String, Object> result = groupRequestService.getRequestsByFilters(status, q, from, to, page, size);
         int total = (int) result.get("total");
         int pg    = (int) result.get("page");
         int sz    = (int) result.get("size");
@@ -196,12 +226,16 @@ public class AdminApiController {
     @GetMapping("/group-joins")
     public ResponseEntity<?> apiGroupJoins(@RequestParam(required = false) Integer page,
                                            @RequestParam(required = false) Integer size,
-                                           @RequestParam(required = false) String q) {
+                                           @RequestParam(required = false) String q,
+                                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+                                           @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        ResponseEntity<?> rangeError = invalidRange(from, to);
+        if (rangeError != null) return rangeError;
         if (page != null) {
             int sz = (size == null || size < 1) ? 25 : size;
             int pg = Math.max(1, page);
-            List<?> items = groupJoinRequestService.getAllPendingPaged(q, pg, sz);
-            int total = groupJoinRequestService.countAllPending(q);
+            List<?> items = groupJoinRequestService.getAllPendingPaged(q, from, to, pg, sz);
+            int total = groupJoinRequestService.countAllPending(q, from, to);
             PagingResponse<Object> resp = new PagingResponse<>();
             resp.setTotalCount(total);
             resp.setCurrentPage(pg);

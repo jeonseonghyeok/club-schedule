@@ -1,12 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { AdminListStatus } from '@/components/Admin/molecules/AdminListStatus';
 import { AdminSearchBar } from '@/components/Admin/molecules/AdminSearchBar';
 import { Pagination } from '@/components/common/molecules/Pagination';
 import { DataTable } from '@/components/common/organisms/DataTable';
 import type { DataTableColumn } from '@/components/common/organisms/DataTable';
 import { adminQueries } from '@/modules/stores/server/admin/queries';
-import type { AdminListParams, AdminUser } from '@/types/Admin';
+import { SYSTEM_ROLE } from '@/types/Admin';
+import type { AdminUser, AdminUserListParams } from '@/types/Admin';
 import { formatOptional } from '@/utils/admin';
 import { formatDateTime } from '@/utils/date';
 
@@ -18,8 +19,19 @@ const COLUMNS: readonly DataTableColumn<AdminUser>[] = [
 	{ header: '권한', render: user => formatOptional(user.systemRole) },
 ];
 
+const ROLE_OPTIONS = [
+	{ value: '', label: '전체' },
+	{ value: SYSTEM_ROLE.USER, label: 'USER' },
+	{ value: SYSTEM_ROLE.ADMIN, label: 'ADMIN' },
+] as const satisfies readonly { value: AdminUserListParams['role']; label: string }[];
+
+const isRoleOption = (value: string): value is AdminUserListParams['role'] =>
+	ROLE_OPTIONS.some(option => option.value === value);
+
 export const UsersPanel = () => {
-	const [params, setParams] = useState<AdminListParams>({ page: 1, q: '' });
+	const roleId = useId();
+	const [role, setRole] = useState<AdminUserListParams['role']>('');
+	const [params, setParams] = useState<AdminUserListParams>({ page: 1, q: '', from: '', to: '', role: '' });
 	const { data, isPending, error } = useQuery({ ...adminQueries.users(params) });
 
 	return (
@@ -27,7 +39,29 @@ export const UsersPanel = () => {
 			<AdminSearchBar
 				label="닉네임·가입 경로"
 				placeholder="닉네임 또는 가입 경로"
-				onSearch={q => setParams({ page: 1, q })}
+				dateLabel="가입일"
+				onSearch={criteria => setParams({ page: 1, ...criteria, role })}
+				extra={
+					<div className="flex flex-col gap-1">
+						<label htmlFor={roleId} className="text-xs font-medium text-gray-700">
+							권한
+						</label>
+						<select
+							id={roleId}
+							value={role}
+							onChange={event => {
+								if (isRoleOption(event.target.value)) setRole(event.target.value);
+							}}
+							className="rounded-md border border-gray-300 px-3 py-1.5 text-sm focus-visible:outline-2 focus-visible:outline-gray-900"
+						>
+							{ROLE_OPTIONS.map(option => (
+								<option key={option.label} value={option.value}>
+									{option.label}
+								</option>
+							))}
+						</select>
+					</div>
+				}
 			/>
 			<AdminListStatus isPending={isPending} error={error} totalCount={data?.totalCount} unit="명">
 				{data && (

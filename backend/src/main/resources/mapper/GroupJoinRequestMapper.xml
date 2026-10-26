@@ -46,6 +46,12 @@
         <if test="q != null and q != ''">
             AND (u.nickname LIKE CONCAT('%', #{q}, '%') OR g.name LIKE CONCAT('%', #{q}, '%'))
         </if>
+        <if test="from != null">
+            AND r.requested_at &gt;= #{from}
+        </if>
+        <if test="to != null">
+            AND r.requested_at &lt; DATE_ADD(#{to}, INTERVAL 1 DAY)
+        </if>
         ORDER BY r.requested_at ASC
         LIMIT #{limit} OFFSET #{offset}
     </select>
@@ -58,6 +64,12 @@
         WHERE r.status = 'PENDING'
         <if test="q != null and q != ''">
             AND (u.nickname LIKE CONCAT('%', #{q}, '%') OR g.name LIKE CONCAT('%', #{q}, '%'))
+        </if>
+        <if test="from != null">
+            AND r.requested_at &gt;= #{from}
+        </if>
+        <if test="to != null">
+            AND r.requested_at &lt; DATE_ADD(#{to}, INTERVAL 1 DAY)
         </if>
     </select>
 

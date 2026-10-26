@@ -28,6 +28,7 @@ import { useModalStore } from '@/modules/stores/client/modal';
 import { useScheduleDialogStore } from '@/modules/stores/client/scheduleDialog';
 import { authQueries } from '@/modules/stores/server/auth/queries';
 import { groupQueries } from '@/modules/stores/server/group/queries';
+import { useWithdrawGroup } from '@/modules/stores/server/member/mutations';
 import { memberQueries } from '@/modules/stores/server/member/queries';
 import { scheduleQueries } from '@/modules/stores/server/schedule/queries';
 import type { GroupDetail } from '@/types/GroupDetail';
@@ -149,6 +150,7 @@ const GroupPage = () => {
 	const openModal = useModalStore(state => state.actions.openModal);
 	const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 	const [myInfo, setMyInfo] = useState<GroupMember | null>(null);
+	const { mutate: withdraw } = useWithdrawGroup(groupId);
 	const { viewer } = detail;
 
 	// 다른 모임으로 이동하거나 화면을 떠나면 열려 있던 일정 모달을 닫는다
@@ -170,6 +172,26 @@ const GroupPage = () => {
 		} catch {
 			openModal({ type: ModalType.ALERT, message: '내 정보를 불러오지 못했습니다.' });
 		}
+	};
+
+	const confirmWithdraw = () => {
+		setMyInfo(null);
+		if (viewer.isLeader) {
+			openModal({ type: ModalType.ALERT, message: '리더는 다른 회원에게 리더를 넘긴 뒤 탈퇴할 수 있습니다.' });
+			return;
+		}
+		openModal({
+			type: ModalType.CONFIRM,
+			message: '이 모임에서 탈퇴하시겠습니까?\n앞으로의 일정 참가 신청도 함께 취소됩니다.',
+			confirmLabel: '탈퇴',
+			onConfirm: () =>
+				withdraw(undefined, {
+					onSuccess: () => {
+						void navigate({ to: '/', search: { list: 1 } });
+						openModal({ type: ModalType.ALERT, message: '모임에서 탈퇴했습니다.' });
+					},
+				}),
+		});
 	};
 
 	return (
@@ -222,6 +244,7 @@ const GroupPage = () => {
 					canEditRole={false}
 					canKick={false}
 					onKick={() => {}}
+					onWithdraw={confirmWithdraw}
 					onClose={() => setMyInfo(null)}
 				/>
 			)}

@@ -1,5 +1,6 @@
 package com.moyora.clubschedule.service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -38,15 +39,15 @@ public class UserService {
     }
 
     // New: paged users using LIMIT/OFFSET
-    public List<UserVo> findUsersPaged(String q, int page, int size){
+    public List<UserVo> findUsersPaged(String q, String role, LocalDate from, LocalDate to, int page, int size){
         int pg = Math.max(1, page);
         int sz = Math.max(1, size);
         int offset = (pg - 1) * sz;
-        return pagingMapper.selectUsersPaged(q, sz, offset);
+        return pagingMapper.selectUsersPaged(q, role, from, to, sz, offset);
     }
 
-    public int countUsersFiltered(String q){
-        return pagingMapper.countUsersFiltered(q);
+    public int countUsersFiltered(String q, String role, LocalDate from, LocalDate to){
+        return pagingMapper.countUsersFiltered(q, role, from, to);
     }
 
     public void updateFavoriteGroup(Long userKey, Long groupId) {

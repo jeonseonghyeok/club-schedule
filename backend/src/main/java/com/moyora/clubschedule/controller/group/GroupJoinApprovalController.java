@@ -19,8 +19,10 @@ public class GroupJoinApprovalController {
     @Autowired
     private GroupJoinRequestService service;
 
+    // 승인·거부와 같은 범위(그룹 리더)만 대기 목록을 볼 수 있다 — 신청자 닉네임이 노출되기 때문
+    @PreAuthorize("@groupJoinRequestService.isLeaderOfGroup(#groupId, principal.userKey)")
     @GetMapping("/pending/{groupId}")
-    public ResponseEntity<?> pendingForGroup(@PathVariable Long groupId) {
+    public ResponseEntity<?> pendingForGroup(@P("groupId") @PathVariable Long groupId) {
         return ResponseEntity.ok(service.getPendingByGroup(groupId));
     }
 

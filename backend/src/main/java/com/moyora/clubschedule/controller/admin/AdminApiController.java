@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.moyora.clubschedule.exception.ApiErrors;
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupRequestService;
 import com.moyora.clubschedule.service.UserService;
@@ -186,7 +187,7 @@ public class AdminApiController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         boolean ok = groupRequestService.rejectGroupRequest(
                 requestId, userDetails.getUserKey(), body.get("rejectReason"));
-        return ok ? ResponseEntity.ok().build() : ResponseEntity.badRequest().build();
+        return ok ? ResponseEntity.ok().build() : ApiErrors.conflict("거부할 수 있는 신청이 없습니다(이미 처리됐을 수 있습니다).");
     }
 
     // group-joins: 목록 조회 — page 파라미터가 있으면 DB 레벨 페이징(닉네임/그룹명 검색 포함),

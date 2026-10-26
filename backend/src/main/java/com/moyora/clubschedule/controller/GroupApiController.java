@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.moyora.clubschedule.exception.ApiErrors;
 import com.moyora.clubschedule.dto.GroupScheduleCreateDto;
 import com.moyora.clubschedule.dto.GroupScheduleEditDto;
 import com.moyora.clubschedule.mapper.ScheduleAttendanceMapper;
@@ -51,10 +52,18 @@ public class GroupApiController {
     private final ScheduleAttendanceService scheduleAttendanceService;
     private final ScheduleAttendanceMapper scheduleAttendanceMapper;
 
+    private static final String MEMBERS_ONLY_MESSAGE = "모임 회원만 볼 수 있습니다.";
+
     // ── Members ──────────────────────────────────────────────────────────────
 
     @GetMapping("/{groupId}/members")
-    public ResponseEntity<?> members(@PathVariable Long groupId) {
+    public ResponseEntity<?> members(
+            @PathVariable Long groupId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long viewer = userDetails != null ? userDetails.getUserKey() : null;
+        if (viewer == null) return ApiErrors.unauthorized();
+        // 탈퇴·추방 이력과 차단 사유까지 담겨 있어 모임 회원에게만 보여준다
+        if (!groupManageService.isMember(groupId, viewer)) return ApiErrors.forbidden(MEMBERS_ONLY_MESSAGE);
         List<GroupMemberVo> members = groupManageService.listMembers(groupId);
         List<Map<String,Object>> out = new ArrayList<>();
         for (GroupMemberVo m : members) {
@@ -86,18 +95,19 @@ public class GroupApiController {
             @RequestBody Map<String, Object> payload,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
-        if (operator == null) return ResponseEntity.status(401).build();
+        if (operator == null) return ApiErrors.unauthorized();
 
         String roleStr = getString(payload, "role");
         GroupRole newRole;
         try {
             newRole = GroupRole.valueOf((roleStr == null ? "" : roleStr).toUpperCase());
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body("role은 LEADER/MANAGER/MEMBER 중 하나여야 합니다.");
+            return ApiErrors.badRequest("role은 LEADER/MANAGER/MEMBER 중 하나여야 합니다.");
         }
 
         boolean ok = groupManageService.changeRole(groupId, userKey, newRole, operator);
-        return ok ? ResponseEntity.ok().build() : ResponseEntity.status(403).build();
+        return ok ? ResponseEntity.ok().build()
+                : ApiErrors.forbidden("리더만 활동 중인 회원의 역할을 바꿀 수 있습니다.");
     }
 
     @PutMapping("/{groupId}/members/{userKey}/permissions")
@@ -107,7 +117,7 @@ public class GroupApiController {
             @RequestBody(required = false) Map<String, Object> payload,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
-        if (operator == null) return ResponseEntity.status(401).build();
+        if (operator == null) return ApiErrors.unauthorized();
 
         java.util.Set<GroupPermissionService.PermissionPreset> presets =
                 java.util.EnumSet.noneOf(GroupPermissionService.PermissionPreset.class);
@@ -121,7 +131,8 @@ public class GroupApiController {
         }
 
         boolean ok = groupPermissionService.applyPermissionPresets(groupId, userKey, presets, operator);
-        return ok ? ResponseEntity.ok().build() : ResponseEntity.status(403).build();
+        return ok ? ResponseEntity.ok().build()
+                : ApiErrors.forbidden("리더만 매니저에게 권한을 줄 수 있습니다.");
     }
 
     @PatchMapping("/{groupId}/members/{userKey}/ban")
@@ -131,11 +142,12 @@ public class GroupApiController {
             @RequestBody(required = false) Map<String, Object> payload,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
-        if (operator == null) return ResponseEntity.status(401).build();
+        if (operator == null) return ApiErrors.unauthorized();
         Object reasonObj = payload != null ? payload.get("reason") : null;
         String reason = reasonObj != null ? reasonObj.toString() : null;
         boolean ok = groupManageService.banMember(groupId, userKey, operator, reason);
-        return ok ? ResponseEntity.ok().build() : ResponseEntity.status(403).build();
+        return ok ? ResponseEntity.ok().build()
+                : ApiErrors.forbidden("매니저 이상만 일반회원을 내보내거나 차단할 수 있습니다.");
     }
 
     @DeleteMapping("/{groupId}/members/{userKey}/ban")
@@ -144,9 +156,9 @@ public class GroupApiController {
             @PathVariable Long userKey,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
-        if (operator == null) return ResponseEntity.status(401).build();
+        if (operator == null) return ApiErrors.unauthorized();
         boolean ok = groupManageService.unbanMember(groupId, userKey, operator);
-        return ok ? ResponseEntity.ok().build() : ResponseEntity.status(403).build();
+        return ok ? ResponseEntity.ok().build() : ApiErrors.forbidden("매니저 이상만 차단을 해제할 수 있습니다.");
     }
 
     // 본인의 그룹 내 참가 이력(일정별 최신 상태, 최신 일정순) — 마이페이지성 화면 부재 findings 반영
@@ -155,7 +167,7 @@ public class GroupApiController {
             @PathVariable Long groupId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userDetails != null ? userDetails.getUserKey() : null;
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
 
         List<ScheduleAttendanceVo> list = scheduleAttendanceService.listMyHistory(groupId, userKey);
         List<Map<String, Object>> result = new ArrayList<>();
@@ -177,7 +189,10 @@ public class GroupApiController {
             @PathVariable Long groupId,
             @RequestParam List<Long> scheduleIds,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        if (userDetails == null) return ResponseEntity.status(401).build();
+        if (userDetails == null) return ApiErrors.unauthorized();
+        if (!groupManageService.isMember(groupId, userDetails.getUserKey())) {
+            return ApiErrors.forbidden(MEMBERS_ONLY_MESSAGE);
+        }
 
         Map<Long, List<ScheduleAttendanceVo>> byId =
                 scheduleAttendanceService.listActiveRosterByScheduleIds(groupId, scheduleIds);
@@ -240,21 +255,21 @@ public class GroupApiController {
             @AuthenticationPrincipal CustomUserDetails userDetails) {
 
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
-        if (operator == null) return ResponseEntity.status(401).build();
+        if (operator == null) return ApiErrors.unauthorized();
 
         if (!groupManageService.isMember(groupId, operator)) {
-            return ResponseEntity.status(403).body("그룹 멤버만 일정을 등록할 수 있습니다.");
+            return ApiErrors.forbidden("모임 회원만 일정을 등록할 수 있습니다.");
         }
 
         String title = getString(payload, "title");
         if (title == null || title.isBlank()) {
-            return ResponseEntity.badRequest().body("title은 필수입니다.");
+            return ApiErrors.badRequest("일정 제목을 입력하세요.");
         }
 
         // start: epoch ms (프론트 전송값)
         Long startMs = getLong(payload, "start");
         if (startMs == null) {
-            return ResponseEntity.badRequest().body("start(epoch ms)는 필수입니다.");
+            return ApiErrors.badRequest("시작 시간을 입력하세요.");
         }
         Long endMs = getLong(payload, "end");
 
@@ -281,7 +296,7 @@ public class GroupApiController {
             @RequestBody Map<String,Object> payload,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
-        if (operator == null) return ResponseEntity.status(401).build();
+        if (operator == null) return ApiErrors.unauthorized();
 
         GroupScheduleEditDto dto = new GroupScheduleEditDto();
         dto.setChangeReason(getString(payload, "changeReason"));
@@ -300,7 +315,7 @@ public class GroupApiController {
             GroupScheduleVo result = groupScheduleService.editSchedule(groupId, scheduleId, dto, operator);
             return ResponseEntity.ok(toCalendarEvent(result, operator));
         } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
+            return ApiErrors.badRequest(e.getMessage());
         }
     }
 
@@ -310,7 +325,7 @@ public class GroupApiController {
             @PathVariable Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
-        if (operator == null) return ResponseEntity.status(401).build();
+        if (operator == null) return ApiErrors.unauthorized();
         GroupScheduleVo result = groupScheduleService.approveSchedule(groupId, scheduleId, operator);
         return ResponseEntity.ok(toCalendarEvent(result, operator));
     }
@@ -321,7 +336,7 @@ public class GroupApiController {
             @PathVariable Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
-        if (operator == null) return ResponseEntity.status(401).build();
+        if (operator == null) return ApiErrors.unauthorized();
         GroupScheduleVo result = groupScheduleService.rejectSchedule(groupId, scheduleId, operator);
         return ResponseEntity.ok(toCalendarEvent(result, operator));
     }
@@ -332,7 +347,7 @@ public class GroupApiController {
             @PathVariable Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
-        if (operator == null) return ResponseEntity.status(401).build();
+        if (operator == null) return ApiErrors.unauthorized();
         GroupScheduleVo result = groupScheduleService.cancelSchedule(groupId, scheduleId, operator);
         return ResponseEntity.ok(toCalendarEvent(result, operator));
     }

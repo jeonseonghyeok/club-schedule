@@ -116,6 +116,8 @@ public class GroupRequestService {
     public boolean rejectGroupRequest(Long requestId, Long userKey, String rejectReason) {
         // 매퍼 호출로 상태를 'REJECTED'로, 거부 사유 기록
         int updatedRows = groupRequestMapper.updateStatusToRejected(requestId, userKey, rejectReason);
+        // 이미 처리된 신청이면 상태가 바뀌지 않으므로 알림도 보내지 않는다
+        if (updatedRows <= 0) return false;
         // 알림 생성: 요청자에게 거부 알림
         Long requesterUserKey = groupRequestMapper.selectRequesterUserKey(requestId);
         if (requesterUserKey != null) {
@@ -130,7 +132,7 @@ public class GroupRequestService {
                     .build();
             notificationService.createNotification(notification);
         }
-        return updatedRows > 0;
+        return true;
     }
     
     
@@ -225,4 +227,4 @@ public class GroupRequestService {
         return groupRequestMapper.select();
     }
 
-}
+}

@@ -12,6 +12,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.moyora.clubschedule.exception.ApiErrors;
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupManageService;
 import com.moyora.clubschedule.service.GroupPermissionService;
@@ -42,7 +43,7 @@ public class GroupController {
     public ResponseEntity<?> detail(@PathVariable Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         GroupVo group = groupService.findById(groupId);
         if (group == null) {
-            return ResponseEntity.status(404).body(Map.of("error", "NotFound", "message", "모임을 찾을 수 없습니다."));
+            return ApiErrors.notFound("모임을 찾을 수 없습니다.");
         }
         Long userKey = (userDetails != null) ? userDetails.getUserKey() : null;
         boolean isLeader  = userKey != null && userKey.equals(group.getLeaderUserKey());
@@ -78,7 +79,7 @@ public class GroupController {
     @GetMapping("/me")
     public ResponseEntity<?> myGroups(@AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = (userDetails != null) ? userDetails.getUserKey() : null;
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
         List<GroupVo> groups = groupService.findGroupsByUser(userKey);
         return ResponseEntity.ok(groups);
     }
@@ -102,14 +103,16 @@ public class GroupController {
         toUpdate.setSchedulePolicy(dto.getSchedulePolicy());
         boolean ok = groupManageService.updateGroupBasicInfo(groupId, toUpdate);
         if (ok) return ResponseEntity.ok().build();
-        return ResponseEntity.badRequest().build();
+        return ApiErrors.notFound("모임을 찾을 수 없습니다.");
     }
 
     @PutMapping("/{groupId}/favorite")
     public ResponseEntity<?> setFavoriteGroup(@PathVariable Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = (userDetails != null) ? userDetails.getUserKey() : null;
-        if (userKey == null) return ResponseEntity.status(401).build();
-        if (!groupManageService.isMember(groupId, userKey)) return ResponseEntity.status(403).build();
+        if (userKey == null) return ApiErrors.unauthorized();
+        if (!groupManageService.isMember(groupId, userKey)) {
+            return ApiErrors.forbidden("모임 회원만 우선모임으로 지정할 수 있습니다.");
+        }
         userService.updateFavoriteGroup(userKey, groupId);
         return ResponseEntity.ok().build();
     }
@@ -117,7 +120,7 @@ public class GroupController {
     @DeleteMapping("/{groupId}/favorite")
     public ResponseEntity<?> clearFavoriteGroup(@PathVariable Long groupId, @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = (userDetails != null) ? userDetails.getUserKey() : null;
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
         UserVo user = userService.getUserByUserKey(userKey);
         if (user != null && groupId.equals(user.getFavoriteGroupId())) {
             userService.updateFavoriteGroup(userKey, null);

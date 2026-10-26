@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.moyora.clubschedule.exception.ApiErrors;
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.NotificationService;
 import com.moyora.clubschedule.vo.NotificationListItem;
@@ -33,7 +34,7 @@ public class NotificationApiController {
             @RequestParam(required = false) Integer limit,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
 
         List<NotificationListItem> items = notificationService.listRecent(userKey, limit != null ? limit : 20);
         List<Map<String, Object>> result = new ArrayList<>();
@@ -45,7 +46,7 @@ public class NotificationApiController {
     @GetMapping("/unread-count")
     public ResponseEntity<?> unreadCount(@AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
         return ResponseEntity.ok(Map.of("count", notificationService.unreadCount(userKey)));
     }
 
@@ -55,7 +56,7 @@ public class NotificationApiController {
             @PathVariable Long notificationId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
         notificationService.markRead(notificationId, userKey);
         return ResponseEntity.ok().build();
     }
@@ -64,7 +65,7 @@ public class NotificationApiController {
     @PatchMapping("/read-all")
     public ResponseEntity<?> markAllRead(@AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
         int updated = notificationService.markAllRead(userKey);
         return ResponseEntity.ok(Map.of("updated", updated));
     }

@@ -92,7 +92,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 return;
             }
             logger.debug("Missing or invalid Authorization header for uri={}", uri);
-            sendUnauthorized(response, "Missing or invalid Authorization header");
+            sendUnauthorized(response, "로그인이 필요합니다.");
             return;
         }
 
@@ -143,7 +143,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 chain.doFilter(request, response);
                 return;
             }
-            sendUnauthorized(response, "Invalid or expired token");
+            sendUnauthorized(response, "로그인이 만료되었습니다. 다시 로그인해 주세요.");
             return;
         }
 

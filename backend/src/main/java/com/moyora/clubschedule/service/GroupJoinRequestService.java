@@ -86,11 +86,14 @@ public class GroupJoinRequestService {
     public boolean isLeaderForRequest(Long requestId, Long userKey) {
         com.moyora.clubschedule.vo.GroupJoinRequestVo req = mapper.selectByRequestId(requestId);
         if (req == null) return false;
-        Long groupId = req.getGroupId();
-        if (groupId == null) return false;
+        return isLeaderOfGroup(req.getGroupId(), userKey);
+    }
+
+    /** 주어진 userKey가 그룹 리더인지 확인 */
+    public boolean isLeaderOfGroup(Long groupId, Long userKey) {
+        if (groupId == null || userKey == null) return false;
         com.moyora.clubschedule.vo.GroupVo group = groupMapper.findById(groupId);
-        if (group == null) return false;
-        return userKey != null && userKey.equals(group.getLeaderUserKey());
+        return group != null && userKey.equals(group.getLeaderUserKey());
     }
 
     @Transactional
@@ -123,7 +126,7 @@ public class GroupJoinRequestService {
 
         // 3) 상태 변경
         int updated = mapper.updateStatusToApproved(requestId, operatorUserKey);
-        if (updated <= 0) throw new RuntimeException("요청 상태를 승인으로 변경할 수 없습니다.");
+        if (updated <= 0) throw new RuntimeException("이미 처리되었거나 취소된 가입 요청입니다.");
 
         // 4) group_member에 레코드 추가 — 탈퇴/강퇴 이력(같은 PK 행)이 있으면 재활성화(UPDATE),
         //    없으면 신규 INSERT. 재활성화 시 joined_at은 최초 가입일 그대로 유지한다.

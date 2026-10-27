@@ -57,8 +57,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(NoResourceFoundException.class)
     public ResponseEntity<Map<String, String>> handleNotFound(NoResourceFoundException ex) {
+        // 원문에는 요청 경로가 그대로 담겨 있어 일반 문구만 보낸다
+        log.debug("없는 경로 요청: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "NotFound", "message", ex.getMessage()));
+                .body(Map.of("error", "NotFound", "message", "요청한 주소를 찾을 수 없습니다."));
     }
 
     /** @Valid 요청 본문 검증 실패 — DTO 에 적힌 첫 번째 필드 메시지를 그대로 보여준다 */

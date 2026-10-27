@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
+import com.moyora.clubschedule.exception.ApiErrors;
 import com.moyora.clubschedule.mapper.UserMapper;
 import com.moyora.clubschedule.util.TestAuthUtil;
 import com.moyora.clubschedule.vo.UserVo;
@@ -34,7 +35,7 @@ public class TestLoginController {
     @GetMapping("/api/login/test/accounts")
     public ResponseEntity<?> testAccounts() {
         if (!testAuthUtil.isEnabled()) {
-            return ResponseEntity.status(503).body(Map.of("message", "테스트 인증이 비활성화되어 있습니다."));
+            return ApiErrors.serviceUnavailable("테스트 인증이 비활성화되어 있습니다.");
         }
         List<Map<String, Object>> accounts = userMapper.selectTestAccounts().stream()
                 .map(u -> Map.<String, Object>of(
@@ -53,18 +54,18 @@ public class TestLoginController {
     @PostMapping("/api/login/test")
     public ResponseEntity<?> login(@RequestBody Map<String, Object> body) {
         if (!testAuthUtil.isEnabled()) {
-            return ResponseEntity.status(503).body(Map.of("message", "테스트 인증이 비활성화되어 있습니다."));
+            return ApiErrors.serviceUnavailable("테스트 인증이 비활성화되어 있습니다.");
         }
 
         Object kakaoApiIdRaw = body.get("kakaoApiId");
         if (kakaoApiIdRaw == null) {
-            return ResponseEntity.badRequest().body(Map.of("message", "kakaoApiId는 필수입니다."));
+            return ApiErrors.badRequest("kakaoApiId는 필수입니다.");
         }
         Long kakaoApiId = Long.valueOf(kakaoApiIdRaw.toString());
 
         UserVo user = userMapper.selectByKakaoApiId(kakaoApiId);
         if (user == null) {
-            return ResponseEntity.status(404).body(Map.of("message", "테스트 계정을 찾을 수 없습니다: " + kakaoApiId));
+            return ApiErrors.notFound("테스트 계정을 찾을 수 없습니다: " + kakaoApiId);
         }
 
         String token = testAuthUtil.issueToken(user.getUserKey());

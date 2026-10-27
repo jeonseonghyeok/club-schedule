@@ -69,14 +69,16 @@
 
     <update id="updateStatusToApproved">
         UPDATE group_join_request
-        SET status='APPROVED', approved_at = NOW()
+        SET status='APPROVED', approved_at = NOW(), updated_by = #{processedBy}
         WHERE request_id = #{requestId}
+        AND status = 'PENDING'
     </update>
 
     <update id="updateStatusToRejected">
         UPDATE group_join_request
-        SET status='REJECTED', reject_reason = #{rejectReason}
+        SET status='REJECTED', reject_reason = #{rejectReason}, updated_by = #{processedBy}
         WHERE request_id = #{requestId}
+        AND status = 'PENDING'
     </update>
 
     <update id="updateStatusToCancelled">
@@ -84,6 +86,7 @@
         SET status='CANCELLED'
         WHERE request_id = #{requestId}
         AND user_key = #{userKey}
+        AND status = 'PENDING'
     </update>
 
     <select id="selectRequesterUserKey" parameterType="long" resultType="long">

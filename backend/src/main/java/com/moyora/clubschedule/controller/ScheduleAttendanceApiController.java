@@ -16,7 +16,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.moyora.clubschedule.exception.ApiErrors;
 import com.moyora.clubschedule.security.CustomUserDetails;
+import com.moyora.clubschedule.service.GroupManageService;
 import com.moyora.clubschedule.service.ScheduleAttendanceService;
 import com.moyora.clubschedule.vo.ScheduleAttendanceVo;
 import com.moyora.clubschedule.vo.ScheduleAttendanceVo.ActualStatus;
@@ -29,6 +31,9 @@ import lombok.RequiredArgsConstructor;
 public class ScheduleAttendanceApiController {
 
     private final ScheduleAttendanceService attendanceService;
+    private final GroupManageService groupManageService;
+
+    private static final String MEMBERS_ONLY_MESSAGE = "모임 회원만 볼 수 있습니다.";
 
     /** 참가 신청 */
     @PostMapping("/attend")
@@ -37,7 +42,7 @@ public class ScheduleAttendanceApiController {
             @PathVariable Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
         ScheduleAttendanceVo result = attendanceService.attend(groupId, scheduleId, userKey);
         return ResponseEntity.ok(toMap(result));
     }
@@ -49,7 +54,7 @@ public class ScheduleAttendanceApiController {
             @PathVariable Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
         attendanceService.cancelAttend(groupId, scheduleId, userKey);
         return ResponseEntity.ok().build();
     }
@@ -60,7 +65,9 @@ public class ScheduleAttendanceApiController {
             @PathVariable Long groupId,
             @PathVariable Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        if (userKey(userDetails) == null) return ResponseEntity.status(401).build();
+        Long userKey = userKey(userDetails);
+        if (userKey == null) return ApiErrors.unauthorized();
+        if (!groupManageService.isMember(groupId, userKey)) return ApiErrors.forbidden(MEMBERS_ONLY_MESSAGE);
         List<ScheduleAttendanceVo> list = attendanceService.listAttendees(groupId, scheduleId);
         List<Map<String, Object>> result = new ArrayList<>();
         for (ScheduleAttendanceVo v : list) result.add(toMap(v));
@@ -73,7 +80,9 @@ public class ScheduleAttendanceApiController {
             @PathVariable Long groupId,
             @PathVariable Long scheduleId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        if (userKey(userDetails) == null) return ResponseEntity.status(401).build();
+        Long userKey = userKey(userDetails);
+        if (userKey == null) return ApiErrors.unauthorized();
+        if (!groupManageService.isMember(groupId, userKey)) return ApiErrors.forbidden(MEMBERS_ONLY_MESSAGE);
         List<ScheduleAttendanceVo> list = attendanceService.listHistory(groupId, scheduleId);
         List<Map<String, Object>> result = new ArrayList<>();
         for (ScheduleAttendanceVo v : list) result.add(toHistoryMap(v));
@@ -88,7 +97,7 @@ public class ScheduleAttendanceApiController {
             @PathVariable Long targetUserKey,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
         ScheduleAttendanceVo result = attendanceService.approveAttendance(groupId, scheduleId, targetUserKey, userKey);
         return ResponseEntity.ok(toMap(result));
     }
@@ -101,7 +110,7 @@ public class ScheduleAttendanceApiController {
             @PathVariable Long targetUserKey,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
         attendanceService.rejectAttendance(groupId, scheduleId, targetUserKey, userKey);
         return ResponseEntity.ok().build();
     }
@@ -114,7 +123,7 @@ public class ScheduleAttendanceApiController {
             @PathVariable Long targetUserKey,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
         attendanceService.forceCancel(groupId, scheduleId, targetUserKey, userKey);
         return ResponseEntity.ok().build();
     }
@@ -128,7 +137,7 @@ public class ScheduleAttendanceApiController {
             @RequestBody Map<String, Object> payload,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
-        if (userKey == null) return ResponseEntity.status(401).build();
+        if (userKey == null) return ApiErrors.unauthorized();
 
         String actualStr = payload.getOrDefault("actualStatus", "ATTENDED").toString();
         ActualStatus actual;

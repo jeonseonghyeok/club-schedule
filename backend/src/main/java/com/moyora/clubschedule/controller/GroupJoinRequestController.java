@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.moyora.clubschedule.exception.ApiErrors;
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupJoinRequestService;
 import com.moyora.clubschedule.vo.GroupJoinRequestVo;
@@ -30,7 +31,7 @@ public class GroupJoinRequestController {
         Long userKey = userDetails.getUserKey();
         boolean ok = service.cancelJoin(requestId, userKey);
         if (ok) return ResponseEntity.ok().build();
-        return ResponseEntity.badRequest().build();
+        return ApiErrors.badRequest("취소할 수 있는 가입 신청이 없습니다.");
     }
 
     @GetMapping("/me")

@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import com.moyora.clubschedule.exception.ApiErrors;
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupRequestService;
 import com.moyora.clubschedule.vo.GroupRequest;
@@ -43,7 +44,7 @@ public class GroupRequestController {
         
         if (requestId == null) {
             // 신청 불가 시 409 Conflict 또는 400 Bad Request 반환
-            return ResponseEntity.status(409).build(); 
+            return ApiErrors.conflict("대기 중인 신청이 있거나 이미 리더인 모임이 있어 신청할 수 없습니다.");
         }
         return ResponseEntity.ok(Collections.singletonMap("requestId", requestId));
     }
@@ -74,7 +75,7 @@ public class GroupRequestController {
         if (isCancelled) {
             return ResponseEntity.ok().build(); // 성공 시 200 OK
         } else {
-            return ResponseEntity.badRequest().build(); // 실패 시 400 Bad Request (예: 신청 ID를 찾을 수 없거나, 본인 신청이 아님)
+            return ApiErrors.badRequest("취소할 수 있는 신청이 없습니다."); // 신청 ID가 없거나 본인 신청이 아님
         }
     }
 
@@ -82,4 +83,4 @@ public class GroupRequestController {
     // 과거 이곳에 있던 승인/반려 엔드포인트는 hasRole('ROLE_ADMIN')(Spring Security가 자동으로
     // ROLE_ 접두사를 붙여 실제로는 ROLE_ROLE_ADMIN을 요구)으로 인해 항상 거부되는 죽은 코드였으며,
     // 프론트엔드 어디서도 호출하지 않아 삭제했다.
-}
+}

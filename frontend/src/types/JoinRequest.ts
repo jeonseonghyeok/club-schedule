@@ -16,6 +16,8 @@ export interface JoinRequest {
 	readonly rejectReason: string | null;
 }
 
+/** POST 응답 — 자동 승인 모임이면 APPROVED(이미 회원), 아니면 PENDING */
 export interface JoinRequestCreated {
 	readonly requestId: number;
+	readonly status: typeof JOIN_STATUS.PENDING | typeof JOIN_STATUS.APPROVED;
 }

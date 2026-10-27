@@ -1,14 +1,20 @@
 package com.moyora.clubschedule.service;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.moyora.clubschedule.dto.GroupPolicyUpdateDto;
 import com.moyora.clubschedule.mapper.GroupJoinBanMapper;
 import com.moyora.clubschedule.mapper.GroupMapper;
 import com.moyora.clubschedule.mapper.GroupMemberMapper;
+import com.moyora.clubschedule.mapper.GroupSchedulePolicyMapper;
 import com.moyora.clubschedule.vo.GroupJoinBanVo;
 import com.moyora.clubschedule.vo.GroupMemberVo;
 import com.moyora.clubschedule.vo.GroupRole;
+import com.moyora.clubschedule.vo.GroupSchedulePolicyVo;
 import com.moyora.clubschedule.vo.GroupVo;
 
 import lombok.RequiredArgsConstructor;
@@ -20,17 +26,66 @@ public class GroupManageService {
     private final GroupMapper groupMapper;
     private final GroupMemberMapper groupMemberMapper;
     private final GroupJoinBanMapper groupJoinBanMapper;
+    private final GroupSchedulePolicyMapper groupSchedulePolicyMapper;
 
     /**
-     * 그룹 기본 정보 업데이트 (리더/부방장 권한 필요)
+     * 그룹 기본 정보 업데이트 (리더·매니저 권한 필요). 정원은 현재 활동 회원 수보다 작게 줄일 수 없다.
      */
+    @Transactional
     public boolean updateGroupBasicInfo(Long groupId, GroupVo toUpdate) {
         GroupVo current = groupMapper.findById(groupId);
         if (current == null) return false;
+        if (toUpdate.getCapacity() != null) {
+            int activeMembers = groupMemberMapper.countActiveMembers(groupId);
+            if (toUpdate.getCapacity() < activeMembers) {
+                throw new IllegalArgumentException(
+                        String.format("현재 회원 수(%d명)보다 정원을 작게 할 수 없습니다.", activeMembers));
+            }
+        }
         // toUpdate에 groupId 설정 보장
         toUpdate.setGroupId(groupId);
         int updated = groupMapper.update(toUpdate);
         return updated > 0;
+    }
+
+    /** 모임 설정 화면용 — 기본 정보 + 실제 권한 판단에 쓰이는 일정 운영 정책 */
+    public Map<String, Object> getSettings(Long groupId) {
+        GroupVo group = groupMapper.findById(groupId);
+        if (group == null) return null;
+        GroupSchedulePolicyVo policy = groupSchedulePolicyMapper.selectByGroupId(groupId);
+        if (policy == null) policy = GroupSchedulePolicyVo.defaultPolicy(groupId);
+
+        Map<String, Object> policyMap = new HashMap<>();
+        policyMap.put("minRoleToCreate", policy.getMinRoleToCreate() != null ? policy.getMinRoleToCreate().name() : GroupRole.MEMBER.name());
+        policyMap.put("requiresApproval", policy.isRequiresApproval());
+        policyMap.put("defManagerCanManageSchedule", policy.isDefManagerCanManageSchedule());
+        policyMap.put("requiresAttendanceApproval", policy.isRequiresAttendanceApproval());
+        policyMap.put("visibilityType", policy.getVisibilityType() != null ? policy.getVisibilityType().name() : null);
+
+        Map<String, Object> settings = new HashMap<>();
+        settings.put("groupId", group.getGroupId());
+        settings.put("name", group.getName());
+        settings.put("description", group.getDescription());
+        settings.put("capacity", group.getCapacity());
+        settings.put("autoApprove", Boolean.TRUE.equals(group.getAutoApprove()));
+        settings.put("activeMemberCount", groupMemberMapper.countActiveMembers(groupId));
+        settings.put("policy", policyMap);
+        return settings;
+    }
+
+    /** 일정 운영 정책 저장 — 리더 전용(컨트롤러 @PreAuthorize) */
+    @Transactional
+    public boolean updatePolicy(Long groupId, GroupPolicyUpdateDto policy, Long operatorUserKey) {
+        if (groupMapper.findById(groupId) == null) return false;
+        groupSchedulePolicyMapper.upsertPolicy(groupId, policy, operatorUserKey);
+        return true;
+    }
+
+    /** groupId의 리더(group.leader_user_key)인지 확인 */
+    public boolean isLeader(Long groupId, Long userKey) {
+        if (userKey == null) return false;
+        GroupVo group = groupMapper.findById(groupId);
+        return group != null && userKey.equals(group.getLeaderUserKey());
     }
 
     /**

@@ -29,7 +29,7 @@ describe('JoinAction', () => {
 
 	it('가입하기 → 확인 → 신청 후 "가입 신청 중"으로 바뀐다', async () => {
 		vi.mocked(getMyJoinRequests).mockResolvedValue([]);
-		vi.mocked(createJoinRequest).mockResolvedValue({ requestId: 11 });
+		vi.mocked(createJoinRequest).mockResolvedValue({ requestId: 11, status: 'PENDING' });
 		renderWithProviders(<JoinAction groupId={4} userKey={7} />);
 
 		await userEvent.click(await screen.findByRole('button', { name: '가입하기' }));
@@ -37,6 +37,18 @@ describe('JoinAction', () => {
 
 		await waitFor(() => expect(createJoinRequest).toHaveBeenCalledWith(4));
 		expect(await screen.findByRole('button', { name: '가입 신청 중' })).toBeInTheDocument();
+	});
+
+	it('자동 승인 모임이면 바로 가입되었다고 알린다', async () => {
+		vi.mocked(getMyJoinRequests).mockResolvedValue([]);
+		vi.mocked(createJoinRequest).mockResolvedValue({ requestId: 12, status: 'APPROVED' });
+		renderWithProviders(<JoinAction groupId={4} userKey={7} />);
+
+		await userEvent.click(await screen.findByRole('button', { name: '가입하기' }));
+		await userEvent.click(within(screen.getByRole('dialog')).getByRole('button', { name: '예' }));
+
+		expect(await screen.findByRole('dialog', { description: '가입되었습니다.' })).toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: '가입 신청 중' })).not.toBeInTheDocument();
 	});
 
 	it('신청 중이면 취소할 수 있고, 취소하면 다시 가입하기', async () => {

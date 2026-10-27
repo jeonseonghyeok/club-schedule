@@ -10,6 +10,7 @@ import type { TabItem } from '@/components/common/organisms/Tabs';
 import { VisibilityNotice } from '@/components/Group/molecules/VisibilityNotice';
 import { FavoriteToggle } from '@/components/Group/organisms/FavoriteToggle';
 import { GroupDescription } from '@/components/Group/organisms/GroupDescription';
+import { GroupSettingsSection } from '@/components/Group/organisms/GroupSettingsSection';
 import { JoinAction } from '@/components/JoinRequest/organisms/JoinAction';
 import { JoinRequestsSection } from '@/components/JoinRequest/organisms/JoinRequestsSection';
 import { AppHeader } from '@/components/layout/AppHeader';
@@ -129,6 +130,7 @@ const ManagePanel = (props: PanelProps) => {
 				<ScheduleManageList {...listProps} pendingOnly={false} emptyMessage="일정이 없습니다." />
 			</SectionCard>
 			{detail.viewer.isLeader && <PermissionsSection groupId={groupId} />}
+			<GroupSettingsSection groupId={groupId} viewerIsLeader={detail.viewer.isLeader} />
 		</div>
 	);
 };

@@ -21,4 +21,22 @@
         WHERE group_id = #{groupId}
     </select>
 
+    <!-- 정책 행이 없던 모임(그룹 생성 전 데이터 등)도 저장할 수 있게 upsert 한다 -->
+    <insert id="upsertPolicy">
+        INSERT INTO group_schedule_policy (
+            group_id, min_role_to_create, requires_approval, def_manager_can_manage_schedule,
+            requires_attendance_approval, visibility_type, updated_by
+        ) VALUES (
+            #{groupId}, #{policy.minRoleToCreate}, #{policy.requiresApproval}, #{policy.defManagerCanManageSchedule},
+            #{policy.requiresAttendanceApproval}, #{policy.visibilityType}, #{updatedBy}
+        )
+        ON DUPLICATE KEY UPDATE
+            min_role_to_create              = VALUES(min_role_to_create),
+            requires_approval               = VALUES(requires_approval),
+            def_manager_can_manage_schedule = VALUES(def_manager_can_manage_schedule),
+            requires_attendance_approval    = VALUES(requires_attendance_approval),
+            visibility_type                 = VALUES(visibility_type),
+            updated_by                      = VALUES(updated_by)
+    </insert>
+
 </mapper>

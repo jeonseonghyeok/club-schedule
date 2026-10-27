@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
+import { LogoutButton } from '@/components/Auth/organisms/LogoutButton';
 import { NotificationBell } from '@/components/Notification/organisms/NotificationBell';
 
 interface Props {
 	isLoggedIn: boolean;
-	/** 알림 벨 옆 링크(관리자·메인으로 등) */
+	/** 알림 벨과 로그아웃 사이 링크(관리자·메인으로 등) */
 	actions?: ReactNode;
 }
 
@@ -20,6 +21,7 @@ export const AppHeader = (props: Props) => {
 				<nav aria-label="사용자 메뉴" className="ml-auto flex items-center gap-3">
 					{isLoggedIn && <NotificationBell />}
 					{actions}
+					{isLoggedIn && <LogoutButton />}
 				</nav>
 			</div>
 		</header>

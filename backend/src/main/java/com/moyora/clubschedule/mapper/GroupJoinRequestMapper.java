@@ -1,5 +1,6 @@
 package com.moyora.clubschedule.mapper;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.apache.ibatis.annotations.Mapper;
@@ -15,9 +16,11 @@ public interface GroupJoinRequestMapper {
     List<GroupJoinRequestVo> selectAllPending();
 
     // 관리자 전용 — DB 레벨 페이징 + 닉네임/그룹명 검색
+    // from/to: 신청일 범위(포함)
     List<GroupJoinRequestVo> selectAllPendingPaged(
-            @Param("q") String q, @Param("limit") int limit, @Param("offset") int offset);
-    int countAllPendingFiltered(@Param("q") String q);
+            @Param("q") String q, @Param("from") LocalDate from, @Param("to") LocalDate to,
+            @Param("limit") int limit, @Param("offset") int offset);
+    int countAllPendingFiltered(@Param("q") String q, @Param("from") LocalDate from, @Param("to") LocalDate to);
 
     int updateStatusToApproved(@Param("requestId") Long requestId, @Param("processedBy") Long processedBy);
     int updateStatusToRejected(@Param("requestId") Long requestId, @Param("processedBy") Long processedBy, @Param("rejectReason") String rejectReason);

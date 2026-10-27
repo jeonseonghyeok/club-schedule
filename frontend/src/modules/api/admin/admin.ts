@@ -5,6 +5,7 @@ import type {
 	AdminGroupRequestListParams,
 	AdminListParams,
 	AdminUser,
+	AdminUserListParams,
 	GroupRequestApproval,
 	RejectionParams,
 } from '@/types/Admin';
@@ -21,7 +22,7 @@ const toQuery = (params: Record<string, string | number>): string => {
 	return query.toString();
 };
 
-export const getAdminUsers = async (params: AdminListParams): Promise<Paging<AdminUser>> => {
+export const getAdminUsers = async (params: AdminUserListParams): Promise<Paging<AdminUser>> => {
 	const { data } = await adminApi.get<Paging<AdminUser>>(`/api/admin/users?${toQuery({ ...params })}`);
 	return data;
 };
@@ -35,7 +36,7 @@ export const getAdminGroupRequests = async (
 	params: AdminGroupRequestListParams,
 ): Promise<Paging<AdminGroupRequest>> => {
 	// status 는 빈 값(전체 이력)도 그대로 보내야 서버 기본값과 구분된다
-	const query = new URLSearchParams(toQuery({ page: params.page, q: params.q }));
+	const query = new URLSearchParams(toQuery({ page: params.page, q: params.q, from: params.from, to: params.to }));
 	query.set('status', params.status);
 	const { data } = await adminApi.get<Paging<AdminGroupRequest>>(`/api/admin/group-requests?${query.toString()}`);
 	return data;

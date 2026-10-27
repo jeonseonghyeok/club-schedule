@@ -11,6 +11,15 @@
             <if test="q != null and q.trim() != ''">
                 (LOWER(nickname) LIKE CONCAT('%', LOWER(#{q}), '%') OR LOWER(referrer_url) LIKE CONCAT('%', LOWER(#{q}), '%'))
             </if>
+            <if test="role != null">
+                AND system_role = #{role}
+            </if>
+            <if test="from != null">
+                AND created_at &gt;= #{from}
+            </if>
+            <if test="to != null">
+                AND created_at &lt; DATE_ADD(#{to}, INTERVAL 1 DAY)
+            </if>
         </where>
         ORDER BY user_key DESC
         LIMIT #{size} OFFSET #{offset}
@@ -21,6 +30,15 @@
         <where>
             <if test="q != null and q.trim() != ''">
                 (LOWER(nickname) LIKE CONCAT('%', LOWER(#{q}), '%') OR LOWER(referrer_url) LIKE CONCAT('%', LOWER(#{q}), '%'))
+            </if>
+            <if test="role != null">
+                AND system_role = #{role}
+            </if>
+            <if test="from != null">
+                AND created_at &gt;= #{from}
+            </if>
+            <if test="to != null">
+                AND created_at &lt; DATE_ADD(#{to}, INTERVAL 1 DAY)
             </if>
         </where>
     </select>
@@ -33,6 +51,12 @@
             <if test="q != null and q.trim() != ''">
                 LOWER(name) LIKE CONCAT('%', LOWER(#{q}), '%')
             </if>
+            <if test="from != null">
+                AND created_at &gt;= #{from}
+            </if>
+            <if test="to != null">
+                AND created_at &lt; DATE_ADD(#{to}, INTERVAL 1 DAY)
+            </if>
         </where>
         ORDER BY group_id DESC
         LIMIT #{size} OFFSET #{offset}
@@ -43,6 +67,12 @@
         <where>
             <if test="q != null and q.trim() != ''">
                 LOWER(name) LIKE CONCAT('%', LOWER(#{q}), '%')
+            </if>
+            <if test="from != null">
+                AND created_at &gt;= #{from}
+            </if>
+            <if test="to != null">
+                AND created_at &lt; DATE_ADD(#{to}, INTERVAL 1 DAY)
             </if>
         </where>
     </select>

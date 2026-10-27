@@ -18,7 +18,7 @@ import { formatDateTime } from '@/utils/date';
 const joinLabel = (join: AdminGroupJoin): string => `[${formatOptional(join.groupName)}]`;
 
 export const GroupJoinsPanel = () => {
-	const [params, setParams] = useState<AdminListParams>({ page: 1, q: '' });
+	const [params, setParams] = useState<AdminListParams>({ page: 1, q: '', from: '', to: '' });
 	const [rejecting, setRejecting] = useState<AdminGroupJoin | null>(null);
 	const { data, isPending, error } = useQuery({ ...adminQueries.groupJoins(params) });
 	const openModal = useModalStore(state => state.actions.openModal);
@@ -69,7 +69,8 @@ export const GroupJoinsPanel = () => {
 			<AdminSearchBar
 				label="닉네임·그룹명"
 				placeholder="요청자 닉네임 또는 그룹명"
-				onSearch={q => setParams({ page: 1, q })}
+				dateLabel="신청일"
+				onSearch={criteria => setParams({ page: 1, ...criteria })}
 			/>
 			<AdminListStatus isPending={isPending} error={error} totalCount={data?.totalCount} unit="건">
 				{data && (

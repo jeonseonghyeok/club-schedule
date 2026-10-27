@@ -161,6 +161,17 @@ public class GroupApiController {
         return ok ? ResponseEntity.ok().build() : ApiErrors.forbidden("매니저 이상만 차단을 해제할 수 있습니다.");
     }
 
+    /** 본인 탈퇴 — 리더는 409(먼저 리더 승계) */
+    @DeleteMapping("/{groupId}/members/me")
+    public ResponseEntity<?> withdraw(
+            @PathVariable Long groupId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long userKey = userDetails != null ? userDetails.getUserKey() : null;
+        if (userKey == null) return ApiErrors.unauthorized();
+        groupManageService.withdraw(groupId, userKey);
+        return ResponseEntity.ok().build();
+    }
+
     // 본인의 그룹 내 참가 이력(일정별 최신 상태, 최신 일정순) — 마이페이지성 화면 부재 findings 반영
     @GetMapping("/{groupId}/attendance/me")
     public ResponseEntity<?> myAttendanceHistory(

@@ -33,6 +33,11 @@ public interface GroupMemberPermissionMapper {
             @Param("userKey") Long userKey,
             @Param("permissionType") String permissionType);
 
+    /** 회원의 개인 권한 override 전부 삭제(탈퇴 시) */
+    int deleteAllPermissions(
+            @Param("groupId") Long groupId,
+            @Param("userKey") Long userKey);
+
     /** 해당 유저가 is_allowed=1로 보유한 permission_type 목록 (프리셋 UI 렌더링용) */
     List<String> selectAllowedTypes(
             @Param("groupId") Long groupId,

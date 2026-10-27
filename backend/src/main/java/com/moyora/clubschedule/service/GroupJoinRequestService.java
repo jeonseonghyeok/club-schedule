@@ -1,5 +1,6 @@
 package com.moyora.clubschedule.service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -86,13 +87,13 @@ public class GroupJoinRequestService {
     }
 
     /** 관리자 전용 — DB 레벨 페이징 + 닉네임/그룹명 검색 */
-    public List<GroupJoinRequestVo> getAllPendingPaged(String q, int page, int size) {
+    public List<GroupJoinRequestVo> getAllPendingPaged(String q, LocalDate from, LocalDate to, int page, int size) {
         int offset = (page - 1) * size;
-        return mapper.selectAllPendingPaged(normalizeQuery(q), size, offset);
+        return mapper.selectAllPendingPaged(normalizeQuery(q), from, to, size, offset);
     }
 
-    public int countAllPending(String q) {
-        return mapper.countAllPendingFiltered(normalizeQuery(q));
+    public int countAllPending(String q, LocalDate from, LocalDate to) {
+        return mapper.countAllPendingFiltered(normalizeQuery(q), from, to);
     }
 
     private String normalizeQuery(String q) {

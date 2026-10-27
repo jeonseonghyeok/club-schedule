@@ -36,7 +36,7 @@ const requestLabel = (request: AdminGroupRequest): string => `[${formatOptional(
 export const GroupRequestsPanel = () => {
 	const statusId = useId();
 	const [status, setStatus] = useState<AdminGroupRequestListParams['status']>(GROUP_REQUEST_STATUS.PENDING);
-	const [params, setParams] = useState<AdminGroupRequestListParams>({ page: 1, q: '', status });
+	const [params, setParams] = useState<AdminGroupRequestListParams>({ page: 1, q: '', from: '', to: '', status });
 	const [review, setReview] = useState<Review>(null);
 	const { data, isPending, error } = useQuery({ ...adminQueries.groupRequests(params) });
 	const openModal = useModalStore(state => state.actions.openModal);
@@ -99,7 +99,8 @@ export const GroupRequestsPanel = () => {
 			<AdminSearchBar
 				label="모임명"
 				placeholder="모임명 검색"
-				onSearch={q => setParams({ page: 1, q, status })}
+				dateLabel="신청일"
+				onSearch={criteria => setParams({ page: 1, ...criteria, status })}
 				extra={
 					<div className="flex flex-col gap-1">
 						<label htmlFor={statusId} className="text-xs font-medium text-gray-700">

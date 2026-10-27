@@ -37,12 +37,17 @@ const COLUMNS: readonly DataTableColumn<AdminGroup>[] = [
 ];
 
 export const GroupsPanel = () => {
-	const [params, setParams] = useState<AdminListParams>({ page: 1, q: '' });
+	const [params, setParams] = useState<AdminListParams>({ page: 1, q: '', from: '', to: '' });
 	const { data, isPending, error } = useQuery({ ...adminQueries.groups(params) });
 
 	return (
 		<>
-			<AdminSearchBar label="그룹명" placeholder="그룹명" onSearch={q => setParams({ page: 1, q })} />
+			<AdminSearchBar
+				label="그룹명"
+				placeholder="그룹명"
+				dateLabel="생성일"
+				onSearch={criteria => setParams({ page: 1, ...criteria })}
+			/>
 			<AdminListStatus isPending={isPending} error={error} totalCount={data?.totalCount} unit="건">
 				{data && (
 					<>

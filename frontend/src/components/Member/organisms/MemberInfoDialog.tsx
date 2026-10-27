@@ -26,11 +26,13 @@ interface Props {
 	/** 매니저 이상이 활동 중인 일반회원을 볼 때: 내보낼 수 있다 */
 	canKick: boolean;
 	onKick: (member: GroupMember) => void;
+	/** 내 정보로 열었을 때만: 모임 탈퇴 */
+	onWithdraw?: () => void;
 	onClose: () => void;
 }
 
 export const MemberInfoDialog = (props: Props) => {
-	const { groupId, member, canEditRole, canKick, onKick, onClose } = props;
+	const { groupId, member, canEditRole, canKick, onKick, onWithdraw, onClose } = props;
 	const roleId = useId();
 	const [role, setRole] = useState<GroupRole>(member.role);
 	const openModal = useModalStore(state => state.actions.openModal);
@@ -109,6 +111,13 @@ export const MemberInfoDialog = (props: Props) => {
 					</>
 				)}
 			</dl>
+			{onWithdraw && (
+				<div className="mt-4 flex justify-end border-t border-gray-100 pt-3">
+					<Button variant="secondary" className="text-red-800" onClick={onWithdraw}>
+						모임 탈퇴
+					</Button>
+				</div>
+			)}
 			{(canEditRole || canKick) && (
 				<div className="mt-4 flex justify-between gap-2 border-t border-gray-100 pt-3">
 					{canKick ? (

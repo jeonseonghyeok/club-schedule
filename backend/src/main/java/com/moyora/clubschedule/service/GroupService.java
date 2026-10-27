@@ -1,5 +1,6 @@
 package com.moyora.clubschedule.service;
 
+import java.time.LocalDate;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
@@ -32,15 +33,15 @@ public class GroupService {
     }
 
     // New: paged groups
-    public List<GroupVo> findGroupsPaged(String q, int page, int size){
+    public List<GroupVo> findGroupsPaged(String q, LocalDate from, LocalDate to, int page, int size){
         int pg = Math.max(1, page);
         int sz = Math.max(1, size);
         int offset = (pg - 1) * sz;
-        return pagingMapper.selectGroupsPaged(q, sz, offset);
+        return pagingMapper.selectGroupsPaged(q, from, to, sz, offset);
     }
 
-    public int countGroupsFiltered(String q){
-        return pagingMapper.countGroupsFiltered(q);
+    public int countGroupsFiltered(String q, LocalDate from, LocalDate to){
+        return pagingMapper.countGroupsFiltered(q, from, to);
     }
 
     public List<GroupVo> findRecentBySchedule(int limit) {

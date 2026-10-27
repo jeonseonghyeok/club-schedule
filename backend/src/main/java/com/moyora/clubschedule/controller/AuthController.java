@@ -4,10 +4,12 @@ import java.util.HashMap;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.moyora.clubschedule.security.CustomUserDetails;
@@ -43,5 +45,16 @@ public class AuthController {
         resp.put("favoriteGroupId", user != null ? user.getFavoriteGroupId() : null);
         resp.put("source", "securityContext");
         return ResponseEntity.ok(resp);
+    }
+
+    /**
+     * 로그아웃 — httpOnly AUTH_TOKEN 쿠키는 스크립트로 지울 수 없어 서버가 만료 쿠키로 덮어쓴다.
+     * 토큰이 이미 만료된 경우에도 호출할 수 있게 인증 없이 허용한다(WhitelistConfig).
+     */
+    @PostMapping("/api/auth/logout")
+    public ResponseEntity<?> logout() {
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, "AUTH_TOKEN=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0")
+                .build();
     }
 }

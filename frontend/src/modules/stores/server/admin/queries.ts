@@ -1,11 +1,11 @@
 import { keepPreviousData, queryOptions } from '@tanstack/react-query';
 import { getAdminGroupJoins, getAdminGroupRequests, getAdminGroups, getAdminUsers } from '@/modules/api/admin/admin';
-import type { AdminGroupRequestListParams, AdminListParams } from '@/types/Admin';
+import type { AdminGroupRequestListParams, AdminListParams, AdminUserListParams } from '@/types/Admin';
 
 // 페이지·검색어를 바꾸는 동안 이전 결과를 유지해 표가 깜빡이지 않게 한다
 export const adminQueries = {
 	all: () => ['admin'],
-	users: (params: AdminListParams) =>
+	users: (params: AdminUserListParams) =>
 		queryOptions({
 			queryKey: [...adminQueries.all(), 'users', params],
 			queryFn: () => getAdminUsers(params),

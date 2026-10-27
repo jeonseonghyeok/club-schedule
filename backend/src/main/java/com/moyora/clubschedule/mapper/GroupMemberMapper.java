@@ -33,6 +33,12 @@ public interface GroupMemberMapper {
     // 새로 추가: 특정 멤버의 상태 업데이트 (예: KICKED, WITHDRAWN)
     int updateMemberStatus(@Param("groupId") Long groupId, @Param("userKey") Long userKey, @Param("status") String status);
 
+    // 모임 닉네임 변경(null 이면 해제)
+    int updateNickname(@Param("groupId") Long groupId, @Param("userKey") Long userKey, @Param("nickname") String nickname);
+
+    // 같은 모임의 다른 활동 회원이 name 을 표시 이름으로 쓰고 있는 수
+    int countDisplayNameTaken(@Param("groupId") Long groupId, @Param("userKey") Long userKey, @Param("name") String name);
+
     // 본인 탈퇴 — ACTIVE 행만 WITHDRAWN + role=MEMBER 로 바꾼다
     int withdrawMember(@Param("groupId") Long groupId, @Param("userKey") Long userKey);
 

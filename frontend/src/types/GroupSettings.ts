@@ -22,6 +22,8 @@ export interface GroupSettings {
 	readonly capacity: number;
 	/** 켜면 가입 신청이 정원 안에서 바로 승인된다 */
 	readonly autoApprove: boolean;
+	/** 회원이 모임 닉네임을 직접 바꿀 수 있다(꺼도 리더는 바꿀 수 있다) */
+	readonly allowSelfNickname: boolean;
 	readonly activeMemberCount: number;
 	readonly policy: GroupPolicy;
 }
@@ -32,4 +34,5 @@ export interface GroupInfoPayload {
 	readonly description: string;
 	readonly capacity: number;
 	readonly autoApprove: boolean;
+	readonly allowSelfNickname: boolean;
 }

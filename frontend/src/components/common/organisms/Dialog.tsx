@@ -34,7 +34,11 @@ export const Dialog = (props: Props) => {
 	useEffect(() => {
 		const dialog = dialogRef.current;
 		if (!dialog) return;
-		const handleClose = () => onCloseRef.current();
+		// close 이벤트는 비동기로 전달된다. StrictMode 개발 모드에서는 effect 가 정리(close)→재실행(showModal)되므로
+		// 정리 때 큐에 들어간 close 이벤트가 다시 열린 뒤에 도착한다 — 그때는 열려 있으니 무시한다.
+		const handleClose = () => {
+			if (!dialog.open) onCloseRef.current();
+		};
 		dialog.addEventListener('close', handleClose);
 		if (!dialog.open) dialog.showModal();
 		// 부모가 언마운트시킬 때는 onClose 를 다시 부르지 않도록 리스너를 먼저 뗀다

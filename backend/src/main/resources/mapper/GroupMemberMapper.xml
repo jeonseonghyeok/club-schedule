@@ -46,7 +46,8 @@
     <select id="selectMembersByGroup" resultType="com.moyora.clubschedule.vo.GroupMemberVo" parameterType="map">
         SELECT gm.group_id  AS groupId,
                gm.user_key  AS userKey,
-               u.nickname   AS displayName,
+               COALESCE(gm.nickname, u.nickname) AS displayName,
+               gm.nickname  AS groupNickname,
                gm.role,
                gm.status,
                gm.joined_at AS joinedAt,
@@ -71,6 +72,22 @@
         SET status = 'WITHDRAWN', role = 'MEMBER', left_at = NOW(), updated_by = #{userKey}
         WHERE group_id = #{groupId} AND user_key = #{userKey} AND status = 'ACTIVE'
     </update>
+    <!-- 모임 닉네임 변경(NULL 이면 계정 닉네임으로 표시) -->
+    <update id="updateNickname">
+        UPDATE group_member SET nickname = #{nickname}
+        WHERE group_id = #{groupId} AND user_key = #{userKey} AND status = 'ACTIVE'
+    </update>
+    <!-- 같은 모임의 다른 활동 회원이 이미 쓰는 표시 이름인지 -->
+    <select id="countDisplayNameTaken" resultType="int">
+        SELECT COUNT(*)
+        FROM group_member gm
+        JOIN `user` u ON u.user_key = gm.user_key
+        WHERE gm.group_id = #{groupId}
+          AND gm.user_key &lt;&gt; #{userKey}
+          AND gm.status = 'ACTIVE'
+          <!-- 두 테이블의 콜레이션이 달라 COALESCE 결과로는 비교할 수 없다 — 열별로 비교 -->
+          AND (gm.nickname = #{name} OR (gm.nickname IS NULL AND u.nickname = #{name}))
+    </select>
     <!-- 상태 무관 기존 행 조회 (재가입 판단용) -->
     <select id="selectMemberAnyStatus" resultType="com.moyora.clubschedule.vo.GroupMemberVo">
         SELECT group_id AS groupId, user_key AS userKey, role, status,

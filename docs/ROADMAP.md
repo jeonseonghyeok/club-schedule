@@ -54,17 +54,19 @@
 | 내 참가 이력 조회 | `GET /api/groups/{groupId}/attendance/me` 신설(그룹 내 본인의 일정별 최신 참가 상태, 최신순) + `group.html`에 "내 참가 이력" 버튼/모달. 기존엔 매니저용 "이력보기"만 있고 일반 멤버가 스스로 조회할 화면이 없었음 |
 | 즐겨찾기 그룹 목록 반영 | 우선모임(★) 지정은 있었지만 "내 모임" 목록에 전혀 반영되지 않던 것을, 즐겨찾기 그룹을 최상단 정렬 + ★ 표시로 개선(`MainController`가 `favoriteGroupId`를 `list=1` 우회 시에도 항상 모델에 노출하도록 변경) |
 | 예외 메시지 정보노출 수정 | `GlobalExceptionHandler`의 catch-all(`Exception.class`)이 `ex.getMessage()`를 그대로 클라이언트에 반환하던 것을, 서버 로그(`log.error`)에만 원본을 남기고 클라이언트에는 일반화된 메시지를 반환하도록 수정 |
+| 보안·에러 응답 정리 (2026-10-27) | 가입 대기 목록을 리더만, 회원·참가자·명단·이력 조회를 모임 회원만 보도록 제한. `/api/debug/whoami` 제거. 컨트롤러의 빈 본문·평문 실패 응답을 모두 `{error, message}`(`ApiErrors`)로 통일. 가입 요청 승인·거부·취소, 모임 생성 신청 거부·취소 UPDATE 에 `status='PENDING'` 조건을 넣어 이미 처리된 요청이 다시 바뀌던 버그 수정 |
+| 모임 설정 화면 (2026-10-27) | 관리 탭 "모임 기본 정보"(이름·설명·정원·가입 자동 승인·닉네임 수정 허용)와 "운영 정책"(리더). 기존 `PATCH /groups/{id}` 가 고치던 `group.schedule_policy`·`auto_approve` 는 실제 동작에 쓰이지 않았다 — 정책은 `group_schedule_policy` 를 `PUT /groups/{id}/policy` 로 바꾸고, 가입 신청은 `auto_approve` 면 정원 안에서 즉시 승인 |
+| 본인 탈퇴·로그아웃 (2026-10-27) | `DELETE /groups/{id}/members/me`(리더는 승계 후), 직책·개인 권한 초기화·앞으로의 참가 취소·우선모임 해제. `POST /api/auth/logout` + 헤더 로그아웃 버튼 |
+| 관리자 검색 필터 (2026-10-27) | 회원 권한·가입일, 모임 생성일, 생성 신청·가입 요청 신청일 기간 |
+| 일정 거부·취소 사유 (2026-10-27) | `group_schedule.status_reason`(migration_v9). reject·cancel 이 `{reason}` 을 받아 저장하고 알림에 붙인다. 화면은 사유 입력 후 처리, 일정 상세에 사유 표시 |
+| 모임별 닉네임 (2026-10-27) | `group_member.nickname`(migration_v9), `PATCH /groups/{id}/members/me/nickname`. 회원 목록·참가 명단·이력의 표시 이름에 반영, 같은 모임 안 중복 금지, `group.allow_self_nickname` 으로 본인 수정 허용 여부 |
+| 개발 모드 모달 즉시 닫힘 (2026-10-27) | `npm run dev`(StrictMode)에서 모든 `Dialog` 가 열리자마자 닫히던 문제 — effect 정리 때 큐에 들어간 `close` 이벤트를 다시 열린 뒤 무시 |
 
 ---
 
 ## 미구현 / 개선 필요 항목
 
 ### 우선순위 낮음
-
-#### 4. 멤버 별명(닉네임) 수정
-- `group_member` 테이블 별명 컬럼 없음, 스키마 마이그레이션 필요
-- **정책 확정(2026-07-10):** **그룹별 닉네임**(전역 아님) — 그룹마다 다른 별명 표시,
-  `group_member.nickname` 컬럼 추가
 
 #### 6. 내 그룹 캘린더 (main.html 개선)
 - 로그인 사용자가 속한 모든 그룹 일정 통합 뷰 필요
@@ -74,12 +76,6 @@
 #### 7. Swagger / OpenAPI 문서 자동화
 - springdoc-openapi 의존성 추가
 - **정책 확정(2026-07-10):** `/admin/**` 포함 **전체 API** 범위로 문서화
-
-#### 9. 본인 탈퇴(자진 탈퇴) API
-- 현재 `group_member.status`를 `WITHDRAWN`으로 바꾸는 API가 전혀 없음(관리자의 강퇴만
-  존재, `GroupManageService.banMember`). 회원 본인이 스스로 탈퇴하는 기능은 관리 탭 개편
-  작업(가입요청/일정승인요청 위젯, 회원관리 페이지 분리, 벤 처리/해제) 범위 밖이라 별도
-  항목으로 분리해둔다.
 
 > **제거된 항목:** "일정 삭제 API" — 정책 확정(2026-07-10): CANCELLED 상태로 충분하며 별도
 > 물리 삭제 API는 만들지 않기로 결정. 로드맵에서 제거.
@@ -93,8 +89,6 @@
 | `GroupApiController` 페이로드 파싱 | `Map<String,Object>` 직접 파싱 → 전용 Request DTO 교체 | 전체 일괄 교체 대신 **신규 엔드포인트부터 점진 적용** |
 | 예외 처리 세분화 | `GlobalExceptionHandler` 범용 핸들러 → 세부 예외 추가 | **가입/출석 등 도메인 예외 우선** 적용 |
 | 트랜잭션 동시성 | 일정 승인/취소 동시 요청 낙관적 락 미적용 | **참가 신청(schedule_attendance)까지 포함**해 적용 |
-| 관리자 검색 필터 | Thymeleaf 관리자 화면의 권한·가입일·생성일·요청일 기간, 검색 조건 선택(그룹/설명/요청자)은 API 가 받지 않아 동작하지 않았다. React 이전(2026-10-25) 때 실제로 동작하는 키워드(`q`)·그룹 신청 상태만 남겼다 — 필요하면 `/api/admin/*` 와 매퍼에 필터를 추가한 뒤 화면에 붙인다 | 후속 작업 |
-| 일정 거부·취소 사유 | 기존 모임 화면은 일정 거부·취소 때 사유를 필수로 받아 `{reason}` 으로 보냈지만, `PATCH /api/groups/{id}/schedules/{sid}/reject·cancel` 은 본문을 받지 않아 사유가 저장되지 않았다. React 이전(2026-10-25) 때 사유 입력 없이 확인만 받도록 했다 — 사유를 남기려면 API·서비스·이력 테이블에 추가 후 화면에 붙인다 | 후속 작업 |
 
 ---
 

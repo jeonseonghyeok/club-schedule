@@ -27,6 +27,8 @@ export interface Schedule {
 	readonly start: number;
 	readonly end: number | null;
 	readonly status: ScheduleStatus;
+	/** 거부·취소 사유(그 밖의 상태에서는 null) */
+	readonly statusReason: string | null;
 	readonly createdBy: number | null;
 	/** 0 이면 인원 제한 없음 */
 	readonly maxAttendance: number;

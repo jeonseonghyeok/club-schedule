@@ -21,6 +21,7 @@
             <arg   column="end_at"         javaType="java.time.LocalDateTime"/>
             <arg   column="max_attendance" javaType="_int"/>
             <arg   column="status"         javaType="com.moyora.clubschedule.vo.GroupScheduleVo$ScheduleStatus"/>
+            <arg   column="status_reason"  javaType="java.lang.String"/>
             <arg   column="created_by"     javaType="java.lang.Long"/>
             <arg   column="approved_by_user_key"    javaType="java.lang.Long"/>
             <arg   column="created_at"     javaType="java.time.LocalDateTime"/>
@@ -35,7 +36,7 @@
             schedule_id, group_id, title, content,
             location_name, latitude, longitude,
             start_at, end_at, max_attendance,
-            status, created_by, approved_by_user_key,
+            status, status_reason, created_by, approved_by_user_key,
             created_at, updated_at, is_completed, completed_at
         FROM group_schedule
         WHERE group_id = #{groupId}
@@ -49,7 +50,7 @@
             schedule_id, group_id, title, content,
             location_name, latitude, longitude,
             start_at, end_at, max_attendance,
-            status, created_by, approved_by_user_key,
+            status, status_reason, created_by, approved_by_user_key,
             created_at, updated_at, is_completed, completed_at
         FROM group_schedule
         WHERE schedule_id = #{scheduleId}
@@ -62,6 +63,7 @@
     <update id="updateScheduleStatus">
         UPDATE group_schedule
         SET status      = #{status},
+            status_reason = #{statusReason},
             approved_by_user_key = #{approvedBy}
         WHERE schedule_id = #{scheduleId}
     </update>

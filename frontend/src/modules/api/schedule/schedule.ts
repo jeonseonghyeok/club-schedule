@@ -25,10 +25,13 @@ export const updateSchedule = async (params: ScheduleTarget & { payload: Schedul
 	return data;
 };
 
-/** 승인·거부·취소 — 처리 후의 일정을 돌려준다 */
-export const updateScheduleStatus = async (params: ScheduleTarget & { action: ScheduleAction }): Promise<Schedule> => {
+/** 승인·거부·취소 — 처리 후의 일정을 돌려준다. 거부·취소 사유는 일정의 statusReason 으로 남는다 */
+export const updateScheduleStatus = async (
+	params: ScheduleTarget & { action: ScheduleAction; reason: string | null },
+): Promise<Schedule> => {
 	const { data } = await scheduleApi.patch<Schedule>(
 		`/api/groups/${params.groupId}/schedules/${params.scheduleId}/${params.action}`,
+		params.reason ? { reason: params.reason } : undefined,
 	);
 	return data;
 };

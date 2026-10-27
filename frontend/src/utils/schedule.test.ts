@@ -21,6 +21,7 @@ const schedule = (id: number, start: number, status: ScheduleStatus, createdBy =
 	start,
 	end: null,
 	status,
+	statusReason: null,
 	createdBy,
 	maxAttendance: 0,
 	confirmedCount: 0,

@@ -1,4 +1,4 @@
-import type { GroupMember, GroupRole, PermissionPreset } from '@/types/Member';
+import type { GroupMember, GroupRole, MyNickname, PermissionPreset } from '@/types/Member';
 import { memberApi } from '.';
 
 interface MemberTarget {
@@ -37,4 +37,12 @@ export const deleteMemberBan = async (target: MemberTarget): Promise<void> => {
 /** 본인 탈퇴 — 리더는 409(먼저 리더 승계) */
 export const deleteMyMembership = async (groupId: number): Promise<void> => {
 	await memberApi.delete(`/api/groups/${groupId}/members/me`);
+};
+
+/** 내 모임 닉네임 — 빈 문자열이면 계정 닉네임으로 돌아간다 */
+export const updateMyNickname = async (params: { groupId: number; nickname: string }): Promise<MyNickname> => {
+	const { data } = await memberApi.patch<MyNickname>(`/api/groups/${params.groupId}/members/me/nickname`, {
+		nickname: params.nickname,
+	});
+	return data;
 };

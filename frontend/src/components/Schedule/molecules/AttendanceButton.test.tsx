@@ -24,6 +24,7 @@ const schedule = (myAttendanceStatus: AttendanceStatus | null): Schedule => ({
 	start: 0,
 	end: null,
 	status: 'CONFIRMED',
+	statusReason: null,
 	createdBy: 1,
 	maxAttendance: 0,
 	confirmedCount: 0,

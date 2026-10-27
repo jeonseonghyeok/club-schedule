@@ -24,6 +24,7 @@ const pastSchedule: Schedule = {
 	start: Date.now() - 60_000,
 	end: null,
 	status: 'CONFIRMED',
+	statusReason: null,
 	createdBy: 1,
 	maxAttendance: 0,
 	confirmedCount: 2,

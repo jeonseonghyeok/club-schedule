@@ -24,6 +24,11 @@ interface Props {
 	onClose: () => void;
 }
 
+const STATUS_REASON_LABEL: Partial<Record<Schedule['status'], string>> = {
+	[SCHEDULE_STATUS.REJECTED]: '거부 사유',
+	[SCHEDULE_STATUS.CANCELLED]: '취소 사유',
+};
+
 interface MenuItem {
 	readonly label: string;
 	readonly onSelect: () => void;
@@ -110,8 +115,16 @@ export const ScheduleDetailDialog = (props: Props) => {
 		>
 			<div className="flex flex-col gap-3 text-sm">
 				{!isConfirmed && (
-					<div>
-						<ScheduleStatusBadge status={schedule.status} />
+					<div className="flex flex-col gap-1">
+						<div>
+							<ScheduleStatusBadge status={schedule.status} />
+						</div>
+						{schedule.statusReason && (
+							<p className="rounded-md bg-gray-50 px-3 py-2 text-gray-700">
+								<span className="font-semibold">{STATUS_REASON_LABEL[schedule.status] ?? '사유'}</span>{' '}
+								{schedule.statusReason}
+							</p>
+						)}
 					</div>
 				)}
 				<div className="grid gap-1 sm:grid-cols-2">

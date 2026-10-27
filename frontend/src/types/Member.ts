@@ -13,7 +13,10 @@ export type PermissionPreset = (typeof PERMISSION_PRESET)[keyof typeof PERMISSIO
 
 export interface GroupMember {
 	readonly userKey: number;
+	/** 모임 닉네임이 있으면 그것, 없으면 계정 닉네임 */
 	readonly displayName: string | null;
+	/** 이 모임에서만 쓰는 닉네임(없으면 null) */
+	readonly groupNickname: string | null;
 	readonly role: GroupRole;
 	readonly status: MemberStatus;
 	readonly joinedAt: string | null;
@@ -22,4 +25,9 @@ export interface GroupMember {
 	readonly banned: boolean;
 	readonly banReason: string | null;
 	readonly presets: readonly PermissionPreset[] | null;
+}
+
+/** PATCH /api/groups/{groupId}/members/me/nickname 응답 */
+export interface MyNickname {
+	readonly groupNickname: string | null;
 }

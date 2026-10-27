@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Button } from '@/components/common/atoms/Button';
 import { Dialog } from '@/components/common/organisms/Dialog';
 import { ModalType } from '@/constants';
@@ -29,10 +30,12 @@ interface Props {
 	/** 내 정보로 열었을 때만: 모임 탈퇴 */
 	onWithdraw?: () => void;
 	onClose: () => void;
+	/** 정보 아래에 붙는 추가 영역(내 정보: 모임 닉네임 수정) */
+	children?: ReactNode;
 }
 
 export const MemberInfoDialog = (props: Props) => {
-	const { groupId, member, canEditRole, canKick, onKick, onWithdraw, onClose } = props;
+	const { groupId, member, canEditRole, canKick, onKick, onWithdraw, onClose, children } = props;
 	const roleId = useId();
 	const [role, setRole] = useState<GroupRole>(member.role);
 	const openModal = useModalStore(state => state.actions.openModal);
@@ -111,6 +114,7 @@ export const MemberInfoDialog = (props: Props) => {
 					</>
 				)}
 			</dl>
+			{children}
 			{onWithdraw && (
 				<div className="mt-4 flex justify-end border-t border-gray-100 pt-3">
 					<Button variant="secondary" className="text-red-800" onClick={onWithdraw}>

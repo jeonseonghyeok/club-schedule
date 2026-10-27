@@ -53,6 +53,8 @@ public class GroupApiController {
     private final ScheduleAttendanceMapper scheduleAttendanceMapper;
 
     private static final String MEMBERS_ONLY_MESSAGE = "모임 회원만 볼 수 있습니다.";
+    private static final int STATUS_REASON_MAX = 500; // group_schedule.status_reason VARCHAR(500)
+    private static final String STATUS_REASON_TOO_LONG = "사유는 500자까지 입력할 수 있습니다.";
 
     // ── Members ──────────────────────────────────────────────────────────────
 
@@ -70,6 +72,7 @@ public class GroupApiController {
             Map<String,Object> map = new HashMap<>();
             map.put("userKey",     m.getUserKey());
             map.put("displayName", m.getDisplayName());
+            map.put("groupNickname", m.getGroupNickname());
             map.put("role",        m.getRole());
             map.put("status",      m.getStatus());
             map.put("joinedAt",    m.getJoinedAt() != null ? m.getJoinedAt().toString() : null);
@@ -159,6 +162,25 @@ public class GroupApiController {
         if (operator == null) return ApiErrors.unauthorized();
         boolean ok = groupManageService.unbanMember(groupId, userKey, operator);
         return ok ? ResponseEntity.ok().build() : ApiErrors.forbidden("매니저 이상만 차단을 해제할 수 있습니다.");
+    }
+
+    /** 내 모임 닉네임 — Body {nickname}(비우면 계정 닉네임). 응답 {groupNickname} */
+    @PatchMapping("/{groupId}/members/me/nickname")
+    public ResponseEntity<?> updateMyNickname(
+            @PathVariable Long groupId,
+            @RequestBody(required = false) Map<String, Object> payload,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long userKey = userDetails != null ? userDetails.getUserKey() : null;
+        if (userKey == null) return ApiErrors.unauthorized();
+        Object raw = payload != null ? payload.get("nickname") : null;
+        try {
+            String saved = groupManageService.updateMyNickname(groupId, userKey, raw != null ? raw.toString() : null);
+            Map<String, Object> body = new HashMap<>();
+            body.put("groupNickname", saved);
+            return ResponseEntity.ok(body);
+        } catch (IllegalArgumentException e) {
+            return ApiErrors.badRequest(e.getMessage());
+        }
     }
 
     /** 본인 탈퇴 — 리더는 409(먼저 리더 승계) */
@@ -341,25 +363,33 @@ public class GroupApiController {
         return ResponseEntity.ok(toCalendarEvent(result, operator));
     }
 
+    /** 반려 — Body {reason}(선택, 500자 이하) */
     @PatchMapping("/{groupId}/schedules/{scheduleId}/reject")
     public ResponseEntity<?> rejectSchedule(
             @PathVariable Long groupId,
             @PathVariable Long scheduleId,
+            @RequestBody(required = false) Map<String,Object> payload,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
         if (operator == null) return ApiErrors.unauthorized();
-        GroupScheduleVo result = groupScheduleService.rejectSchedule(groupId, scheduleId, operator);
+        String reason = payload != null ? getString(payload, "reason") : null;
+        if (reason != null && reason.length() > STATUS_REASON_MAX) return ApiErrors.badRequest(STATUS_REASON_TOO_LONG);
+        GroupScheduleVo result = groupScheduleService.rejectSchedule(groupId, scheduleId, operator, reason);
         return ResponseEntity.ok(toCalendarEvent(result, operator));
     }
 
+    /** 취소 — Body {reason}(선택, 500자 이하) */
     @PatchMapping("/{groupId}/schedules/{scheduleId}/cancel")
     public ResponseEntity<?> cancelSchedule(
             @PathVariable Long groupId,
             @PathVariable Long scheduleId,
+            @RequestBody(required = false) Map<String,Object> payload,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long operator = userDetails != null ? userDetails.getUserKey() : null;
         if (operator == null) return ApiErrors.unauthorized();
-        GroupScheduleVo result = groupScheduleService.cancelSchedule(groupId, scheduleId, operator);
+        String reason = payload != null ? getString(payload, "reason") : null;
+        if (reason != null && reason.length() > STATUS_REASON_MAX) return ApiErrors.badRequest(STATUS_REASON_TOO_LONG);
+        GroupScheduleVo result = groupScheduleService.cancelSchedule(groupId, scheduleId, operator, reason);
         return ResponseEntity.ok(toCalendarEvent(result, operator));
     }
 
@@ -398,6 +428,7 @@ public class GroupApiController {
         ev.put("description",   s.getContent());
         ev.put("locationName",  s.getLocationName());
         ev.put("status",        s.getStatus().name());
+        ev.put("statusReason",  s.getStatusReason());
         ev.put("maxAttendance", s.getMaxAttendance());
         ev.put("createdBy",     s.getCreatedBy());
         ev.put("isCompleted",   s.isCompleted());

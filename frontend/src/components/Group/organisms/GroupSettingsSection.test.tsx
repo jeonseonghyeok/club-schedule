@@ -1,7 +1,7 @@
 import { act, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { GroupSettingsSection } from '@/components/Group/organisms/GroupSettingsSection';
-import { getGroupSettings, updateGroup, updateGroupPolicy } from '@/modules/api/group/group';
+import { getGroupSettings, updateGroup, updateGroupPolicy, updateGroupRegion } from '@/modules/api/group/group';
 import { useModalStore } from '@/modules/stores/client/modal';
 import { renderWithProviders } from '@/test/render';
 import type { GroupSettings } from '@/types/GroupSettings';
@@ -11,6 +11,7 @@ vi.mock('@/modules/api/group/group', async importOriginal => ({
 	getGroupSettings: vi.fn(),
 	updateGroup: vi.fn(),
 	updateGroupPolicy: vi.fn(),
+	updateGroupRegion: vi.fn(),
 }));
 
 const settings: GroupSettings = {
@@ -20,6 +21,9 @@ const settings: GroupSettings = {
 	capacity: 50,
 	autoApprove: false,
 	allowSelfNickname: true,
+	regionName: null,
+	latitude: null,
+	longitude: null,
 	activeMemberCount: 17,
 	policy: {
 		minRoleToCreate: 'LEADER',
@@ -101,6 +105,30 @@ describe('GroupSettingsSection', () => {
 					requiresAttendanceApproval: false,
 					visibilityType: 'PARTIAL',
 				},
+			}),
+		);
+	});
+
+	it('활동 지역 이름만 바꾸면 좌표 없이 저장한다', async () => {
+		vi.mocked(getGroupSettings).mockResolvedValue({
+			...settings,
+			regionName: '강남역',
+			latitude: 37.49,
+			longitude: 127.02,
+		});
+		vi.mocked(updateGroupRegion).mockResolvedValue({ ...settings, regionName: '역삼동' });
+		renderWithProviders(<GroupSettingsSection groupId={4} viewerIsLeader />);
+
+		expect(await screen.findByText('지도 탭에 표시됩니다.')).toBeInTheDocument();
+		const input = screen.getByLabelText('대표 활동 지역');
+		await userEvent.clear(input);
+		await userEvent.type(input, '역삼동');
+		await userEvent.click(screen.getByRole('button', { name: '활동 지역 저장' }));
+
+		await waitFor(() =>
+			expect(updateGroupRegion).toHaveBeenCalledWith({
+				groupId: 4,
+				region: { regionName: '역삼동', latitude: null, longitude: null },
 			}),
 		);
 	});

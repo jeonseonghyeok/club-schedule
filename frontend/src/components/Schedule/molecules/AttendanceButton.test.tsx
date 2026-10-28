@@ -21,6 +21,8 @@ const schedule = (myAttendanceStatus: AttendanceStatus | null): Schedule => ({
 	title: '번개',
 	description: null,
 	locationName: null,
+	latitude: null,
+	longitude: null,
 	start: 0,
 	end: null,
 	status: 'CONFIRMED',

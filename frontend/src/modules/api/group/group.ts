@@ -1,6 +1,6 @@
 import type { Group, MyGroup } from '@/types/Group';
 import type { GroupDetail } from '@/types/GroupDetail';
-import type { GroupInfoPayload, GroupPolicy, GroupSettings } from '@/types/GroupSettings';
+import type { GroupInfoPayload, GroupPolicy, GroupRegionPayload, GroupSettings } from '@/types/GroupSettings';
 import { groupApi } from '.';
 
 export const getMyGroups = async (): Promise<MyGroup[]> => {
@@ -44,5 +44,14 @@ export const updateGroup = async (params: { groupId: number; payload: GroupInfoP
 /** 리더 전용: 일정 운영 정책 전체 교체 */
 export const updateGroupPolicy = async (params: { groupId: number; policy: GroupPolicy }): Promise<GroupSettings> => {
 	const { data } = await groupApi.put<GroupSettings>(`/api/groups/${params.groupId}/policy`, params.policy);
+	return data;
+};
+
+/** 리더·매니저: 대표 활동 지역(지도 탭 표시) */
+export const updateGroupRegion = async (params: {
+	groupId: number;
+	region: GroupRegionPayload;
+}): Promise<GroupSettings> => {
+	const { data } = await groupApi.put<GroupSettings>(`/api/groups/${params.groupId}/region`, params.region);
 	return data;
 };

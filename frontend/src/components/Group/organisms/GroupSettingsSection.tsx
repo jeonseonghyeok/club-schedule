@@ -3,6 +3,7 @@ import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
 import { SectionCard } from '@/components/common/molecules/SectionCard';
 import { GroupInfoForm } from '@/components/Group/organisms/GroupInfoForm';
 import { GroupPolicyForm } from '@/components/Group/organisms/GroupPolicyForm';
+import { GroupRegionForm } from '@/components/Group/organisms/GroupRegionForm';
 import { groupQueries } from '@/modules/stores/server/group/queries';
 
 interface Props {
@@ -34,6 +35,9 @@ export const GroupSettingsSection = (props: Props) => {
 		<>
 			<SectionCard title="모임 기본 정보">
 				<GroupInfoForm groupId={groupId} settings={settings} />
+			</SectionCard>
+			<SectionCard title="활동 지역">
+				<GroupRegionForm groupId={groupId} settings={settings} />
 			</SectionCard>
 			<SectionCard title="운영 정책">
 				<GroupPolicyForm groupId={groupId} policy={settings.policy} canEdit={viewerIsLeader} />

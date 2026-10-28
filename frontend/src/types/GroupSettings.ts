@@ -24,6 +24,10 @@ export interface GroupSettings {
 	readonly autoApprove: boolean;
 	/** 회원이 모임 닉네임을 직접 바꿀 수 있다(꺼도 리더는 바꿀 수 있다) */
 	readonly allowSelfNickname: boolean;
+	/** 대표 활동 지역 — 좌표가 있으면 지도 탭에 표시된다 */
+	readonly regionName: string | null;
+	readonly latitude: number | null;
+	readonly longitude: number | null;
 	readonly activeMemberCount: number;
 	readonly policy: GroupPolicy;
 }
@@ -35,4 +39,11 @@ export interface GroupInfoPayload {
 	readonly capacity: number;
 	readonly autoApprove: boolean;
 	readonly allowSelfNickname: boolean;
+}
+
+/** PUT /api/groups/{groupId}/region — 이름이 비고 좌표가 없으면 해제 */
+export interface GroupRegionPayload {
+	readonly regionName: string | null;
+	readonly latitude: number | null;
+	readonly longitude: number | null;
 }

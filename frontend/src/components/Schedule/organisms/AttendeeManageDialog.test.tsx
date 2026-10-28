@@ -21,6 +21,8 @@ const pastSchedule: Schedule = {
 	title: '지난 모임',
 	description: null,
 	locationName: null,
+	latitude: null,
+	longitude: null,
 	start: Date.now() - 60_000,
 	end: null,
 	status: 'CONFIRMED',

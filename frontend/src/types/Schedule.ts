@@ -23,6 +23,9 @@ export interface Schedule {
 	readonly title: string | null;
 	readonly description: string | null;
 	readonly locationName: string | null;
+	/** 장소 좌표(장소 검색으로 골랐을 때만) — 지도 탭에 표시 */
+	readonly latitude: number | null;
+	readonly longitude: number | null;
 	/** epoch ms */
 	readonly start: number;
 	readonly end: number | null;
@@ -41,6 +44,8 @@ export interface SchedulePayload {
 	readonly title: string;
 	readonly content: string | null;
 	readonly location_name: string | null;
+	readonly latitude: number | null;
+	readonly longitude: number | null;
 	readonly start: number;
 	readonly end: number | null;
 	readonly max_attendance: number;

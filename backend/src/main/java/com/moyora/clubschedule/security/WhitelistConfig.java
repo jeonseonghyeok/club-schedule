@@ -17,6 +17,9 @@ public class WhitelistConfig {
         "/api/groups/recommended",
         "/api/groups/{groupId:[0-9]+}",
         "/api/groups/{groupId:[0-9]+}/schedules",
-        "/api/map/groups"
+        "/api/map/groups",
+        // 모임 전용 앱(PWA) 설치에 필요한 파일
+        "/api/groups/{groupId:[0-9]+}/app-manifest",
+        "/api/groups/{groupId:[0-9]+}/app-icon.png"
     };
 }

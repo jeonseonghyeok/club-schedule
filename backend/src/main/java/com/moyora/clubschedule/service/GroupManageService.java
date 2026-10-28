@@ -78,6 +78,9 @@ public class GroupManageService {
         settings.put("autoApprove", Boolean.TRUE.equals(group.getAutoApprove()));
         settings.put("allowSelfNickname", Boolean.TRUE.equals(group.getAllowSelfNickname()));
         settings.put("regionName", group.getRegionName());
+        settings.put("appEnabled", Boolean.TRUE.equals(group.getAppEnabled()));
+        settings.put("appName", group.getAppName());
+        settings.put("appThemeColor", group.getAppThemeColor());
         settings.put("latitude", group.getLatitude());
         settings.put("longitude", group.getLongitude());
         settings.put("activeMemberCount", groupMemberMapper.countActiveMembers(groupId));

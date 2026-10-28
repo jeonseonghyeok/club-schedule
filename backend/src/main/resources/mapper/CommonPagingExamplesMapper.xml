@@ -45,7 +45,8 @@
 
     <!-- Example: select groups paged -->
     <select id="selectGroupsPaged" parameterType="map" resultType="com.moyora.clubschedule.vo.GroupVo">
-        SELECT group_id AS groupId, name, leader_user_key AS leaderUserKey, description, capacity, created_at
+        SELECT group_id AS groupId, name, leader_user_key AS leaderUserKey, description, capacity, created_at,
+               auto_approve AS autoApprove, app_enabled AS appEnabled, app_name AS appName
         FROM `group`
         <where>
             <if test="q != null and q.trim() != ''">

@@ -15,6 +15,7 @@
 - [그룹 멤버 API](#그룹-멤버-api)
 - [알림 API](#알림-api)
 - [지도·장소 API](#지도장소-api)
+- [모임 전용 앱 API](#모임-전용-앱-api)
 - [관리자 API](#관리자-api)
 
 ---
@@ -25,7 +26,8 @@
 - 요청·응답 바디는 `application/json`.
 - **인증**: httpOnly `AUTH_TOKEN` 쿠키(JWT). `Authorization: Bearer` 헤더도 받는다.
   토큰 없이 허용되는 경로는 `/api/login/**`, `/api/auth/logout`, 그리고 **비회원 조회용 GET** —
-  `/api/groups/recommended`, `/api/groups/{groupId}`, `/api/groups/{groupId}/schedules`, `/api/map/groups` — 이다.
+  `/api/groups/recommended`, `/api/groups/{groupId}`, `/api/groups/{groupId}/schedules`, `/api/map/groups`,
+  `/api/groups/{groupId}/app-manifest`, `/api/groups/{groupId}/app-icon.png` — 이다.
   이 GET 들은 토큰이 있으면 로그인 사용자로, 없거나 만료됐으면 비회원으로 응답한다(비회원 일정은 모임 공개 범위를 따름).
   **그 외 모든 API 는 로그인이 필요하다**(없으면 401).
 - CSRF 보호는 비활성화되어 있다(쿠키 `SameSite=Lax`).
@@ -331,6 +333,21 @@ ACTIVE 면 `KICKED` 로 바꾸고, 이미 탈퇴(WITHDRAWN)한 회원이면 상�
 | GET | `/api/places?q=` | 장소 키워드 검색(카카오 로컬 프록시, 2~50자) — `[{name, address, roadAddress, latitude, longitude}]`. 카카오 앱의 카카오맵 서비스가 꺼져 있거나 실패하면 503 |
 | GET | `/api/map/groups` | 활동 지역 좌표가 있는 모든 모임 — `[{groupId, name, regionName, latitude, longitude, memberCount, isMember}]` |
 | GET | `/api/map/schedules?from=&to=` | 내가 활동 회원인 모임의 확정 일정 중 장소 좌표가 있는 것(epoch ms, 기본 지금부터 90일, 최대 1년) — `[{scheduleId, groupId, groupName, title, start, startAt, locationName, latitude, longitude}]` |
+
+---
+
+## 모임 전용 앱 API
+
+일부 모임에 모요라와 별도로 설치되는 앱(PWA)을 준다. 주소·범위는 `/g/{groupId}/`.
+
+| Method | Path | 권한 | 설명 |
+|---|---|---|---|
+| PATCH | `/api/admin/groups/{groupId}/app` | 시스템 관리자 | Body `{enabled, iconPng?}` — 켜기/끄기. `iconPng` 는 512px PNG base64(화면이 그림) |
+| PUT | `/api/groups/{groupId}/app` | 리더·매니저 | Body `{appName?(≤30), themeColor(#RRGGBB), iconPng?}`. 꺼진 모임은 409. 응답: settings |
+| GET | `/api/groups/{groupId}/app-manifest` | 공개 | 웹 앱 매니페스트(`application/manifest+json`). 꺼져 있으면 404 |
+| GET | `/api/groups/{groupId}/app-icon.png` | 공개 | 아이콘 PNG(30일 캐시, 매니페스트의 `?v=` 로 갱신) |
+
+모임 상세(`GET /api/groups/{id}`)의 `group` 과 settings 에 `appEnabled`, `appName`, `appThemeColor` 가 포함된다.
 
 ---
 

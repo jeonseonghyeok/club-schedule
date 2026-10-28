@@ -19,6 +19,11 @@ public class GroupVo {
     private java.math.BigDecimal latitude;
     private java.math.BigDecimal longitude;
 
+    // 모임 전용 앱(migration_v11) — 시스템 관리자가 켜고, 리더·매니저가 이름·색을 정한다
+    private Boolean appEnabled;
+    private String appName;
+    private String appThemeColor;
+
     // GET /api/groups/me 에서만 채움: 이 모임에서 내 닉네임(group_member.nickname)
     private String myNickname;
 

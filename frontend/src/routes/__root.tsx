@@ -2,6 +2,8 @@ import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
 import { ModalHost } from '@/components/layout/ModalHost';
+import { ToastHost } from '@/components/layout/ToastHost';
+import { useAppBackNavigation } from '@/hooks/useAppBackNavigation';
 
 export interface RouterContext {
 	queryClient: QueryClient;
@@ -25,15 +27,19 @@ const Devtools = import.meta.env.DEV
 		})
 	: () => null;
 
-const RootLayout = () => (
-	<>
-		<Outlet />
-		<ModalHost />
-		<Suspense>
-			<Devtools />
-		</Suspense>
-	</>
-);
+const RootLayout = () => {
+	useAppBackNavigation();
+	return (
+		<>
+			<Outlet />
+			<ModalHost />
+			<ToastHost />
+			<Suspense>
+				<Devtools />
+			</Suspense>
+		</>
+	);
+};
 
 export const Route = createRootRouteWithContext<RouterContext>()({
 	component: RootLayout,

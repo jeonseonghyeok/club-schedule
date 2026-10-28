@@ -64,6 +64,8 @@ export const Dialog = (props: Props) => {
 			aria-labelledby={title ? titleId : undefined}
 			aria-describedby={descriptionId}
 			onCancel={preventDismiss}
+			// 뒤로가기로 닫을 수 있는지(useAppBackNavigation 이 읽는다)
+			data-dismissible={dismissible}
 			className={cn('max-h-[85vh] p-0 shadow-xl backdrop:bg-black/40', SHEET_CLASS, SIZE_CLASS[size])}
 		>
 			{title && (

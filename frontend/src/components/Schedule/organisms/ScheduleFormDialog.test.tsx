@@ -1,13 +1,19 @@
-import { render, screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ScheduleFormDialog } from '@/components/Schedule/organisms/ScheduleFormDialog';
+import { getPlaces } from '@/modules/api/place/place';
+import { renderWithProviders } from '@/test/render';
 import type { Schedule } from '@/types/Schedule';
+
+vi.mock('@/modules/api/place/place', () => ({ getPlaces: vi.fn() }));
 
 const source: Schedule = {
 	id: 7,
 	title: '정기 모임',
 	description: '회의',
 	locationName: '강남역',
+	latitude: null,
+	longitude: null,
 	start: new Date(2026, 9, 1, 19, 15).getTime(),
 	end: new Date(2026, 9, 1, 21, 15).getTime(),
 	status: 'CONFIRMED',
@@ -21,7 +27,7 @@ const source: Schedule = {
 const renderForm = (mode: Parameters<typeof ScheduleFormDialog>[0]['mode']) => {
 	const onCreate = vi.fn();
 	const onEdit = vi.fn();
-	render(
+	renderWithProviders(
 		<ScheduleFormDialog
 			mode={mode}
 			showApprovalNotice
@@ -53,6 +59,8 @@ describe('ScheduleFormDialog', () => {
 			title: '송년회',
 			content: null,
 			location_name: null,
+			latitude: null,
+			longitude: null,
 			start: new Date(2026, 11, 24, 18, 0).getTime(),
 			end: new Date(2026, 11, 24, 19, 0).getTime(),
 			max_attendance: 0,
@@ -87,9 +95,32 @@ describe('ScheduleFormDialog', () => {
 			title: '정기 모임',
 			content: '회의',
 			location_name: '역삼역',
+			// 장소 이름을 직접 고쳤으므로 좌표는 비운다
+			latitude: null,
+			longitude: null,
 			start: source.start,
 			end: source.end,
 			max_attendance: 8,
 		});
+	});
+
+	it('장소 검색으로 고르면 이름과 좌표를 함께 보낸다', async () => {
+		vi.mocked(getPlaces).mockResolvedValue([
+			{ name: '강남역 스터디룸', address: '서울 강남구', roadAddress: '', latitude: 37.4979, longitude: 127.0276 },
+		]);
+		const { onCreate, dialog } = renderForm({ type: 'create', date: new Date(2026, 11, 24) });
+		await userEvent.type(within(dialog).getByLabelText('제목'), '스터디');
+		await userEvent.click(within(dialog).getByRole('button', { name: '찾기' }));
+		await userEvent.type(within(dialog).getByLabelText('장소 검색'), '강남역');
+		await userEvent.click(within(dialog).getByRole('button', { name: '검색' }));
+		await userEvent.click(await within(dialog).findByRole('button', { name: /강남역 스터디룸/ }));
+		expect(within(dialog).getByText('지도에 표시되는 장소입니다.')).toBeInTheDocument();
+		await userEvent.click(within(dialog).getByRole('button', { name: '저장' }));
+
+		await waitFor(() =>
+			expect(onCreate).toHaveBeenCalledWith(
+				expect.objectContaining({ location_name: '강남역 스터디룸', latitude: 37.4979, longitude: 127.0276 }),
+			),
+		);
 	});
 });

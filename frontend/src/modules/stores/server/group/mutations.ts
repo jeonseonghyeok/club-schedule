@@ -1,9 +1,16 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ModalType } from '@/constants';
-import { createGroupFavorite, deleteGroupFavorite, updateGroup, updateGroupPolicy } from '@/modules/api/group/group';
+import {
+	createGroupFavorite,
+	deleteGroupFavorite,
+	updateGroup,
+	updateGroupPolicy,
+	updateGroupRegion,
+} from '@/modules/api/group/group';
 import { useModalStore } from '@/modules/stores/client/modal';
 import { authQueries } from '@/modules/stores/server/auth/queries';
-import type { GroupInfoPayload, GroupPolicy, GroupSettings } from '@/types/GroupSettings';
+import { mapQueries } from '@/modules/stores/server/map/queries';
+import type { GroupInfoPayload, GroupPolicy, GroupRegionPayload, GroupSettings } from '@/types/GroupSettings';
 import { getErrorMessage } from '@/utils';
 import { groupQueries } from './queries';
 
@@ -111,6 +118,31 @@ export const useUpdateFavoriteGroup = () => {
 			openModal({
 				type: ModalType.ALERT,
 				message: getErrorMessage(error.response?.data, '우선모임 변경에 실패했습니다.'),
+			}),
+	});
+};
+
+/** 활동 지역 — 모임 화면 머리 카드·내 모임 목록·지도 탭에 반영 */
+export const useUpdateGroupRegion = (groupId: number) => {
+	const queryClient = useQueryClient();
+	const openModal = useModalStore(state => state.actions.openModal);
+
+	return useMutation({
+		mutationFn: (region: GroupRegionPayload) => updateGroupRegion({ groupId, region }),
+		onSuccess: (settings: GroupSettings) => {
+			queryClient.setQueryData(groupQueries.settings(groupId).queryKey, settings);
+			queryClient.setQueryData(groupQueries.detail(groupId).queryKey, prev =>
+				prev ? { ...prev, group: { ...prev.group, regionName: settings.regionName } } : prev,
+			);
+			queryClient.setQueryData(groupQueries.myGroups().queryKey, prev =>
+				prev?.map(group => (group.groupId === groupId ? { ...group, regionName: settings.regionName } : group)),
+			);
+			void queryClient.invalidateQueries({ queryKey: mapQueries.all() });
+		},
+		onError: error =>
+			openModal({
+				type: ModalType.ALERT,
+				message: getErrorMessage(error.response?.data, '활동 지역 저장에 실패했습니다.'),
 			}),
 	});
 };

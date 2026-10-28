@@ -3,8 +3,11 @@ import { useEffect, useId, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/common/atoms/Button';
+import { Icon } from '@/components/common/atoms/Icon';
 import { Dialog } from '@/components/common/organisms/Dialog';
+import { PlaceSearchPanel } from '@/components/common/organisms/PlaceSearchPanel';
 import { DateTimeField } from '@/components/Schedule/molecules/DateTimeField';
+import type { PickedPlace } from '@/types/Place';
 import type { Schedule, ScheduleEditPayload, SchedulePayload } from '@/types/Schedule';
 import {
 	COARSE_MINUTE_OPTIONS,
@@ -29,6 +32,9 @@ interface ScheduleFormValues {
 	title: string;
 	content: string;
 	locationName: string;
+	/** 장소 검색으로 고른 좌표 — 장소 이름을 직접 고치면 비운다 */
+	latitude: number | null;
+	longitude: number | null;
 	startDate: string;
 	startHour: string;
 	startMinute: string;
@@ -62,6 +68,8 @@ const buildSchema = (isEdit: boolean) =>
 			title: z.string().trim().max(TITLE_MAX, `제목은 ${TITLE_MAX}자까지 입력할 수 있습니다.`),
 			content: z.string().trim(),
 			locationName: z.string().trim(),
+			latitude: z.number().nullable(),
+			longitude: z.number().nullable(),
 			startDate: z.string(),
 			startHour: z.string(),
 			startMinute: z.string(),
@@ -91,6 +99,8 @@ const buildDefaults = (mode: ScheduleFormMode, now: Date): ScheduleFormValues =>
 		title: '',
 		content: '',
 		locationName: '',
+		latitude: null,
+		longitude: null,
 		hasLimit: false,
 		maxAttendance: DEFAULT_MAX_ATTENDANCE,
 	};
@@ -118,6 +128,8 @@ const buildDefaults = (mode: ScheduleFormMode, now: Date): ScheduleFormValues =>
 		title: source.title ?? '',
 		content: source.description ?? '',
 		locationName: source.locationName ?? '',
+		latitude: source.latitude,
+		longitude: source.longitude,
 		hasLimit: source.maxAttendance > 0,
 		maxAttendance: source.maxAttendance > 0 ? String(source.maxAttendance) : DEFAULT_MAX_ATTENDANCE,
 	};
@@ -141,6 +153,8 @@ const toPayload = (values: ScheduleFormValues): SchedulePayload | null => {
 		title: values.title.trim(),
 		content: values.content.trim() || null,
 		location_name: values.locationName.trim() || null,
+		latitude: values.locationName.trim() ? values.latitude : null,
+		longitude: values.locationName.trim() ? values.longitude : null,
 		start: start.getTime(),
 		end: end.getTime(),
 		max_attendance: values.hasLimit ? Number(values.maxAttendance) : 0,
@@ -153,7 +167,7 @@ const TITLE_BY_MODE = { create: '일정 등록', duplicate: '일정 등록', edi
 >;
 
 const INPUT_CLASS =
-	'w-full rounded-md border border-gray-300 px-3 py-2 focus-visible:outline-2 focus-visible:outline-gray-900 aria-invalid:border-red-600';
+	'w-full rounded-lg border border-gray-300 px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-brand-600 aria-invalid:border-red-600 sm:text-sm';
 
 export const ScheduleFormDialog = (props: Props) => {
 	const { mode, showApprovalNotice, isSubmitting, onCreate, onEdit, onClose } = props;
@@ -173,10 +187,21 @@ export const ScheduleFormDialog = (props: Props) => {
 		resolver: zodResolver(buildSchema(isEdit)),
 		defaultValues: buildDefaults(mode, now),
 	});
-	const [startDate, startHour, startMinute, isFineMinute, hasLimit] = useWatch({
+	const [startDate, startHour, startMinute, isFineMinute, hasLimit, latitude] = useWatch({
 		control,
-		name: ['startDate', 'startHour', 'startMinute', 'isFineMinute', 'hasLimit'],
+		name: ['startDate', 'startHour', 'startMinute', 'isFineMinute', 'hasLimit', 'latitude'],
 	});
+	const [isPlaceSearchOpen, setIsPlaceSearchOpen] = useState(false);
+	const clearCoordinates = () => {
+		setValue('latitude', null);
+		setValue('longitude', null);
+	};
+	const pickPlace = (place: PickedPlace) => {
+		setValue('locationName', place.name);
+		setValue('latitude', place.latitude);
+		setValue('longitude', place.longitude);
+		setIsPlaceSearchOpen(false);
+	};
 
 	useEffect(() => {
 		if (isEndTouched) return;
@@ -264,13 +289,41 @@ export const ScheduleFormDialog = (props: Props) => {
 					<label htmlFor={`${id}-location`} className="text-sm font-medium text-gray-800">
 						장소
 					</label>
-					<input
-						id={`${id}-location`}
-						type="text"
-						placeholder="장소명(예: 강남역 스터디룸)"
-						className={INPUT_CLASS}
-						{...register('locationName')}
-					/>
+					<div className="flex gap-2">
+						<input
+							id={`${id}-location`}
+							type="text"
+							placeholder="장소명(예: 강남역 스터디룸)"
+							className={INPUT_CLASS}
+							{...register('locationName', { onChange: clearCoordinates })}
+						/>
+						<Button variant="secondary" className="shrink-0" onClick={() => setIsPlaceSearchOpen(open => !open)}>
+							<Icon name="search" size={16} />
+							찾기
+						</Button>
+					</div>
+					{latitude !== null ? (
+						<p className="flex items-center gap-1 text-xs text-brand-700">
+							<Icon name="pin" size={14} />
+							지도에 표시되는 장소입니다.
+							<button
+								type="button"
+								onClick={clearCoordinates}
+								className="ml-1 text-gray-500 underline focus-visible:outline-2 focus-visible:outline-brand-600"
+							>
+								위치 해제
+							</button>
+						</p>
+					) : (
+						<p className="text-xs text-gray-500">"찾기"로 장소를 고르면 지도 탭에도 표시됩니다.</p>
+					)}
+					{isPlaceSearchOpen && (
+						<PlaceSearchPanel
+							initialKeyword={getValues('locationName')}
+							onSelect={pickPlace}
+							onCancel={() => setIsPlaceSearchOpen(false)}
+						/>
+					)}
 				</div>
 				<div className="grid gap-3 sm:grid-cols-2">
 					<div>

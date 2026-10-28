@@ -18,6 +18,8 @@ const schedule = (id: number, start: number, status: ScheduleStatus, createdBy =
 	title: `일정${id}`,
 	description: null,
 	locationName: null,
+	latitude: null,
+	longitude: null,
 	start,
 	end: null,
 	status,

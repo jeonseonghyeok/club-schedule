@@ -14,6 +14,7 @@
 - [참석 관리 API](#참석-관리-api)
 - [그룹 멤버 API](#그룹-멤버-api)
 - [알림 API](#알림-api)
+- [지도·장소 API](#지도장소-api)
 - [관리자 API](#관리자-api)
 
 ---
@@ -84,6 +85,9 @@
 ### POST /api/auth/logout
 로그아웃 — `AUTH_TOKEN` 을 만료 쿠키(`Max-Age=0`)로 덮어쓰고 204. 토큰이 만료돼도 호출할 수 있도록 인증 없이 허용한다.
 
+### PATCH /api/users/me
+계정 닉네임 변경. Body `{nickname}`(1~30자) → `{nickname}`. 모임 닉네임이 없는 모임에서는 이 이름이 보인다.
+
 ### GET /api/login/test/accounts · POST /api/login/test
 테스트 계정 목록 `[{"kakaoApiId", "nickname"}]` / Body `{"kakaoApiId"}` 로 로그인 → `{"userKey", "nickname"}` + 쿠키.
 `TEST_AUTH_SECRET` 이 비어 있으면 503.
@@ -93,7 +97,8 @@
 ## 그룹 API
 
 ### GET /api/groups/me
-내가 속한(ACTIVE) 모임 목록 — `GroupVo[]` (`groupId`, `name`, `description`, `leaderUserKey`, `capacity`, `currentMemberCount` …).
+내가 속한(ACTIVE) 모임 목록 — `GroupVo[]` (`groupId`, `name`, `description`, `leaderUserKey`, `capacity`, `currentMemberCount`,
+`allowSelfNickname`, `regionName`, `myNickname`(이 모임에서 내 닉네임) …).
 
 ### GET /api/groups/recommended?q=
 `q` 가 있으면 모임명 검색, 없으면 최근 일정이 등록된 모임 상위 3개.
@@ -142,6 +147,10 @@
 
 `autoApprove` 가 켜져 있으면 가입 신청이 정원 안에서 즉시 승인된다([가입 요청](#그룹-가입-요청-api)).
 
+### PUT /api/groups/{groupId}/region
+대표 활동 지역(지도 표시). **권한**: 리더·매니저. Body `{regionName, latitude, longitude}` — 이름이 비고 좌표가 없으면 해제,
+위도·경도는 함께. 응답: 저장된 settings(`regionName`, `latitude`, `longitude` 포함).
+
 ### PUT /api/groups/{groupId}/policy
 일정 운영 정책 전체 교체. **권한**: 리더. Body 는 `policy` 의 다섯 필드 모두 필수. 응답: 저장된 settings.
 
@@ -187,6 +196,7 @@
 |------|------|------|
 | `id` | Number | 일정 PK |
 | `title` / `description` / `locationName` | String | `description` 은 요청의 `content` |
+| `latitude` / `longitude` | Number\|null | 장소 좌표 |
 | `status` | String | `PENDING` \| `CONFIRMED` \| `REJECTED` \| `CANCELLED` |
 | `statusReason` | String\|null | 거부·취소 사유(그 밖의 상태에서는 null) |
 | `maxAttendance` | Number | 0 = 무제한 |
@@ -308,6 +318,16 @@ ACTIVE 면 `KICKED` 로 바꾸고, 이미 탈퇴(WITHDRAWN)한 회원이면 상�
 | PATCH | `/api/notifications/read-all` | `{updated}` |
 
 `groupId`/`targetUrl` 은 `source_table`+`source_id` 로 서버가 계산한다. 모임 생성 신청 알림은 둘 다 `null`.
+
+---
+
+## 지도·장소 API
+
+| Method | Path | 설명 |
+|---|---|---|
+| GET | `/api/places?q=` | 장소 키워드 검색(카카오 로컬 프록시, 2~50자) — `[{name, address, roadAddress, latitude, longitude}]`. 카카오 앱의 카카오맵 서비스가 꺼져 있거나 실패하면 503 |
+| GET | `/api/map/groups` | 활동 지역 좌표가 있는 모든 모임 — `[{groupId, name, regionName, latitude, longitude, memberCount, isMember}]` |
+| GET | `/api/map/schedules?from=&to=` | 내가 활동 회원인 모임의 확정 일정 중 장소 좌표가 있는 것(epoch ms, 기본 지금부터 90일, 최대 1년) — `[{scheduleId, groupId, groupName, title, start, startAt, locationName, latitude, longitude}]` |
 
 ---
 

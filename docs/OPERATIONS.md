@@ -45,7 +45,13 @@
 
 ### DB 마이그레이션
 - [x] `migration_v9.sql`(일정 반려·취소 사유, 모임별 닉네임) — dev(`app_dev`) 적용 2026-10-27. NULL 허용 컬럼 추가라 배포 순서 무관
-- [ ] 운영 DB 구성 시 v9 까지 적용
+- [x] `migration_v10.sql`(모임 대표 활동 지역) — dev 적용 2026-10-28
+- [ ] 운영 DB 구성 시 v10 까지 적용
+
+### 카카오맵 (지도 탭·장소 검색)
+- [ ] 카카오 개발자 콘솔 clubSchedule 앱: 제품 설정 > 카카오맵 활성화(지금은 `/api/places` 가 503 — `disabled OPEN_MAP_AND_LOCAL service`)
+- [ ] 플랫폼 > Web 도메인 등록: https://dev.crewhub.store, https://crewhub.store, http://localhost:5173, http://127.0.0.1:5173
+- [ ] JavaScript 키를 `frontend/.env` 의 `VITE_KAKAO_JS_KEY` 에 추가(도메인 제한되는 공개 키)
 
 ### 기술 부채 (상세는 [ROADMAP.md](ROADMAP.md#기술-부채))
 - `contextLoads` 테스트는 DB·환경변수가 있어야 통과(CI 에서 돌리려면 테스트 프로필 필요)

@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.moyora.clubschedule.dto.GroupPolicyUpdateDto;
+import com.moyora.clubschedule.dto.GroupRegionDto;
 import com.moyora.clubschedule.exception.GroupAccessDeniedException;
 import com.moyora.clubschedule.mapper.GroupJoinBanMapper;
 import com.moyora.clubschedule.mapper.GroupMapper;
@@ -76,6 +77,9 @@ public class GroupManageService {
         settings.put("capacity", group.getCapacity());
         settings.put("autoApprove", Boolean.TRUE.equals(group.getAutoApprove()));
         settings.put("allowSelfNickname", Boolean.TRUE.equals(group.getAllowSelfNickname()));
+        settings.put("regionName", group.getRegionName());
+        settings.put("latitude", group.getLatitude());
+        settings.put("longitude", group.getLongitude());
         settings.put("activeMemberCount", groupMemberMapper.countActiveMembers(groupId));
         settings.put("policy", policyMap);
         return settings;
@@ -86,6 +90,22 @@ public class GroupManageService {
     public boolean updatePolicy(Long groupId, GroupPolicyUpdateDto policy, Long operatorUserKey) {
         if (groupMapper.findById(groupId) == null) return false;
         groupSchedulePolicyMapper.upsertPolicy(groupId, policy, operatorUserKey);
+        return true;
+    }
+
+    /**
+     * 대표 활동 지역 설정. 이름·위도·경도를 함께 저장하며, 이름이 비면 지역을 해제한다.
+     * 좌표는 둘 다 있거나 둘 다 없어야 한다(지도에 표시하려면 좌표가 필요).
+     */
+    @Transactional
+    public boolean updateRegion(Long groupId, GroupRegionDto region) {
+        if (groupMapper.findById(groupId) == null) return false;
+        String name = region.getRegionName() == null || region.getRegionName().isBlank() ? null : region.getRegionName().trim();
+        boolean hasLat = region.getLatitude() != null;
+        boolean hasLng = region.getLongitude() != null;
+        if (hasLat != hasLng) throw new IllegalArgumentException("위도와 경도를 함께 입력하세요.");
+        if (name == null && hasLat) throw new IllegalArgumentException("활동 지역 이름을 입력하세요.");
+        groupMapper.updateRegion(groupId, name, region.getLatitude(), region.getLongitude());
         return true;
     }
 

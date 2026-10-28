@@ -49,6 +49,10 @@
         ORDER BY kakao_api_id
     </select>
 
+    <update id="updateNickname">
+        UPDATE `user` SET nickname = #{nickname} WHERE user_key = #{userKey}
+    </update>
+
     <update id="updateFavoriteGroup">
         UPDATE `user`
         SET favorite_group_id = #{groupId}

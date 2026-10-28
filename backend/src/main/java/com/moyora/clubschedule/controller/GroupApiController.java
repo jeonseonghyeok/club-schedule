@@ -427,6 +427,8 @@ public class GroupApiController {
         ev.put("title",         s.getTitle());
         ev.put("description",   s.getContent());
         ev.put("locationName",  s.getLocationName());
+        ev.put("latitude",      s.getLatitude());
+        ev.put("longitude",     s.getLongitude());
         ev.put("status",        s.getStatus().name());
         ev.put("statusReason",  s.getStatusReason());
         ev.put("maxAttendance", s.getMaxAttendance());

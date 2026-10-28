@@ -15,6 +15,9 @@ public interface GroupMapper {
     int countByLeaderUserKey(Long leaderUserKey);
     int updateLeaderUserKey(@Param("groupId") Long groupId, @Param("leaderUserKey") Long leaderUserKey);
 
+    int updateRegion(@Param("groupId") Long groupId, @Param("regionName") String regionName,
+                     @Param("latitude") java.math.BigDecimal latitude, @Param("longitude") java.math.BigDecimal longitude);
+
     List<GroupVo> findAllOrderByGroupIdDesc();
 
     List<GroupVo> findRecentBySchedule(@Param("limit") int limit);

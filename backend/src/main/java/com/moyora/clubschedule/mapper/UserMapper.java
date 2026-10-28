@@ -22,5 +22,7 @@ public interface UserMapper {
 
     List<UserVo> selectTestAccounts();
 
+    int updateNickname(@Param("userKey") Long userKey, @Param("nickname") String nickname);
+
     int updateFavoriteGroup(@Param("userKey") Long userKey, @Param("groupId") Long groupId);
 }

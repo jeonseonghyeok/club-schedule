@@ -59,6 +59,20 @@ const goToRoot = (history: RouterHistory): void => {
 	history.replace(getRootHref(location.pathname));
 };
 
+const createHistoryKey = (): string => Math.random().toString(36).slice(2, 8);
+
+/**
+ * 루트 아닌 화면이 맨 아래일 때 루트를 아래에 넣고 지금 화면을 그 위로 다시 올린다.
+ * 라우터의 history.replace/push 는 차단기(blocker)가 있으면 비동기로 처리되어 둘이 하나로 합쳐질 수 있으므로
+ * (루트 기록이 사라짐) 브라우저 기록 API 로 순서대로 직접 쓴다. 라우터는 이 호출을 감지해 위치를 맞춘다.
+ */
+const insertRootBelow = (location: HistoryLocation): void => {
+	const rootKey = createHistoryKey();
+	window.history.replaceState({ __TSR_index: 0, key: rootKey, __TSR_key: rootKey }, '', getRootHref(location.pathname));
+	const pageKey = createHistoryKey();
+	window.history.pushState({ ...location.state, __TSR_index: 1, key: pageKey, __TSR_key: pageKey }, '', location.href);
+};
+
 // 종료 안내가 떠 있는 동안은 종료 확인(기록·CloseWatcher)을 다시 걸지 않는다 — 그 사이 뒤로가기는 앱을 나가야 한다
 let exitArmedUntil = 0;
 let closeWatcher: CloseWatcher | null = null;
@@ -106,11 +120,7 @@ export const useAppBackNavigation = (): void => {
 				}
 				return;
 			}
-			// 루트 아닌 화면이 맨 아래 → 루트를 아래에 넣고 지금 화면을 그 위로
-			const current = { href: location.href, state: { ...location.state } };
-			history.replace(getRootHref(location.pathname));
-			history.flush();
-			history.push(current.href, current.state);
+			insertRootBelow(location);
 		};
 
 		const onActivation = () => {

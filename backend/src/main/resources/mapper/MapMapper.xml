@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.moyora.clubschedule.mapper.MapMapper">
+
+    <select id="selectGroupsWithLocation" resultType="map">
+        SELECT g.group_id    AS groupId,
+               g.name        AS name,
+               g.region_name AS regionName,
+               g.latitude    AS latitude,
+               g.longitude   AS longitude,
+               (SELECT COUNT(*) FROM group_member gm WHERE gm.group_id = g.group_id AND gm.status = 'ACTIVE') AS memberCount,
+               EXISTS (SELECT 1 FROM group_member me
+                       WHERE me.group_id = g.group_id AND me.user_key = #{userKey} AND me.status = 'ACTIVE') AS isMember
+        FROM `group` g
+        WHERE g.latitude IS NOT NULL AND g.longitude IS NOT NULL
+        ORDER BY g.group_id DESC
+    </select>
+
+    <select id="selectMySchedulesWithLocation" resultType="map">
+        SELECT gs.schedule_id   AS scheduleId,
+               gs.group_id      AS groupId,
+               g.name           AS groupName,
+               gs.title         AS title,
+               gs.start_at      AS startAt,
+               gs.location_name AS locationName,
+               gs.latitude      AS latitude,
+               gs.longitude     AS longitude
+        FROM group_schedule gs
+        JOIN `group` g        ON g.group_id = gs.group_id
+        JOIN group_member gm  ON gm.group_id = gs.group_id AND gm.user_key = #{userKey} AND gm.status = 'ACTIVE'
+        WHERE gs.status = 'CONFIRMED'
+          AND gs.latitude IS NOT NULL AND gs.longitude IS NOT NULL
+          AND gs.start_at &gt;= #{from}
+          AND gs.start_at &lt;  #{to}
+        ORDER BY gs.start_at ASC
+    </select>
+
+</mapper>

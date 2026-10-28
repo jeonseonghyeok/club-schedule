@@ -28,6 +28,13 @@
         WHERE group_id = #{groupId}
     </update>
 
+    <!-- 대표 활동 지역 설정·해제(모두 NULL 이면 해제) -->
+    <update id="updateRegion">
+        UPDATE `group`
+        SET region_name = #{regionName}, latitude = #{latitude}, longitude = #{longitude}
+        WHERE group_id = #{groupId}
+    </update>
+
     <select id="countByLeaderUserKey" resultType="int" parameterType="long">
         SELECT COUNT(*) FROM `group` WHERE leader_user_key = #{leaderUserKey}
     </select>

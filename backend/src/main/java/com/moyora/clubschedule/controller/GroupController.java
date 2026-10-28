@@ -13,6 +13,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 import com.moyora.clubschedule.dto.GroupPolicyUpdateDto;
+import com.moyora.clubschedule.dto.GroupRegionDto;
 import com.moyora.clubschedule.exception.ApiErrors;
 import com.moyora.clubschedule.security.CustomUserDetails;
 import com.moyora.clubschedule.service.GroupManageService;
@@ -117,6 +118,18 @@ public class GroupController {
             if (!groupManageService.updateGroupBasicInfo(groupId, toUpdate)) {
                 return ApiErrors.notFound("모임을 찾을 수 없습니다.");
             }
+        } catch (IllegalArgumentException e) {
+            return ApiErrors.badRequest(e.getMessage());
+        }
+        return ResponseEntity.ok(groupManageService.getSettings(groupId));
+    }
+
+    /** 대표 활동 지역(지도 표시) — 리더·매니저. 저장 후 설정 전체를 돌려준다 */
+    @PutMapping("/{groupId}/region")
+    @PreAuthorize("@groupManageService.isManager(#groupId, principal.userKey)")
+    public ResponseEntity<?> updateRegion(@PathVariable Long groupId, @Valid @RequestBody GroupRegionDto dto) {
+        try {
+            if (!groupManageService.updateRegion(groupId, dto)) return ApiErrors.notFound("모임을 찾을 수 없습니다.");
         } catch (IllegalArgumentException e) {
             return ApiErrors.badRequest(e.getMessage());
         }

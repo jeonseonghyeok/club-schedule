@@ -14,6 +14,14 @@ public class GroupVo {
     private Boolean autoApprove;
     private Boolean allowSelfNickname; // 회원 본인이 모임 닉네임을 바꿀 수 있는지
 
+    // 대표 활동 지역(migration_v10) — 지도 조회용, 없으면 null
+    private String regionName;
+    private java.math.BigDecimal latitude;
+    private java.math.BigDecimal longitude;
+
+    // GET /api/groups/me 에서만 채움: 이 모임에서 내 닉네임(group_member.nickname)
+    private String myNickname;
+
     // 추가 필드: 스케줄 정책 및 부방장 기본 권한
     private String schedulePolicy; // ALL, LEADERS_ONLY, APPROVAL_REQUIRED
 

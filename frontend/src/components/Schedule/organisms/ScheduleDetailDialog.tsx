@@ -5,6 +5,7 @@ import { InfoLine } from '@/components/Schedule/atoms/InfoLine';
 import { ScheduleStatusBadge } from '@/components/Schedule/atoms/ScheduleStatusBadge';
 import { AttendanceButton } from '@/components/Schedule/molecules/AttendanceButton';
 import { RosterPopover } from '@/components/Schedule/molecules/RosterPopover';
+import { useLoginPrompt } from '@/hooks/useLoginPrompt';
 import type { GroupViewer } from '@/types/GroupDetail';
 import { SCHEDULE_STATUS } from '@/types/Schedule';
 import type { Schedule, ScheduleAction } from '@/types/Schedule';
@@ -94,6 +95,7 @@ export const ScheduleDetailDialog = (props: Props) => {
 	const { groupId, schedule, viewer, onBack, onChangeStatus, onEdit, onDuplicate, onManageAttendees, onClose } = props;
 	const isConfirmed = schedule.status === SCHEDULE_STATUS.CONFIRMED;
 	const isPending = schedule.status === SCHEDULE_STATUS.PENDING;
+	const promptLogin = useLoginPrompt();
 
 	const menuItems: MenuItem[] = [
 		...(canEditSchedule(schedule, viewer) ? [{ label: '수정', onSelect: onEdit }] : []),
@@ -155,6 +157,14 @@ export const ScheduleDetailDialog = (props: Props) => {
 					)}
 				</div>
 				{isConfirmed && viewer.isMember && <AttendanceButton groupId={groupId} schedule={schedule} size="full" />}
+				{isConfirmed && viewer.userKey === null && (
+					<Button
+						className="w-full"
+						onClick={() => promptLogin('로그인하고 모임에 가입하면 이 일정에 참가할 수 있어요.')}
+					>
+						로그인하고 참가하기
+					</Button>
+				)}
 				{schedule.description && (
 					<div>
 						<p className="mb-1 text-xs text-gray-400">내용</p>

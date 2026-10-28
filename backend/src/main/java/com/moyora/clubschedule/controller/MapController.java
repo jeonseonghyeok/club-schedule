@@ -33,10 +33,11 @@ public class MapController {
 
     private final MapMapper mapMapper;
 
+    /** 비회원도 볼 수 있다(isMember 는 모두 false) */
     @GetMapping("/groups")
     public ResponseEntity<?> groups(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        if (userDetails == null) return ApiErrors.unauthorized();
-        List<Map<String, Object>> rows = mapMapper.selectGroupsWithLocation(userDetails.getUserKey());
+        Long userKey = userDetails != null ? userDetails.getUserKey() : null;
+        List<Map<String, Object>> rows = mapMapper.selectGroupsWithLocation(userKey);
         for (Map<String, Object> row : rows) {
             row.put("isMember", toBoolean(row.get("isMember")));
             row.put("memberCount", ((Number) row.get("memberCount")).intValue());

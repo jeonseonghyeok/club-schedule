@@ -53,7 +53,7 @@ com.moyora.clubschedule
 
 ### 인증
 - JWT를 `AUTH_TOKEN` 쿠키에 저장, JWT 필터가 쿠키를 읽어 `Bearer` 헤더로 변환
-- 토큰 없이 허용되는 경로는 `/api/login/**` 뿐(`WhitelistConfig`). 관리자 API(`/api/admin/**`) 인가는 `@PreAuthorize("hasRole('ADMIN')")`
+- 토큰 없이 허용되는 경로는 `/api/login/**`·`/api/auth/logout` 와, 비회원 조회용 GET(`WhitelistConfig.PUBLIC_GET`: 모임 검색·모임 상세·모임 일정·지도 모임) 뿐이다. 로그인은 강제하지 않고 필요한 동작에서 `useLoginPrompt` 로 안내한다. 관리자 API(`/api/admin/**`) 인가는 `@PreAuthorize("hasRole('ADMIN')")`
 - 인증 실패는 항상 JSON 401 — 로그인 안내·이동은 프론트엔드가 처리
 
 ### 테스트 계정
@@ -89,6 +89,7 @@ com.moyora.clubschedule
 뒤로가기 규칙(`hooks/useAppBackNavigation.ts`, 루트에서 한 번): 홈은 기록 맨 아래에 두고, 홈이 아닌 화면의 뒤로가기는 항상 홈으로,
 열린 대화상자가 있으면 그것부터 닫는다. 홈에서는 첫 뒤로가기에 "한 번 더 누르면 종료" 안내, 두 번째에 앱을 나간다.
 화면 안 탭·하위 메뉴 이동은 `replace` 로 기록을 쌓지 않고, "홈으로" 동작은 `useGoHome` 을 쓴다.
+Chrome 은 사용자 상호작용 전에 쌓은 기록을 뒤로가기 때 건너뛰므로, 홈 끼워 넣기·종료 확인 기록은 첫 탭/키 입력 뒤에 쌓는다.
 
 | URL | 화면 |
 |-----|------|

@@ -30,3 +30,10 @@ export const buildKakaoAuthorizeUrl = (params: { clientId: string; redirectUri: 
 	if (params.state) query.set('state', params.state);
 	return `${KAKAO_AUTHORIZE_URL}?${query.toString()}`;
 };
+
+/** 카카오 로그인 시작 주소 — 로그인 뒤 returnTo(지금 화면)로 돌아온다 */
+export const buildLoginHref = (returnTo: string): string =>
+	`${KAKAO_CALLBACK_PATH}?${new URLSearchParams({ returnTo: getLoginReturnPath(returnTo) }).toString()}`;
+
+/** 지금 보고 있는 화면(경로+쿼리) — 로그인 뒤 돌아올 곳 */
+export const getCurrentPath = (): string => `${window.location.pathname}${window.location.search}`;

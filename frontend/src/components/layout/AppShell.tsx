@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { LoginLink } from '@/components/Auth/atoms/LoginLink';
 import { BottomNav, SideNav } from '@/components/layout/AppNav';
 import { NotificationBell } from '@/components/Notification/organisms/NotificationBell';
 import { cn } from '@/utils';
@@ -37,7 +38,11 @@ export const AppShell = (props: Props) => {
 					{leading}
 					<h1 className="min-w-0 truncate text-lg font-bold text-gray-900">{title}</h1>
 					<div className="ml-auto flex shrink-0 items-center gap-2 *:whitespace-nowrap">
-						{isLoggedIn && <NotificationBell />}
+						{isLoggedIn ? (
+							<NotificationBell />
+						) : (
+							<LoginLink variant="primary" label="로그인" className="min-h-9 px-3" />
+						)}
 						{actions}
 					</div>
 				</div>

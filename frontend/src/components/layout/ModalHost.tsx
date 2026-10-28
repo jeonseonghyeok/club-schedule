@@ -1,3 +1,4 @@
+import { LoginPromptDialog } from '@/components/Auth/organisms/LoginPromptDialog';
 import { AlertModal } from '@/components/common/organisms/AlertModal';
 import { ConfirmModal } from '@/components/common/organisms/ConfirmModal';
 import { ReasonDialog } from '@/components/common/organisms/ReasonDialog';
@@ -37,6 +38,8 @@ export const ModalHost = () => {
 					onClose={closeModal}
 				/>
 			);
+		case ModalType.LOGIN:
+			return <LoginPromptDialog message={modal.message} onClose={closeModal} />;
 		default: {
 			const exhaustive: never = modal;
 			return exhaustive;

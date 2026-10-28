@@ -1,5 +1,6 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { LoginCard } from '@/components/Auth/organisms/LoginCard';
 import { LogoutButton } from '@/components/Auth/organisms/LogoutButton';
 import { Icon } from '@/components/common/atoms/Icon';
 import { SectionCard } from '@/components/common/molecules/SectionCard';
@@ -13,9 +14,17 @@ import { groupQueries } from '@/modules/stores/server/group/queries';
 
 const SettingsPage = () => {
 	const { data: me } = useSuspenseQuery({ ...authQueries.me() });
-	const { data: groups, isError } = useQuery({ ...groupQueries.myGroups() });
-	// beforeLoad 가 비로그인을 돌려보내므로 여기서는 항상 로그인 상태다
-	if (!me) return null;
+	const { data: groups, isError } = useQuery({ ...groupQueries.myGroups(), enabled: !!me });
+	if (!me) {
+		return (
+			<AppShell title="설정" isLoggedIn={false}>
+				<LoginCard title="로그인" message="로그인하면 닉네임·우선모임을 정하고 알림을 받을 수 있어요." />
+				<SectionCard title="앱">
+					<AppInstallSection />
+				</SectionCard>
+			</AppShell>
+		);
+	}
 
 	return (
 		<AppShell title="설정" isLoggedIn>
@@ -50,9 +59,6 @@ const SettingsPage = () => {
 };
 
 export const Route = createFileRoute('/settings')({
-	beforeLoad: async ({ context, location }) => {
-		const me = await context.queryClient.ensureQueryData(authQueries.me());
-		if (!me) throw redirect({ to: '/', search: { returnTo: location.href } });
-	},
+	loader: ({ context }) => context.queryClient.ensureQueryData(authQueries.me()),
 	component: SettingsPage,
 });

@@ -49,4 +49,15 @@ describe('ModalHost', () => {
 		await waitFor(() => expect(onSubmit).toHaveBeenCalledWith('장소 미정'));
 		expect(useModalStore.getState().modal).toBeNull();
 	});
+
+	it('LOGIN 모달은 로그인하거나 닫고 계속 둘러볼 수 있다', async () => {
+		render(<ModalHost />);
+		act(() =>
+			useModalStore.getState().actions.openModal({ type: ModalType.LOGIN, message: '로그인하면 가입할 수 있어요.' }),
+		);
+
+		expect(screen.getByRole('link', { name: '카카오 로그인' })).toBeInTheDocument();
+		await userEvent.click(screen.getByRole('button', { name: '계속 둘러보기' }));
+		expect(useModalStore.getState().modal).toBeNull();
+	});
 });

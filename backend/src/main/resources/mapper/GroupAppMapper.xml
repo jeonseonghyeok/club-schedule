@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.moyora.clubschedule.mapper.GroupAppMapper">
+
+    <update id="updateEnabled">
+        UPDATE `group` SET app_enabled = #{enabled} WHERE group_id = #{groupId}
+    </update>
+
+    <update id="updateBranding">
+        UPDATE `group` SET app_name = #{appName}, app_theme_color = #{themeColor} WHERE group_id = #{groupId}
+    </update>
+
+    <insert id="upsertIcon">
+        INSERT INTO group_app_icon (group_id, png) VALUES (#{groupId}, #{png})
+        ON DUPLICATE KEY UPDATE png = VALUES(png), updated_at = NOW()
+    </insert>
+
+    <!-- MEDIUMBLOB 은 드라이버가 Blob 으로 주므로 BlobTypeHandler 로 byte[] 로 받는다 -->
+    <resultMap id="iconRM" type="com.moyora.clubschedule.vo.GroupAppIconVo">
+        <id property="groupId" column="group_id"/>
+        <result property="png" column="png" jdbcType="BLOB" typeHandler="org.apache.ibatis.type.BlobTypeHandler"/>
+    </resultMap>
+
+    <select id="selectIcon" resultMap="iconRM">
+        SELECT group_id, png FROM group_app_icon WHERE group_id = #{groupId}
+    </select>
+
+    <select id="selectIconUpdatedAt" resultType="java.time.LocalDateTime">
+        SELECT updated_at FROM group_app_icon WHERE group_id = #{groupId}
+    </select>
+
+</mapper>

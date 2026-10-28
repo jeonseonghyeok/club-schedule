@@ -6,6 +6,24 @@ import { usePwaStore } from '@/modules/stores/client/pwa';
 import { routeTree } from '@/routeTree.gen';
 import '@/styles.css';
 
+// iOS 홈 화면 앱은 "추가할 때 보던 주소"로 시작한다. 실행할 때마다 그 앱의 시작 화면에서 열리게 맞춘다
+// (모요라는 '/' — 우선모임이 있으면 그 모임으로, 모임 전용 앱은 '/g/{id}/'). Android 는 manifest start_url 을 따른다.
+const IOS_LAUNCH_KEY = 'moyora:launched';
+if (navigator.standalone === true) {
+	try {
+		if (!sessionStorage.getItem(IOS_LAUNCH_KEY)) {
+			sessionStorage.setItem(IOS_LAUNCH_KEY, '1');
+			const groupApp = /^\/g\/(\d+)\//.exec(window.location.pathname);
+			const startPath = groupApp ? `/g/${groupApp[1]}/` : '/';
+			if (`${window.location.pathname}${window.location.search}` !== startPath) {
+				window.history.replaceState(null, '', startPath);
+			}
+		}
+	} catch {
+		// 저장소를 쓸 수 없으면 주소를 그대로 둔다
+	}
+}
+
 const queryClient = new QueryClient();
 
 const router = createRouter({
@@ -13,6 +31,8 @@ const router = createRouter({
 	context: { queryClient },
 	// 로더 데이터는 TanStack Query 캐시가 관리하므로 라우터 자체 캐시는 끈다
 	defaultPreloadStaleTime: 0,
+	// 모임 전용 앱의 범위(scope)가 /g/{id}/ 라 끝의 / 를 없애면 앱 범위를 벗어난다
+	trailingSlash: 'preserve',
 });
 
 declare module '@tanstack/react-router' {

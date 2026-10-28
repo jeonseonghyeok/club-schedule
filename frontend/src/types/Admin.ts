@@ -18,6 +18,12 @@ export interface AdminGroup extends Group {
 	readonly allowSelfNickname: boolean | null;
 	/** 대표 활동 지역(없으면 null) */
 	readonly regionName: string | null;
+	/** 모임 전용 앱(/g/{groupId}/) 제공 여부 — 시스템 관리자가 켠다 */
+	readonly appEnabled: boolean | null;
+	/** 전용 앱 이름(null 이면 모임 이름) */
+	readonly appName: string | null;
+	/** 전용 앱 대표 색 #rrggbb(null 이면 모요라 색) */
+	readonly appThemeColor: string | null;
 	readonly schedulePolicy: string | null;
 	readonly groupRequestId: number | null;
 	readonly createdAt: string | null;

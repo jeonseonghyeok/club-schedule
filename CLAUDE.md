@@ -75,6 +75,8 @@ com.moyora.clubschedule
 - `.npmrc` 의 `legacy-peer-deps` 때문에 피어 의존성이 자동 설치되지 않는다 — 필요하면 직접 추가한다.
 - 디자인 토큰은 `src/styles.css` 의 `@theme`(brand 색, gray 를 브랜드 쪽 중립색으로 재정의). 새 색을 하드코딩하지 말고 `brand-*`/`gray-*` 를 쓴다.
 - PWA: `public/manifest.webmanifest`, `public/sw.js`(정적 파일만 캐시, `/api` 는 항상 네트워크), 아이콘 원본 `public/icons/icon.svg`. 서비스 워커는 운영 빌드에서만 등록한다.
+  모임 전용 앱은 `/api/groups/{id}/app-manifest`(scope·start_url `/g/{id}/`) — `/g/` 로 바로 들어오면 nginx 가 index.html 의 manifest 링크를 바꾸고, 화면에서도 `useGroupAppHead` 가 맞춘다. 아이콘은 `utils/appIcon.ts` 가 캔버스로 그려 올린다.
+  iOS 홈 화면 앱은 추가할 때 주소로 시작하므로 `main.tsx` 가 실행 때마다 그 앱의 시작 화면으로 맞춘다.
 
 ## 주요 도메인 구분
 | 도메인 | 설명 |
@@ -86,10 +88,11 @@ com.moyora.clubschedule
 
 ## 화면(frontend/src/routes)
 모든 화면은 `AppShell`(상단 바 + 주 메뉴: 휴대폰은 하단 탭바, md 이상은 왼쪽 레일) 안에 그린다. 주 메뉴는 홈·지도·설정.
-뒤로가기 규칙(`hooks/useAppBackNavigation.ts`, 루트에서 한 번): 홈은 기록 맨 아래에 두고, 홈이 아닌 화면의 뒤로가기는 항상 홈으로,
+뒤로가기 규칙(`hooks/useAppBackNavigation.ts`, 루트에서 한 번): 앱(모요라 `/`, 모임 전용 앱 `/g/{id}/`)마다 시작 화면을 기록 맨 아래에 두고, 그 밖의 화면의 뒤로가기는 항상 시작 화면으로,
 열린 대화상자가 있으면 그것부터 닫는다. 홈에서는 첫 뒤로가기에 "한 번 더 누르면 종료" 안내, 두 번째에 앱을 나간다.
 화면 안 탭·하위 메뉴 이동은 `replace` 로 기록을 쌓지 않고, "홈으로" 동작은 `useGoHome` 을 쓴다.
 Chrome 은 사용자 상호작용 전에 쌓은 기록을 뒤로가기 때 건너뛰므로, 홈 끼워 넣기·종료 확인 기록은 첫 탭/키 입력 뒤에 쌓는다.
+Android 는 `CloseWatcher` 로 기록 없이 뒤로가기를 받아, 링크로 막 열린 화면에서 바로 누른 뒤로가기도 시작 화면으로 보낸다.
 
 | URL | 화면 |
 |-----|------|
@@ -97,6 +100,7 @@ Chrome 은 사용자 상호작용 전에 쌓은 기록을 뒤로가기 때 건�
 | `/groups/$groupId?tab=home\|schedule\|members\|manage&section=requests\|members\|schedules\|settings` | 모임 — 홈·일정 달력·멤버·관리(요청/회원/일정/설정). ⋯ 메뉴: 참가 이력·내 정보·탈퇴 |
 | `/map?view=groups\|schedules` | 지도 — 모임 활동 지역 / 내 모임 일정 장소. 카카오맵 키(`VITE_KAKAO_JS_KEY`)가 없으면 목록만 |
 | `/settings` | 설정 — 계정·모임 닉네임, 우선모임, 앱 설치, 관리자 링크, 로그아웃 |
+| `/g/$groupId/?tab=home\|schedule\|members\|manage\|me` | 모임 전용 앱(모임별 PWA, 시스템 관리자가 켠 모임만) — `GroupAppShell`(그 모임 메뉴만). 끝의 `/` 가 설치 범위라 라우터는 `trailingSlash: 'preserve'` |
 | `/admin?tab=users\|groups\|groupRequests\|groupJoins` | 관리자 대시보드 (설정에서 진입) |
 | `/login/kakao/login_callback` | 카카오 로그인 콜백(카카오 콘솔 redirect URI) |
 | `/login/test` | 테스트 로그인(개발 전용) |

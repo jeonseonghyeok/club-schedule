@@ -6,13 +6,16 @@ import {
 	createGroupJoinRejection,
 	createGroupRequestApproval,
 	createGroupRequestRejection,
+	updateAdminGroupApp,
 } from '@/modules/api/admin/admin';
 import { useModalStore } from '@/modules/stores/client/modal';
-import type { AdminGroupJoin, AdminGroupRequest, RejectionParams } from '@/types/Admin';
+import { groupQueries } from '@/modules/stores/server/group/queries';
+import type { AdminGroup, AdminGroupJoin, AdminGroupRequest, RejectionParams } from '@/types/Admin';
 import { GROUP_REQUEST_STATUS } from '@/types/GroupRequest';
 import type { GroupRequestStatus } from '@/types/GroupRequest';
 import type { Paging } from '@/types/Paging';
 import { getErrorMessage } from '@/utils';
+import { DEFAULT_APP_COLOR, getIconLetter, renderAppIconPng } from '@/utils/appIcon';
 import { toLocalDateTimeString } from '@/utils/date';
 import { adminQueries } from './queries';
 
@@ -107,5 +110,41 @@ export const useRejectGroupJoin = () => {
 		mutationFn: (params: RejectionParams) => createGroupJoinRejection(params),
 		onSuccess: (_, { requestId }) => removeGroupJoin(queryClient, requestId),
 		onError: error => alertError(error.response?.data),
+	});
+};
+
+/** 모임 전용 앱 켜기/끄기 — 켤 때는 모임 이름 첫 글자로 기본 아이콘을 그려 함께 올린다 */
+export const useToggleGroupApp = () => {
+	const queryClient = useQueryClient();
+	const openModal = useModalStore(state => state.actions.openModal);
+
+	return useMutation({
+		mutationFn: async (params: { group: AdminGroup; enabled: boolean }) => {
+			const { group, enabled } = params;
+			const iconPng = enabled
+				? await renderAppIconPng({
+						letter: getIconLetter(group.appName ?? group.name),
+						color: group.appThemeColor ?? DEFAULT_APP_COLOR,
+					})
+				: null;
+			await updateAdminGroupApp({ groupId: group.groupId, enabled, iconPng });
+		},
+		onSuccess: (_, { group, enabled }) => {
+			queryClient.setQueriesData<Paging<AdminGroup>>({ queryKey: [...adminQueries.all(), 'groups'] }, prev =>
+				prev
+					? {
+							...prev,
+							items: prev.items.map(item => (item.groupId === group.groupId ? { ...item, appEnabled: enabled } : item)),
+						}
+					: prev,
+			);
+			void queryClient.invalidateQueries({ queryKey: groupQueries.detail(group.groupId).queryKey });
+			void queryClient.invalidateQueries({ queryKey: groupQueries.settings(group.groupId).queryKey });
+		},
+		onError: error =>
+			openModal({
+				type: ModalType.ALERT,
+				message: getErrorMessage(error.response?.data, '전용 앱 설정에 실패했습니다.'),
+			}),
 	});
 };

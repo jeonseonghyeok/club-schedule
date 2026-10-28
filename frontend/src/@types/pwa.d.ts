@@ -14,12 +14,19 @@ interface Navigator {
 	readonly standalone?: boolean;
 }
 
-interface UserActivation {
-	readonly hasBeenActive: boolean;
-	readonly isActive: boolean;
+/**
+ * Android Chrome 의 뒤로가기(시스템 뒤로 제스처)를 기록 없이 받아 내는 API(lib.dom 에 아직 없다).
+ * 사용자 활성화가 없어도 하나는 만들 수 있어, 링크로 막 열린 화면의 첫 뒤로가기를 받는 데 쓴다.
+ */
+interface CloseWatcher extends EventTarget {
+	onclose: ((this: CloseWatcher, event: Event) => unknown) | null;
+	destroy: () => void;
 }
 
-interface Navigator {
-	/** 사용자 활성화 상태 — 구형 브라우저에는 없다 */
-	readonly userActivation?: UserActivation;
+interface CloseWatcherConstructor {
+	new (options?: { signal?: AbortSignal }): CloseWatcher;
+}
+
+interface Window {
+	CloseWatcher?: CloseWatcherConstructor;
 }

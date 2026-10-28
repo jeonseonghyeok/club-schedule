@@ -28,6 +28,9 @@ export interface GroupSettings {
 	readonly regionName: string | null;
 	readonly latitude: number | null;
 	readonly longitude: number | null;
+	readonly appEnabled: boolean;
+	readonly appName: string | null;
+	readonly appThemeColor: string | null;
 	readonly activeMemberCount: number;
 	readonly policy: GroupPolicy;
 }
@@ -46,4 +49,12 @@ export interface GroupRegionPayload {
 	readonly regionName: string | null;
 	readonly latitude: number | null;
 	readonly longitude: number | null;
+}
+
+/** PUT /api/groups/{groupId}/app — 리더·매니저, 전용 앱이 켜진 모임만 */
+export interface GroupAppBrandingPayload {
+	readonly appName: string | null;
+	readonly themeColor: string;
+	/** 512px PNG base64(화면이 그린 아이콘) */
+	readonly iconPng: string;
 }

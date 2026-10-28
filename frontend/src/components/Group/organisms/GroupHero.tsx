@@ -16,11 +16,13 @@ const getViewerRoleLabel = (viewer: GroupViewer): string | null => {
 interface Props {
 	groupId: number;
 	detail: GroupDetail;
+	/** 모임 전용 앱에서는 그 앱의 대표 색으로 머리 글자를 칠한다 */
+	accentColor?: string;
 }
 
 /** 모임 화면 머리 카드: 이름·활동 지역·정원·내 역할 + 우선모임 별 / 가입 버튼 */
 export const GroupHero = (props: Props) => {
-	const { groupId, detail } = props;
+	const { groupId, detail, accentColor } = props;
 	const { group, viewer } = detail;
 	const roleLabel = getViewerRoleLabel(viewer);
 	const promptLogin = useLoginPrompt();
@@ -29,6 +31,7 @@ export const GroupHero = (props: Props) => {
 		<section aria-label="모임 정보" className="flex items-center gap-3 rounded-2xl bg-white p-4 ring-1 ring-gray-200">
 			<span
 				aria-hidden="true"
+				style={accentColor ? { backgroundColor: accentColor } : undefined}
 				className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-700 text-lg font-bold text-white"
 			>
 				{getGroupName(group).slice(0, 1)}

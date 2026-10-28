@@ -5,7 +5,13 @@ import { cn } from '@/utils';
 export const DIALOG_SIZE = { SM: 'sm', MD: 'md' } as const;
 export type DialogSize = (typeof DIALOG_SIZE)[keyof typeof DIALOG_SIZE];
 
-const SIZE_CLASS = { sm: 'w-80', md: 'w-[min(32rem,calc(100vw-2rem))]' } as const satisfies Record<DialogSize, string>;
+// 휴대폰 폭에서는 화면 아래에 붙는 시트, sm 이상에서는 가운데 대화상자
+const SIZE_CLASS = { sm: 'sm:w-96', md: 'sm:w-[min(32rem,calc(100vw-2rem))]' } as const satisfies Record<
+	DialogSize,
+	string
+>;
+const SHEET_CLASS =
+	'mx-0 mt-auto mb-0 w-full max-w-none rounded-t-2xl pb-safe sm:m-auto sm:max-w-[calc(100vw-2rem)] sm:rounded-2xl sm:pb-0';
 
 interface Props {
 	/** 제목이 없는 알림·확인 모달은 descriptionId 로 메시지 요소를 가리킨다 */
@@ -58,10 +64,10 @@ export const Dialog = (props: Props) => {
 			aria-labelledby={title ? titleId : undefined}
 			aria-describedby={descriptionId}
 			onCancel={preventDismiss}
-			className={cn('m-auto max-h-[85vh] rounded-xl p-0 shadow-xl backdrop:bg-black/40', SIZE_CLASS[size])}
+			className={cn('max-h-[85vh] p-0 shadow-xl backdrop:bg-black/40', SHEET_CLASS, SIZE_CLASS[size])}
 		>
 			{title && (
-				<header className="flex items-center justify-between gap-2 border-b border-gray-100 px-6 py-4">
+				<header className="flex items-center justify-between gap-2 border-b border-gray-100 px-5 py-3 sm:px-6">
 					<h2 id={titleId} className="text-lg font-bold text-gray-900">
 						{title}
 					</h2>
@@ -72,7 +78,7 @@ export const Dialog = (props: Props) => {
 								type="button"
 								aria-label="닫기"
 								onClick={() => dialogRef.current?.close()}
-								className="rounded-md px-2 py-1 text-gray-500 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-gray-900"
+								className="flex size-9 items-center justify-center rounded-full text-gray-500 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-brand-600"
 							>
 								✕
 							</button>
@@ -80,7 +86,7 @@ export const Dialog = (props: Props) => {
 					</div>
 				</header>
 			)}
-			<div className="overflow-y-auto px-6 py-5">{children}</div>
+			<div className="overflow-y-auto px-5 py-5 sm:px-6">{children}</div>
 		</dialog>
 	);
 };

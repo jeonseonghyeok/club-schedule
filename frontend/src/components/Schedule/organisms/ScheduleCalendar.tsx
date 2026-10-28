@@ -132,7 +132,7 @@ export const ScheduleCalendar = (props: Props) => {
 							<span
 								className={cn(
 									'flex size-6 items-center justify-center rounded-full text-sm',
-									key === todayKey && 'bg-blue-600 font-bold text-white',
+									key === todayKey && 'bg-brand-600 font-bold text-white',
 								)}
 							>
 								{date.getDate()}

@@ -66,7 +66,7 @@ export const GroupRequestReviewDialog = (props: Props) => {
 					href={getGroupPath(request.groupId)}
 					target="_blank"
 					rel="noreferrer"
-					className="mt-4 inline-block font-semibold text-blue-700 hover:underline focus-visible:outline-2 focus-visible:outline-gray-900"
+					className="mt-4 inline-block font-semibold text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-gray-900"
 				>
 					모임 바로가기 →
 				</a>

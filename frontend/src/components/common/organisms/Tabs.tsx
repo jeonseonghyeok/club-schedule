@@ -16,7 +16,17 @@ interface Props<K extends string> {
 	onSelect: (key: K) => void;
 	/** 탭 줄 오른쪽에 둘 요소(즐겨찾기·가입 버튼 등) */
 	actions?: ReactNode;
+	/** card: 패널을 흰 카드로 감싼다(기본) / plain: 패널 안 내용이 이미 카드들일 때 */
+	panelVariant?: TabPanelVariant;
 }
+
+export const TAB_PANEL_VARIANT = { CARD: 'card', PLAIN: 'plain' } as const;
+export type TabPanelVariant = (typeof TAB_PANEL_VARIANT)[keyof typeof TAB_PANEL_VARIANT];
+
+const PANEL_CLASS = {
+	card: 'rounded-2xl bg-white p-4 ring-1 ring-gray-200 sm:p-5',
+	plain: 'flex flex-col gap-4',
+} as const satisfies Record<TabPanelVariant, string>;
 
 const NAVIGATION_KEYS = ['ArrowLeft', 'ArrowRight', 'Home', 'End'] as const;
 type NavigationKey = (typeof NAVIGATION_KEYS)[number];
@@ -24,7 +34,7 @@ const isNavigationKey = (key: string): key is NavigationKey => NAVIGATION_KEYS.s
 
 /** WAI-ARIA 탭 패턴: 좌우 화살표·Home·End 로 이동, 선택된 탭만 Tab 순서에 들어간다 */
 export const Tabs = <K extends string>(props: Props<K>) => {
-	const { label, tabs, selected, onSelect, actions } = props;
+	const { label, tabs, selected, onSelect, actions, panelVariant = TAB_PANEL_VARIANT.CARD } = props;
 	const baseId = useId();
 	const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 	const selectedIndex = Math.max(
@@ -51,8 +61,13 @@ export const Tabs = <K extends string>(props: Props<K>) => {
 
 	return (
 		<>
-			<div className="flex flex-wrap items-end justify-between gap-2 border-b border-gray-200">
-				<div role="tablist" aria-label={label} onKeyDown={moveFocus} className="flex flex-wrap gap-1">
+			<div className="flex items-center justify-between gap-2">
+				<div
+					role="tablist"
+					aria-label={label}
+					onKeyDown={moveFocus}
+					className="flex min-w-0 flex-1 gap-1 overflow-x-auto rounded-xl bg-gray-100 p-1 [scrollbar-width:none]"
+				>
 					{tabs.map((tab, index) => {
 						const isSelected = tab.key === selectedTab?.key;
 						return (
@@ -69,10 +84,10 @@ export const Tabs = <K extends string>(props: Props<K>) => {
 								tabIndex={isSelected ? 0 : -1}
 								onClick={() => onSelect(tab.key)}
 								className={cn(
-									'-mb-px rounded-t-md border border-b-0 px-4 py-2 text-sm focus-visible:outline-2 focus-visible:outline-gray-900',
+									'min-h-9 flex-1 shrink-0 rounded-lg px-4 text-sm whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-brand-600',
 									isSelected
-										? 'border-gray-200 bg-white font-semibold text-gray-900'
-										: 'border-transparent text-gray-600 hover:bg-gray-50',
+										? 'bg-white font-semibold text-gray-900 shadow-sm'
+										: 'font-medium text-gray-500 hover:text-gray-800',
 								)}
 							>
 								{tab.label}
@@ -80,14 +95,14 @@ export const Tabs = <K extends string>(props: Props<K>) => {
 						);
 					})}
 				</div>
-				{actions && <div className="pb-1">{actions}</div>}
+				{actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
 			</div>
 			{selectedTab && (
 				<section
 					role="tabpanel"
 					id={`${baseId}-panel-${selectedTab.key}`}
 					aria-labelledby={`${baseId}-tab-${selectedTab.key}`}
-					className="rounded-b-xl border border-t-0 border-gray-200 bg-white p-4"
+					className={PANEL_CLASS[panelVariant]}
 				>
 					{selectedTab.render()}
 				</section>

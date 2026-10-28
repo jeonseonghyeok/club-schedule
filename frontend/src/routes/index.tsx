@@ -1,13 +1,13 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import { createFileRoute, Link, redirect } from '@tanstack/react-router';
+import { createFileRoute, redirect } from '@tanstack/react-router';
 import { z } from 'zod';
 import { LoginRequiredDialog } from '@/components/Auth/organisms/LoginRequiredDialog';
 import { GroupSearchSection } from '@/components/Group/organisms/GroupSearchSection';
 import { MyGroupsSection } from '@/components/Group/organisms/MyGroupsSection';
 import type { MyGroupsState } from '@/components/Group/organisms/MyGroupsSection';
 import { GroupRequestLauncher } from '@/components/GroupRequest/organisms/GroupRequestLauncher';
-import { buttonClassName } from '@/components/common/atoms/Button';
-import { AppHeader } from '@/components/layout/AppHeader';
+import { AppShell } from '@/components/layout/AppShell';
+import { APP_NAME } from '@/constants';
 import { authQueries } from '@/modules/stores/server/auth/queries';
 import { groupQueries } from '@/modules/stores/server/group/queries';
 import type { AuthMe } from '@/types/Auth';
@@ -39,27 +39,20 @@ const MainPage = () => {
 	const canRequestGroup = !!me && myGroups.status === 'success' && !isLeaderOfAny(myGroups.groups, me.userKey);
 
 	return (
-		<>
-			<AppHeader
-				isLoggedIn={!!me}
-				actions={
-					me?.isAdmin && (
-						<Link to="/admin" search={{ tab: 'users' }} className={buttonClassName('secondary')}>
-							관리자
-						</Link>
-					)
-				}
+		<AppShell title={APP_NAME} isLoggedIn={!!me}>
+			{me?.nickname && (
+				<p className="px-1 text-[15px] text-gray-600">
+					<strong className="font-bold text-gray-900">{me.nickname}</strong>님, 오늘도 즐거운 모임 되세요.
+				</p>
+			)}
+			<MyGroupsSection
+				state={myGroups}
+				favoriteGroupId={me?.favoriteGroupId ?? null}
+				actions={canRequestGroup && <GroupRequestLauncher userKey={me.userKey} groups={myGroups.groups} />}
 			/>
-			<main className="mx-auto flex max-w-3xl flex-col gap-4 px-4 py-6">
-				<MyGroupsSection
-					state={myGroups}
-					favoriteGroupId={me?.favoriteGroupId ?? null}
-					actions={canRequestGroup && <GroupRequestLauncher userKey={me.userKey} groups={myGroups.groups} />}
-				/>
-				<GroupSearchSection isGuest={!me} />
-			</main>
+			<GroupSearchSection isGuest={!me} />
 			{!me && <LoginRequiredDialog returnTo={getLoginReturnPath(returnTo ?? HOME_PATH)} />}
-		</>
+		</AppShell>
 	);
 };
 

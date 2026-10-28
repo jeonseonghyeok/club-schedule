@@ -5,10 +5,10 @@ import { GroupJoinsPanel } from '@/components/Admin/organisms/GroupJoinsPanel';
 import { GroupRequestsPanel } from '@/components/Admin/organisms/GroupRequestsPanel';
 import { GroupsPanel } from '@/components/Admin/organisms/GroupsPanel';
 import { UsersPanel } from '@/components/Admin/organisms/UsersPanel';
-import { buttonClassName } from '@/components/common/atoms/Button';
+import { Icon } from '@/components/common/atoms/Icon';
 import { Tabs } from '@/components/common/organisms/Tabs';
 import type { TabItem } from '@/components/common/organisms/Tabs';
-import { AppHeader } from '@/components/layout/AppHeader';
+import { AppShell, APP_SHELL_WIDTH } from '@/components/layout/AppShell';
 import { authQueries } from '@/modules/stores/server/auth/queries';
 
 const ADMIN_TAB_KEYS = ['users', 'groups', 'groupRequests', 'groupJoins'] as const;
@@ -32,26 +32,28 @@ const AdminPage = () => {
 	const navigate = Route.useNavigate();
 
 	return (
-		<>
-			<AppHeader
-				isLoggedIn={!!me}
-				actions={
-					<Link to="/" search={{ list: 1 }} className={buttonClassName('secondary')}>
-						메인으로
-					</Link>
-				}
-			/>
-			<main className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-6">
-				<h1 className="text-xl font-bold text-gray-900">관리자 대시보드</h1>
-				{me?.isAdmin ? (
-					<Tabs label="관리자 메뉴" tabs={TABS} selected={tab} onSelect={key => navigate({ search: { tab: key } })} />
-				) : (
-					<p role="alert" className="rounded-lg bg-white p-6 text-gray-700 ring-1 ring-gray-200">
-						{me ? '관리자 권한이 없습니다.' : '로그인이 필요합니다.'}
-					</p>
-				)}
-			</main>
-		</>
+		<AppShell
+			title="관리자 대시보드"
+			isLoggedIn={!!me}
+			width={APP_SHELL_WIDTH.WIDE}
+			leading={
+				<Link
+					to="/settings"
+					aria-label="설정으로"
+					className="-ml-2 flex size-10 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-brand-600"
+				>
+					<Icon name="chevronLeft" />
+				</Link>
+			}
+		>
+			{me?.isAdmin ? (
+				<Tabs label="관리자 메뉴" tabs={TABS} selected={tab} onSelect={key => navigate({ search: { tab: key } })} />
+			) : (
+				<p role="alert" className="rounded-2xl bg-white p-6 text-gray-700 ring-1 ring-gray-200">
+					{me ? '관리자 권한이 없습니다.' : '로그인이 필요합니다.'}
+				</p>
+			)}
+		</AppShell>
 	);
 };
 

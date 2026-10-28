@@ -123,7 +123,10 @@ export const useUpdateMyNickname = (groupId: number) => {
 
 	return useMutation({
 		mutationFn: (nickname: string) => updateMyNickname({ groupId, nickname }),
-		onSuccess: () => {
+		onSuccess: ({ groupNickname }) => {
+			queryClient.setQueryData(groupQueries.myGroups().queryKey, prev =>
+				prev?.map(group => (group.groupId === groupId ? { ...group, myNickname: groupNickname } : group)),
+			);
 			void queryClient.invalidateQueries({ queryKey: memberQueries.list(groupId).queryKey });
 			void queryClient.invalidateQueries({ queryKey: attendanceQueries.ofGroup(groupId) });
 		},

@@ -33,7 +33,7 @@ export const GroupDescription = (props: Props) => {
 				<button
 					type="button"
 					onClick={() => setIsOpen(true)}
-					className="mt-1 text-sm text-blue-700 hover:underline focus-visible:outline-2 focus-visible:outline-gray-900"
+					className="mt-1 text-sm text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-gray-900"
 				>
 					더보기 ▾
 				</button>

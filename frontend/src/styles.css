@@ -1,1 +1,72 @@
 @import 'tailwindcss';
+
+/*
+ * 모요라 디자인 토큰
+ * - brand: 모임·일정 앱의 차분한 숲빛 초록. 주요 버튼·선택 상태·지도 마커
+ * - gray: 기존 화면이 쓰는 gray-* 를 그대로 두고, 브랜드 쪽으로 살짝 기운 따뜻한 중립색으로 바꾼다
+ *   (화면마다 클래스를 고치지 않고 전체 톤을 맞추기 위함)
+ */
+@theme {
+	--font-sans:
+		'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Malgun Gothic',
+		'Noto Sans KR', system-ui, sans-serif;
+
+	--color-brand-50: #eef7f3;
+	--color-brand-100: #d6ede3;
+	--color-brand-200: #acd9c6;
+	--color-brand-300: #7cc0a4;
+	--color-brand-400: #4ea383;
+	--color-brand-500: #2f876a;
+	--color-brand-600: #216f56;
+	--color-brand-700: #1b5a46;
+	--color-brand-800: #164838;
+	--color-brand-900: #10362a;
+
+	--color-gray-50: #f7f8f6;
+	--color-gray-100: #eef0ec;
+	--color-gray-200: #dfe3dd;
+	--color-gray-300: #c8cec6;
+	--color-gray-400: #9aa298;
+	--color-gray-500: #6f776d;
+	--color-gray-600: #545b53;
+	--color-gray-700: #3f453e;
+	--color-gray-800: #2a2f2a;
+	--color-gray-900: #1a1e1a;
+
+	/* 하단 탭바 높이 — 본문 아래 여백·고정 버튼 위치 계산에 같이 쓴다 */
+	--spacing-tabbar: 4rem;
+}
+
+@layer base {
+	html {
+		-webkit-tap-highlight-color: transparent;
+		text-size-adjust: 100%;
+	}
+
+	body {
+		@apply bg-gray-50 text-gray-900 antialiased;
+		/* 홈 화면에 추가한 PWA 에서 당겨서 새로고침·바운스가 레이아웃을 흔들지 않게 */
+		overscroll-behavior-y: none;
+	}
+
+	:focus-visible {
+		outline-color: var(--color-brand-600);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			transition-duration: 0.01ms !important;
+		}
+	}
+}
+
+@utility pb-safe {
+	padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+@utility pt-safe {
+	padding-top: env(safe-area-inset-top, 0px);
+}

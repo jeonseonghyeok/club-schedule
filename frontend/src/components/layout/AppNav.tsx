@@ -2,6 +2,7 @@ import { Link, useRouterState } from '@tanstack/react-router';
 import { Icon } from '@/components/common/atoms/Icon';
 import type { IconName } from '@/components/common/atoms/Icon';
 import { APP_NAME } from '@/constants';
+import { useGoHome } from '@/hooks/useAppBackNavigation';
 
 export const NAV_KEY = { HOME: 'home', MAP: 'map', SETTINGS: 'settings' } as const;
 export type NavKey = (typeof NAV_KEY)[keyof typeof NAV_KEY];
@@ -34,6 +35,7 @@ interface NavLinkProps {
 
 const NavLink = (props: NavLinkProps) => {
 	const { item, isActive, className, iconSize } = props;
+	const goHome = useGoHome();
 	const common = {
 		className,
 		'aria-current': isActive ? ('page' as const) : undefined,
@@ -47,9 +49,17 @@ const NavLink = (props: NavLinkProps) => {
 	);
 	switch (item.key) {
 		case NAV_KEY.HOME:
-			// 홈은 목록을 보러 가는 것이므로 우선모임 자동 이동을 건너뛴다(list=1)
+			// 홈은 기록 맨 아래에 있는 홈으로 돌아간다(쌓지 않음) — 우선모임 자동 이동은 건너뛴다(list=1)
 			return (
-				<Link to="/" search={{ list: 1 }} {...common}>
+				<Link
+					to="/"
+					search={{ list: 1 }}
+					{...common}
+					onClick={event => {
+						event.preventDefault();
+						goHome();
+					}}
+				>
 					{content}
 				</Link>
 			);

@@ -23,6 +23,7 @@ import { MyAttendanceDialog } from '@/components/Member/organisms/MyAttendanceDi
 import { MyNicknameForm } from '@/components/Member/organisms/MyNicknameForm';
 import { ScheduleDialogs } from '@/components/Schedule/organisms/ScheduleDialogs';
 import { ModalType } from '@/constants';
+import { useGoHome } from '@/hooks/useAppBackNavigation';
 import { useModalStore } from '@/modules/stores/client/modal';
 import { useScheduleDialogStore } from '@/modules/stores/client/scheduleDialog';
 import { authQueries } from '@/modules/stores/server/auth/queries';
@@ -74,6 +75,7 @@ const GroupPage = () => {
 	const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 	const [myInfo, setMyInfo] = useState<GroupMember | null>(null);
 	const { mutate: withdraw } = useWithdrawGroup(groupId);
+	const goHome = useGoHome();
 	const { viewer } = detail;
 
 	// 다른 모임으로 이동하거나 화면을 떠나면 열려 있던 일정 모달을 닫는다
@@ -134,7 +136,7 @@ const GroupPage = () => {
 			onConfirm: () =>
 				withdraw(undefined, {
 					onSuccess: () => {
-						void navigate({ to: '/', search: { list: 1 } });
+						goHome();
 						openModal({ type: ModalType.ALERT, message: '모임에서 탈퇴했습니다.' });
 					},
 				}),
@@ -147,14 +149,14 @@ const GroupPage = () => {
 				title={getGroupName(detail.group)}
 				isLoggedIn
 				leading={
-					<Link
-						to="/"
-						search={{ list: 1 }}
-						aria-label="내 모임 목록으로"
+					<button
+						type="button"
+						onClick={goHome}
+						aria-label="홈으로"
 						className="-ml-2 flex size-10 shrink-0 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-brand-600"
 					>
 						<Icon name="chevronLeft" />
-					</Link>
+					</button>
 				}
 				actions={
 					viewer.isMember && (
@@ -176,7 +178,8 @@ const GroupPage = () => {
 					label="모임 메뉴"
 					tabs={tabs}
 					selected={selected}
-					onSelect={key => navigate({ search: prev => ({ ...prev, tab: key }) })}
+					// 탭 이동은 기록을 쌓지 않는다 — 뒤로가기는 탭이 아니라 홈으로 간다
+					onSelect={key => navigate({ search: prev => ({ ...prev, tab: key }), replace: true })}
 					panelVariant={TAB_PANEL_VARIANT.PLAIN}
 				/>
 			</AppShell>

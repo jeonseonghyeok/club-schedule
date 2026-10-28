@@ -1,6 +1,8 @@
+import { Button } from '@/components/common/atoms/Button';
 import { Icon } from '@/components/common/atoms/Icon';
 import { FavoriteToggle } from '@/components/Group/organisms/FavoriteToggle';
 import { JoinAction } from '@/components/JoinRequest/organisms/JoinAction';
+import { useLoginPrompt } from '@/hooks/useLoginPrompt';
 import type { GroupDetail, GroupViewer } from '@/types/GroupDetail';
 import { getGroupName } from '@/utils/group';
 
@@ -21,6 +23,7 @@ export const GroupHero = (props: Props) => {
 	const { groupId, detail } = props;
 	const { group, viewer } = detail;
 	const roleLabel = getViewerRoleLabel(viewer);
+	const promptLogin = useLoginPrompt();
 
 	return (
 		<section aria-label="모임 정보" className="flex items-center gap-3 rounded-2xl bg-white p-4 ring-1 ring-gray-200">
@@ -50,10 +53,10 @@ export const GroupHero = (props: Props) => {
 					정원 {group.capacity ?? 0}명
 				</p>
 			</div>
-			{viewer.isMember ? (
-				<FavoriteToggle groupId={groupId} viewer={viewer} />
-			) : (
-				viewer.userKey !== null && <JoinAction groupId={groupId} userKey={viewer.userKey} />
+			{viewer.isMember && <FavoriteToggle groupId={groupId} viewer={viewer} />}
+			{!viewer.isMember && viewer.userKey !== null && <JoinAction groupId={groupId} userKey={viewer.userKey} />}
+			{viewer.userKey === null && (
+				<Button onClick={() => promptLogin('로그인하면 이 모임에 가입 신청할 수 있어요.')}>가입하기</Button>
 			)}
 		</section>
 	);

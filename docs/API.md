@@ -24,7 +24,10 @@
 - 모든 API 는 `/api/**` 아래에 있다. 백엔드는 화면을 서빙하지 않는다(화면은 `frontend/` SPA).
 - 요청·응답 바디는 `application/json`.
 - **인증**: httpOnly `AUTH_TOKEN` 쿠키(JWT). `Authorization: Bearer` 헤더도 받는다.
-  토큰 없이 허용되는 경로는 `/api/login/**` 와 `/api/auth/logout` 뿐이며, **그 외 모든 API 는 로그인이 필요하다**(없으면 401).
+  토큰 없이 허용되는 경로는 `/api/login/**`, `/api/auth/logout`, 그리고 **비회원 조회용 GET** —
+  `/api/groups/recommended`, `/api/groups/{groupId}`, `/api/groups/{groupId}/schedules`, `/api/map/groups` — 이다.
+  이 GET 들은 토큰이 있으면 로그인 사용자로, 없거나 만료됐으면 비회원으로 응답한다(비회원 일정은 모임 공개 범위를 따름).
+  **그 외 모든 API 는 로그인이 필요하다**(없으면 401).
 - CSRF 보호는 비활성화되어 있다(쿠키 `SameSite=Lax`).
 - **시각 형식**
   | 구분 | 형식 |

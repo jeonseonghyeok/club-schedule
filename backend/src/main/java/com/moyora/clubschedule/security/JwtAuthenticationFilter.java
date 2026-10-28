@@ -42,7 +42,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 이전: 화이트리스트 경로는 인증 검사/401 방지: 그대로 chain.doFilter() 호출
         // 변경: 화이트리스트 경로더라도 가능하면 토큰 기반 인증을 시도하되, 토큰이 없으면 인증 없이 통과시킨다.
         String uri = request.getRequestURI();
-        boolean isWhite = isWhiteList(uri);
+        boolean isWhite = isWhiteList(uri) || isPublicGet(request.getMethod(), uri);
 
         // CORS 프리플라이트는 인증 필요 없음
         if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
@@ -157,6 +157,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     public boolean isWhiteList(String uri) {
         for (String pattern : AUTH_WHITELIST) {
+            if (PATH_MATCHER.match(pattern, uri)) return true;
+        }
+        return false;
+    }
+
+    private static final String[] PUBLIC_GET = WhitelistConfig.PUBLIC_GET;
+
+    /** 비회원도 볼 수 있는 조회(GET) — 토큰이 없거나 만료돼도 401 을 주지 않는다 */
+    public boolean isPublicGet(String method, String uri) {
+        if (!"GET".equalsIgnoreCase(method)) return false;
+        for (String pattern : PUBLIC_GET) {
             if (PATH_MATCHER.match(pattern, uri)) return true;
         }
         return false;

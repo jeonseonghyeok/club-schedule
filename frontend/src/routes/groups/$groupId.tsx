@@ -1,5 +1,5 @@
 import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
-import { createFileRoute, Link, notFound, redirect } from '@tanstack/react-router';
+import { createFileRoute, Link, notFound } from '@tanstack/react-router';
 import { AxiosError, HttpStatusCode } from 'axios';
 import { useEffect, useState } from 'react';
 import { z } from 'zod';
@@ -50,10 +50,10 @@ const parseGroupId = (raw: string): number => {
 	return groupId;
 };
 
-/** 멤버이거나 일정이 공개인 모임만 일정 탭, 멤버만 멤버 탭, 매니저 이상만 관리 탭 */
+/** 일정 탭은 비공개 모임이 아니면 누구나(비회원은 공개 범위 안의 일정만), 멤버만 멤버 탭, 매니저 이상만 관리 탭 */
 const getAvailableTabs = (detail: GroupDetail): GroupTabKey[] => [
 	'home',
-	...(detail.viewer.isMember || detail.visibilityType === VISIBILITY_TYPE.PUBLIC ? (['schedule'] as const) : []),
+	...(detail.viewer.isMember || detail.visibilityType !== VISIBILITY_TYPE.PRIVATE ? (['schedule'] as const) : []),
 	...(detail.viewer.isMember ? (['members'] as const) : []),
 	...(detail.viewer.isManager ? (['manage'] as const) : []),
 ];
@@ -147,7 +147,7 @@ const GroupPage = () => {
 		<>
 			<AppShell
 				title={getGroupName(detail.group)}
-				isLoggedIn
+				isLoggedIn={viewer.userKey !== null}
 				leading={
 					<button
 						type="button"
@@ -223,13 +223,10 @@ const GroupNotFound = () => (
 
 export const Route = createFileRoute('/groups/$groupId')({
 	validateSearch: groupSearchSchema,
-	beforeLoad: async ({ context, location }) => {
-		const me = await context.queryClient.ensureQueryData(authQueries.me());
-		// 비로그인은 메인으로 — 메인의 로그인 안내가 로그인 후 이 주소로 돌아오게 한다
-		if (!me) throw redirect({ to: '/', search: { returnTo: location.href } });
-	},
+	// 로그인은 강제하지 않는다 — 비회원은 모임 소개와 공개 범위 안의 일정을 본다
 	loader: async ({ context, params }) => {
 		const groupId = parseGroupId(params.groupId);
+		await context.queryClient.ensureQueryData(authQueries.me());
 		try {
 			await context.queryClient.ensureQueryData(groupQueries.detail(groupId));
 		} catch (error) {

@@ -56,6 +56,7 @@ public class SecurityConfig {
 				.httpBasic(httpBasic -> httpBasic.disable())//
 				.authorizeHttpRequests(auth -> auth
 						.requestMatchers(WhitelistConfig.AUTH_WHITELIST).permitAll()
+						.requestMatchers(HttpMethod.GET, WhitelistConfig.PUBLIC_GET).permitAll()
 						.anyRequest().authenticated()
 				)
 				.addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)

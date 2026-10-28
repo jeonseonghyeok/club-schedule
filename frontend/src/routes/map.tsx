@@ -1,7 +1,8 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute } from '@tanstack/react-router';
 import { useState } from 'react';
 import { z } from 'zod';
+import { LoginCard } from '@/components/Auth/organisms/LoginCard';
 import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
 import { AppShell } from '@/components/layout/AppShell';
 import { KakaoMap } from '@/components/Map/organisms/KakaoMap';
@@ -62,11 +63,13 @@ const MapArea = (props: MapAreaProps) => {
 };
 
 const MapPage = () => {
+	const { data: me } = useSuspenseQuery({ ...authQueries.me() });
 	const { view = MAP_VIEW.GROUPS } = Route.useSearch();
 	const navigate = Route.useNavigate();
 	const [selectedId, setSelectedId] = useState<string | null>(null);
 	const groupsQuery = useQuery({ ...mapQueries.groups(), enabled: view === MAP_VIEW.GROUPS });
-	const schedulesQuery = useQuery({ ...mapQueries.schedules(), enabled: view === MAP_VIEW.SCHEDULES });
+	// 일정 장소는 내 모임 일정이라 로그인해야 본다
+	const schedulesQuery = useQuery({ ...mapQueries.schedules(), enabled: view === MAP_VIEW.SCHEDULES && !!me });
 
 	const markers: MapMarker[] =
 		view === MAP_VIEW.GROUPS
@@ -84,6 +87,11 @@ const MapPage = () => {
 				}));
 
 	const renderList = () => {
+		if (view === MAP_VIEW.SCHEDULES && !me) {
+			return (
+				<LoginCard title="내 모임 일정 장소" message="로그인하면 가입한 모임의 일정 장소를 지도에서 볼 수 있어요." />
+			);
+		}
 		const query = view === MAP_VIEW.GROUPS ? groupsQuery : schedulesQuery;
 		if (query.isError) return <EmptyMessage message="목록을 불러오지 못했습니다." />;
 		if (!query.data) return <EmptyMessage message="로딩 중..." />;
@@ -95,7 +103,7 @@ const MapPage = () => {
 	};
 
 	return (
-		<AppShell title="지도" isLoggedIn>
+		<AppShell title="지도" isLoggedIn={!!me}>
 			<div role="group" aria-label="지도 기준" className="flex gap-1 rounded-xl bg-gray-100 p-1">
 				{MAP_VIEW_KEYS.map(key => (
 					<button
@@ -126,17 +134,9 @@ const MapPage = () => {
 	);
 };
 
-/** beforeLoad 가 로그인을 보장한다 — me 는 화면에서 쓰지 않지만 셸의 알림 벨이 로그인 상태를 전제로 한다 */
-const MapRoutePage = () => {
-	useSuspenseQuery({ ...authQueries.me() });
-	return <MapPage />;
-};
-
+// 모임 활동 지역은 비회원도 본다
 export const Route = createFileRoute('/map')({
 	validateSearch: mapSearchSchema,
-	beforeLoad: async ({ context, location }) => {
-		const me = await context.queryClient.ensureQueryData(authQueries.me());
-		if (!me) throw redirect({ to: '/', search: { returnTo: location.href } });
-	},
-	component: MapRoutePage,
+	loader: ({ context }) => context.queryClient.ensureQueryData(authQueries.me()),
+	component: MapPage,
 });

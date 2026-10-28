@@ -22,7 +22,13 @@ export interface ReasonModal {
 	readonly onSubmit: (reason: string) => void;
 }
 
-export type Modal = AlertModal | ConfirmModal | ReasonModal;
+/** 로그인이 필요한 동작을 눌렀을 때 — 닫고 계속 둘러볼 수 있다 */
+export interface LoginModal {
+	readonly type: typeof ModalType.LOGIN;
+	readonly message: string;
+}
+
+export type Modal = AlertModal | ConfirmModal | ReasonModal | LoginModal;
 
 export interface ModalStore {
 	modal: Modal | null;

@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { LoginCard } from '@/components/Auth/organisms/LoginCard';
 import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
 import { Icon } from '@/components/common/atoms/Icon';
 import { SectionCard } from '@/components/common/molecules/SectionCard';
@@ -59,11 +60,17 @@ const GroupItem = (props: GroupItemProps) => {
 
 export const MyGroupsSection = (props: Props) => {
 	const { state, favoriteGroupId, actions } = props;
+	if (state.status === 'guest') {
+		return (
+			<LoginCard
+				title="내 모임"
+				message="로그인하면 가입한 모임과 일정을 한곳에서 볼 수 있어요. 둘러보기는 로그인 없이도 됩니다."
+			/>
+		);
+	}
 
 	const renderBody = () => {
 		switch (state.status) {
-			case 'guest':
-				return <EmptyMessage message="로그인이 필요합니다." />;
 			case 'loading':
 				return <EmptyMessage message="로딩 중..." />;
 			case 'error':

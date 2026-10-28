@@ -7,6 +7,7 @@ import { notificationQueries } from '@/modules/stores/server/notification/querie
 import type { Notification, NotificationCategory } from '@/types/Notification';
 import { cn } from '@/utils';
 import { formatDateTime } from '@/utils/date';
+import { Icon } from '@/components/common/atoms/Icon';
 
 const CATEGORY_ICON = { APPROVE: '✅', REJECT: '❌', NOTICE: '📢' } as const satisfies Record<
 	NotificationCategory,
@@ -34,7 +35,7 @@ const NotificationItem = (props: ItemProps) => {
 				onClick={() => onSelect(notification)}
 				className={cn(
 					'flex w-full gap-2 rounded-lg px-2 py-2 text-left hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-gray-900',
-					!notification.isRead && 'bg-blue-50',
+					!notification.isRead && 'bg-brand-50',
 				)}
 			>
 				<span aria-hidden="true" className="shrink-0">
@@ -111,13 +112,13 @@ export const NotificationBell = () => {
 				aria-expanded={isOpen}
 				aria-controls={panelId}
 				onClick={() => setIsOpen(open => !open)}
-				className="relative rounded-md p-1 text-xl leading-none focus-visible:outline-2 focus-visible:outline-gray-900"
+				className="relative flex size-10 items-center justify-center rounded-full text-gray-600 hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-brand-600"
 			>
-				<span aria-hidden="true">🔔</span>
+				<Icon name="bell" size={22} />
 				{unreadCount > 0 && (
 					<span
 						aria-hidden="true"
-						className="absolute -top-1 -right-2 min-w-4 rounded-full bg-red-500 px-1 text-center text-[11px] leading-4 font-bold text-white"
+						className="absolute top-1 right-0.5 min-w-4 rounded-full bg-red-600 px-1 text-center text-[11px] leading-4 font-bold text-white ring-2 ring-white"
 					>
 						{formatBadgeCount(unreadCount)}
 					</span>

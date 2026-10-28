@@ -82,7 +82,7 @@ const MemberRow = (props: MemberRowProps) => {
 				(member.banned ? (
 					<Button
 						variant="secondary"
-						className="px-3 py-1 text-blue-800"
+						className="px-3 py-1 text-brand-800"
 						disabled={isBusy}
 						onClick={() => onUnban(member)}
 					>

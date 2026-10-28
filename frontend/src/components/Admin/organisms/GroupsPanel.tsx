@@ -21,7 +21,7 @@ const COLUMNS: readonly DataTableColumn<AdminGroup>[] = [
 				href={getGroupPath(group.groupId)}
 				target="_blank"
 				rel="noreferrer"
-				className="font-medium text-blue-700 hover:underline focus-visible:outline-2 focus-visible:outline-gray-900"
+				className="font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-gray-900"
 			>
 				{getGroupName(group)}
 			</a>

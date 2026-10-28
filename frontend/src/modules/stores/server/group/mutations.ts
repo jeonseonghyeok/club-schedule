@@ -92,3 +92,25 @@ export const useUpdateGroupPolicy = (groupId: number) => {
 			}),
 	});
 };
+
+/** 설정 탭: 우선모임을 고르거나(next) 해제(null) — 바꾸면 모임 화면의 별 표시도 달라진다 */
+export const useUpdateFavoriteGroup = () => {
+	const queryClient = useQueryClient();
+	const openModal = useModalStore(state => state.actions.openModal);
+
+	return useMutation({
+		mutationFn: (params: { next: number | null; current: number | null }) => {
+			if (params.next !== null) return createGroupFavorite(params.next);
+			return params.current !== null ? deleteGroupFavorite(params.current) : Promise.resolve();
+		},
+		onSuccess: (_, { next }) => {
+			queryClient.setQueryData(authQueries.me().queryKey, prev => (prev ? { ...prev, favoriteGroupId: next } : prev));
+			void queryClient.invalidateQueries({ queryKey: [...groupQueries.all(), 'detail'] });
+		},
+		onError: error =>
+			openModal({
+				type: ModalType.ALERT,
+				message: getErrorMessage(error.response?.data, '우선모임 변경에 실패했습니다.'),
+			}),
+	});
+};

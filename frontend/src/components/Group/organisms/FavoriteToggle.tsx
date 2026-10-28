@@ -40,7 +40,7 @@ export const FavoriteToggle = (props: Props) => {
 			title="우선모임"
 			disabled={isPending}
 			onClick={toggle}
-			className="rounded-md px-2 text-2xl leading-none text-amber-500 focus-visible:outline-2 focus-visible:outline-gray-900 disabled:opacity-50"
+			className="flex size-10 items-center justify-center rounded-full text-2xl leading-none text-amber-500 hover:bg-amber-50 focus-visible:outline-2 focus-visible:outline-brand-600 disabled:opacity-50"
 		>
 			<span aria-hidden="true">{viewer.isFavoriteGroup ? '★' : '☆'}</span>
 		</button>

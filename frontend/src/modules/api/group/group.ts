@@ -1,10 +1,10 @@
-import type { Group } from '@/types/Group';
+import type { Group, MyGroup } from '@/types/Group';
 import type { GroupDetail } from '@/types/GroupDetail';
 import type { GroupInfoPayload, GroupPolicy, GroupSettings } from '@/types/GroupSettings';
 import { groupApi } from '.';
 
-export const getMyGroups = async (): Promise<Group[]> => {
-	const { data } = await groupApi.get<Group[]>('/api/groups/me');
+export const getMyGroups = async (): Promise<MyGroup[]> => {
+	const { data } = await groupApi.get<MyGroup[]>('/api/groups/me');
 	return data;
 };
 

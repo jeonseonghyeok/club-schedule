@@ -1,12 +1,13 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
+import { Icon } from '@/components/common/atoms/Icon';
 import { SectionCard } from '@/components/common/molecules/SectionCard';
-import type { Group } from '@/types/Group';
+import type { MyGroup } from '@/types/Group';
 import { formatMemberCount, getGroupName, sortFavoriteFirst } from '@/utils/group';
 
 export type MyGroupsState =
-	{ status: 'guest' } | { status: 'loading' } | { status: 'error' } | { status: 'success'; groups: readonly Group[] };
+	{ status: 'guest' } | { status: 'loading' } | { status: 'error' } | { status: 'success'; groups: readonly MyGroup[] };
 
 interface Props {
 	state: MyGroupsState;
@@ -16,29 +17,42 @@ interface Props {
 }
 
 interface GroupItemProps {
-	group: Group;
+	group: MyGroup;
 	isFavorite: boolean;
 }
 
 const GroupItem = (props: GroupItemProps) => {
 	const { group, isFavorite } = props;
 	return (
-		<li className="py-3">
+		<li>
 			<Link
 				to="/groups/$groupId"
 				params={{ groupId: String(group.groupId) }}
 				search={{ tab: 'home' }}
-				className="font-semibold text-gray-900 hover:underline focus-visible:outline-2 focus-visible:outline-gray-900"
+				className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-3 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-brand-600"
 			>
-				{isFavorite && (
-					<>
-						<span aria-hidden="true">★ </span>
-						<span className="sr-only">즐겨찾기 모임: </span>
-					</>
-				)}
-				{getGroupName(group)}
+				<span
+					aria-hidden="true"
+					className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-base font-bold text-brand-700"
+				>
+					{getGroupName(group).slice(0, 1)}
+				</span>
+				<span className="min-w-0 flex-1">
+					<span className="flex items-center gap-1.5 font-semibold text-gray-900">
+						<span className="truncate">{getGroupName(group)}</span>
+						{isFavorite && (
+							<span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800">
+								우선모임
+							</span>
+						)}
+					</span>
+					<span className="mt-0.5 block truncate text-sm text-gray-500">
+						{formatMemberCount(group)}
+						{group.regionName && ` · ${group.regionName}`}
+					</span>
+				</span>
+				<Icon name="chevronRight" className="shrink-0 text-gray-400" />
 			</Link>
-			<p className="mt-0.5 text-sm text-gray-500">{formatMemberCount(group)}</p>
 		</li>
 	);
 };
@@ -57,7 +71,7 @@ export const MyGroupsSection = (props: Props) => {
 			case 'success':
 				if (state.groups.length === 0) return <EmptyMessage message="모임이 없습니다." />;
 				return (
-					<ul className="divide-y divide-gray-100">
+					<ul className="flex flex-col">
 						{sortFavoriteFirst(state.groups, favoriteGroupId).map(group => (
 							<GroupItem key={group.groupId} group={group} isFavorite={group.groupId === favoriteGroupId} />
 						))}

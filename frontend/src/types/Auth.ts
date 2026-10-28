@@ -33,3 +33,8 @@ export interface KakaoLoginRequest {
 	readonly redirectUri: string;
 	readonly returnTo: string;
 }
+
+/** PATCH /api/users/me 응답 */
+export interface AccountNickname {
+	readonly nickname: string;
+}

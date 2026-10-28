@@ -12,9 +12,9 @@ export const SectionCard = (props: Props) => {
 	const headingId = useId();
 
 	return (
-		<section aria-labelledby={headingId} className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-gray-200">
+		<section aria-labelledby={headingId} className="rounded-2xl bg-white p-4 ring-1 ring-gray-200 sm:p-5">
 			<header className="mb-3 flex flex-wrap items-center justify-between gap-3">
-				<h2 id={headingId} className="text-base font-bold text-gray-900">
+				<h2 id={headingId} className="text-[15px] font-bold text-gray-900">
 					{title}
 				</h2>
 				{actions}

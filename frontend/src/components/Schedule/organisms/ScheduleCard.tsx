@@ -41,7 +41,7 @@ export const ScheduleCard = (props: Props) => {
 						<span
 							className={cn(
 								'shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold',
-								dayBadge === '오늘' ? 'bg-blue-600 text-white' : 'bg-blue-50 text-blue-800',
+								dayBadge === '오늘' ? 'bg-brand-600 text-white' : 'bg-brand-50 text-brand-800',
 							)}
 						>
 							{dayBadge}

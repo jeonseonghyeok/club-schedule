@@ -210,7 +210,7 @@ const HistoryView = (props: HistoryViewProps) => {
 
 	return (
 		<div>
-			<button type="button" onClick={onBack} className="mb-2 text-xs font-semibold text-blue-700 hover:underline">
+			<button type="button" onClick={onBack} className="mb-2 text-xs font-semibold text-brand-700 hover:underline">
 				← 신청 목록
 			</button>
 			{renderBody()}
@@ -237,7 +237,7 @@ const ApplyTab = (props: ManageProps) => {
 			<button
 				type="button"
 				onClick={() => setShowHistory(true)}
-				className="self-end text-xs font-semibold text-blue-700 hover:underline"
+				className="self-end text-xs font-semibold text-brand-700 hover:underline"
 			>
 				이력보기
 			</button>

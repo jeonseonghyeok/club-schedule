@@ -16,6 +16,8 @@ export interface AdminGroup extends Group {
 	readonly autoApprove: boolean | null;
 	/** 회원 본인의 모임 닉네임 수정 허용 */
 	readonly allowSelfNickname: boolean | null;
+	/** 대표 활동 지역(없으면 null) */
+	readonly regionName: string | null;
 	readonly schedulePolicy: string | null;
 	readonly groupRequestId: number | null;
 	readonly createdAt: string | null;

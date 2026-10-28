@@ -7,8 +7,10 @@ export const getGroupName = (group: Pick<Group, 'name'>): string => group.name |
 export const getGroupPath = (groupId: number): string => `/groups/${groupId}`;
 
 /** 즐겨찾기 모임을 맨 위로. 나머지는 서버 순서를 유지한다(안정 정렬) */
-export const sortFavoriteFirst = (groups: readonly Group[], favoriteGroupId: number | null): Group[] =>
-	[...groups].sort((a, b) => Number(b.groupId === favoriteGroupId) - Number(a.groupId === favoriteGroupId));
+export const sortFavoriteFirst = <T extends Pick<Group, 'groupId'>>(
+	groups: readonly T[],
+	favoriteGroupId: number | null,
+): T[] => [...groups].sort((a, b) => Number(b.groupId === favoriteGroupId) - Number(a.groupId === favoriteGroupId));
 
 export const isLeaderOfAny = (groups: readonly Group[], userKey: number): boolean =>
 	groups.some(group => group.leaderUserKey === userKey);

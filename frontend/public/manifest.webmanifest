@@ -1,0 +1,18 @@
+{
+	"name": "모요라 — 모임 일정",
+	"short_name": "모요라",
+	"description": "모임 일정과 참가를 한곳에서 관리하는 앱",
+	"lang": "ko",
+	"start_url": "/",
+	"scope": "/",
+	"display": "standalone",
+	"orientation": "portrait",
+	"background_color": "#f7f8f6",
+	"theme_color": "#1b5a46",
+	"icons": [
+		{ "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+		{ "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+		{ "src": "/icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+		{ "src": "/icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+	]
+}

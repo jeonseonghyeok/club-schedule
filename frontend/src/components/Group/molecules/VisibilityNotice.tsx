@@ -11,7 +11,7 @@ interface Props {
 }
 
 export const VisibilityNotice = (props: Props) => (
-	<aside className="rounded-xl bg-amber-50 p-4 ring-1 ring-amber-200">
+	<aside className="rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200">
 		<p className="font-bold text-amber-900">이 모임은 멤버 전용입니다</p>
 		<p className="mt-1 text-sm text-amber-800">{NOTICE[props.visibilityType]}</p>
 	</aside>

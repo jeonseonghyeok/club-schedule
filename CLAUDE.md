@@ -73,6 +73,8 @@ com.moyora.clubschedule
 - React Compiler 활성 — `useMemo`/`useCallback`/`memo` 를 손수 추가하지 않는다.
 - `src/routeTree.gen.ts` 는 라우터 플러그인이 생성한다(커밋 대상, 직접 수정·포맷 금지).
 - `.npmrc` 의 `legacy-peer-deps` 때문에 피어 의존성이 자동 설치되지 않는다 — 필요하면 직접 추가한다.
+- 디자인 토큰은 `src/styles.css` 의 `@theme`(brand 색, gray 를 브랜드 쪽 중립색으로 재정의). 새 색을 하드코딩하지 말고 `brand-*`/`gray-*` 를 쓴다.
+- PWA: `public/manifest.webmanifest`, `public/sw.js`(정적 파일만 캐시, `/api` 는 항상 네트워크), 아이콘 원본 `public/icons/icon.svg`. 서비스 워커는 운영 빌드에서만 등록한다.
 
 ## 주요 도메인 구분
 | 도메인 | 설명 |
@@ -83,11 +85,15 @@ com.moyora.clubschedule
 두 도메인은 완전히 별개이며 혼동 주의.
 
 ## 화면(frontend/src/routes)
+모든 화면은 `AppShell`(상단 바 + 주 메뉴: 휴대폰은 하단 탭바, md 이상은 왼쪽 레일) 안에 그린다. 주 메뉴는 홈·지도·설정.
+
 | URL | 화면 |
 |-----|------|
-| `/` | 메인 — 내 모임·모임 검색·모임 생성 신청 (우선모임이 있으면 그 모임으로, `?list=1` 이면 목록) |
-| `/groups/$groupId?tab=home\|schedule\|manage` | 모임 — 일정 달력·참가·참가자 관리·회원/권한 관리 |
-| `/admin?tab=users\|groups\|groupRequests\|groupJoins` | 관리자 대시보드 |
+| `/` | 홈 — 내 모임·모임 찾기·모임 생성 신청 (우선모임이 있으면 그 모임으로, `?list=1` 이면 목록 — 하단 탭 홈은 `list=1`) |
+| `/groups/$groupId?tab=home\|schedule\|members\|manage&section=requests\|members\|schedules\|settings` | 모임 — 홈·일정 달력·멤버·관리(요청/회원/일정/설정). ⋯ 메뉴: 참가 이력·내 정보·탈퇴 |
+| `/map?view=groups\|schedules` | 지도 — 모임 활동 지역 / 내 모임 일정 장소. 카카오맵 키(`VITE_KAKAO_JS_KEY`)가 없으면 목록만 |
+| `/settings` | 설정 — 계정·모임 닉네임, 우선모임, 앱 설치, 관리자 링크, 로그아웃 |
+| `/admin?tab=users\|groups\|groupRequests\|groupJoins` | 관리자 대시보드 (설정에서 진입) |
 | `/login/kakao/login_callback` | 카카오 로그인 콜백(카카오 콘솔 redirect URI) |
 | `/login/test` | 테스트 로그인(개발 전용) |
 

@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as MapRouteImport } from './routes/map'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as GroupsGroupIdRouteImport } from './routes/groups/$groupId'
 import { Route as LoginTestRouteImport } from './routes/login/test'
 import { Route as LoginKakaoLogin_callbackRouteImport } from './routes/login/kakao/login_callback'
@@ -23,6 +25,16 @@ const IndexRoute = IndexRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapRoute = MapRouteImport.update({
+  id: '/map',
+  path: '/map',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GroupsGroupIdRoute = GroupsGroupIdRouteImport.update({
@@ -45,6 +57,8 @@ const LoginKakaoLogin_callbackRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/map': typeof MapRoute
+  '/settings': typeof SettingsRoute
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/login/test': typeof LoginTestRoute
   '/login/kakao/login_callback': typeof LoginKakaoLogin_callbackRoute
@@ -52,6 +66,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/map': typeof MapRoute
+  '/settings': typeof SettingsRoute
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/login/test': typeof LoginTestRoute
   '/login/kakao/login_callback': typeof LoginKakaoLogin_callbackRoute
@@ -60,6 +76,8 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
+  '/map': typeof MapRoute
+  '/settings': typeof SettingsRoute
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/login/test': typeof LoginTestRoute
   '/login/kakao/login_callback': typeof LoginKakaoLogin_callbackRoute
@@ -69,6 +87,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/map'
+    | '/settings'
     | '/groups/$groupId'
     | '/login/test'
     | '/login/kakao/login_callback'
@@ -76,6 +96,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/map'
+    | '/settings'
     | '/groups/$groupId'
     | '/login/test'
     | '/login/kakao/login_callback'
@@ -83,6 +105,8 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/map'
+    | '/settings'
     | '/groups/$groupId'
     | '/login/test'
     | '/login/kakao/login_callback'
@@ -91,6 +115,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
+  MapRoute: typeof MapRoute
+  SettingsRoute: typeof SettingsRoute
   GroupsGroupIdRoute: typeof GroupsGroupIdRoute
   LoginTestRoute: typeof LoginTestRoute
   LoginKakaoLogin_callbackRoute: typeof LoginKakaoLogin_callbackRoute
@@ -110,6 +136,20 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/map': {
+      id: '/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof MapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/groups/$groupId': {
@@ -139,6 +179,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
+  MapRoute: MapRoute,
+  SettingsRoute: SettingsRoute,
   GroupsGroupIdRoute: GroupsGroupIdRoute,
   LoginTestRoute: LoginTestRoute,
   LoginKakaoLogin_callbackRoute: LoginKakaoLogin_callbackRoute,

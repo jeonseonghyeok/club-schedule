@@ -1,6 +1,6 @@
 import { useRouter, useRouterState } from '@tanstack/react-router';
 import type { HistoryLocation, RouterHistory } from '@tanstack/history';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { TOAST_DURATION_MS } from '@/components/layout/ToastHost';
 import { useToastStore } from '@/modules/stores/client/toast';
 
@@ -59,34 +59,41 @@ const goToRoot = (history: RouterHistory): void => {
 	history.replace(getRootHref(location.pathname));
 };
 
+// 종료 안내가 떠 있는 동안은 종료 확인(기록·CloseWatcher)을 다시 걸지 않는다 — 그 사이 뒤로가기는 앱을 나가야 한다
+let exitArmedUntil = 0;
+let closeWatcher: CloseWatcher | null = null;
+
+const armExit = () => {
+	useToastStore.getState().actions.showToast(EXIT_CONFIRM_MESSAGE);
+	exitArmedUntil = Date.now() + TOAST_DURATION_MS;
+};
+
+const ensureCloseWatcher = (history: RouterHistory) => {
+	if (!canUseCloseWatcher() || !window.CloseWatcher || closeWatcher) return;
+	if (Date.now() < exitArmedUntil) return;
+	const watcher = new window.CloseWatcher();
+	watcher.onclose = () => {
+		closeWatcher = null;
+		if (isRoot(history.location)) armExit();
+		else goToRoot(history);
+	};
+	closeWatcher = watcher;
+};
+
+/**
+ * 앱 시작 직후(첫 렌더 전)에 부른다 — 화면이 데이터를 불러오는 동안 누른 뒤로가기도 받기 위해
+ * Android 의 CloseWatcher 를 미리 걸어 둔다.
+ */
+export const startBackNavigation = (history: RouterHistory): void => ensureCloseWatcher(history);
+
 export const useAppBackNavigation = (): void => {
 	const router = useRouter();
 	const { history } = router;
 	const showToast = useToastStore(state => state.actions.showToast);
 	const href = useRouterState({ select: state => state.location.href });
-	// 종료 안내가 떠 있는 동안은 종료 확인(기록·CloseWatcher)을 다시 걸지 않는다 — 그 사이 뒤로가기는 앱을 나가야 한다
-	const exitArmedUntil = useRef(0);
-	const watcherRef = useRef<CloseWatcher | null>(null);
 
 	useEffect(() => {
 		const useWatcher = canUseCloseWatcher();
-
-		const armExit = () => {
-			showToast(EXIT_CONFIRM_MESSAGE);
-			exitArmedUntil.current = Date.now() + TOAST_DURATION_MS;
-		};
-
-		const ensureCloseWatcher = () => {
-			if (!useWatcher || !window.CloseWatcher || watcherRef.current) return;
-			if (Date.now() < exitArmedUntil.current) return;
-			const watcher = new window.CloseWatcher();
-			watcher.onclose = () => {
-				watcherRef.current = null;
-				if (isRoot(history.location)) armExit();
-				else goToRoot(history);
-			};
-			watcherRef.current = watcher;
-		};
 
 		const ensureHistoryShape = () => {
 			if (!hasUserActivation()) return;
@@ -94,7 +101,7 @@ export const useAppBackNavigation = (): void => {
 			if (indexOf(location) !== 0) return;
 			if (isRoot(location)) {
 				// Android 는 CloseWatcher 가 종료 확인을 맡으므로 기록을 더 쌓지 않는다
-				if (!useWatcher && !location.state.exitGuard && Date.now() >= exitArmedUntil.current) {
+				if (!useWatcher && !location.state.exitGuard && Date.now() >= exitArmedUntil) {
 					history.push(location.href, { exitGuard: true });
 				}
 				return;
@@ -108,22 +115,13 @@ export const useAppBackNavigation = (): void => {
 
 		const onActivation = () => {
 			ensureHistoryShape();
-			ensureCloseWatcher();
+			ensureCloseWatcher(history);
 		};
 
 		onActivation();
 		ACTIVATION_EVENTS.forEach(type => window.addEventListener(type, onActivation, { capture: true }));
 		return () => ACTIVATION_EVENTS.forEach(type => window.removeEventListener(type, onActivation, { capture: true }));
-	}, [history, href, showToast]);
-
-	// 화면을 떠날 때(앱 종료 등) 남은 CloseWatcher 정리
-	useEffect(
-		() => () => {
-			watcherRef.current?.destroy();
-			watcherRef.current = null;
-		},
-		[],
-	);
+	}, [history, href]);
 
 	useEffect(
 		() =>
@@ -146,7 +144,7 @@ export const useAppBackNavigation = (): void => {
 					if (isRoot(currentLocation) && currentLocation.state.exitGuard) {
 						// 종료 확인 기록을 소비해 루트(맨 아래)로 내려간다 — 안내가 떠 있는 동안 뒤로가기는 앱을 나간다
 						showToast(EXIT_CONFIRM_MESSAGE);
-						exitArmedUntil.current = Date.now() + TOAST_DURATION_MS;
+						exitArmedUntil = Date.now() + TOAST_DURATION_MS;
 						return false;
 					}
 

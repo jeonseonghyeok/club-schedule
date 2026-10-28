@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import { startBackNavigation } from '@/hooks/useAppBackNavigation';
 import { usePwaStore } from '@/modules/stores/client/pwa';
 import { routeTree } from '@/routeTree.gen';
 import '@/styles.css';
@@ -34,6 +35,9 @@ const router = createRouter({
 	// 모임 전용 앱의 범위(scope)가 /g/{id}/ 라 끝의 / 를 없애면 앱 범위를 벗어난다
 	trailingSlash: 'preserve',
 });
+
+// 뒤로가기 처리를 첫 렌더 전에 시작한다(Android 는 화면이 데이터를 불러오는 동안 누른 뒤로가기도 받는다)
+startBackNavigation(router.history);
 
 declare module '@tanstack/react-router' {
 	interface Register {

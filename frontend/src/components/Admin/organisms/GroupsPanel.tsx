@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { AdminListStatus } from '@/components/Admin/molecules/AdminListStatus';
 import { AdminSearchBar } from '@/components/Admin/molecules/AdminSearchBar';
+import { GroupAppToggle } from '@/components/Admin/molecules/GroupAppToggle';
 import { Pagination } from '@/components/common/molecules/Pagination';
 import { DataTable } from '@/components/common/organisms/DataTable';
 import type { DataTableColumn } from '@/components/common/organisms/DataTable';
@@ -16,7 +17,7 @@ const COLUMNS: readonly DataTableColumn<AdminGroup>[] = [
 	{
 		header: '이름',
 		render: group => (
-			// 모임 화면은 아직 서버 렌더링 — 새 탭으로 연다
+			// 관리자 작업을 이어갈 수 있게 모임 화면은 새 탭으로 연다
 			<a
 				href={getGroupPath(group.groupId)}
 				target="_blank"
@@ -31,7 +32,7 @@ const COLUMNS: readonly DataTableColumn<AdminGroup>[] = [
 	{ header: '수용인원', render: group => formatOptional(group.capacity) },
 	{ header: '현재인원', render: group => formatOptional(group.currentMemberCount) },
 	{ header: '자동승인', render: group => formatOptional(group.autoApprove) },
-	{ header: '일정 등록 권한 정책', render: group => formatOptional(group.schedulePolicy) },
+	{ header: '전용 앱', render: group => <GroupAppToggle group={group} /> },
 	{ header: '그룹요청번호', render: group => formatOptional(group.groupRequestId) },
 	{ header: '생성일', render: group => formatDateTime(group.createdAt) },
 ];

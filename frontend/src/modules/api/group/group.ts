@@ -1,6 +1,12 @@
 import type { Group, MyGroup } from '@/types/Group';
 import type { GroupDetail } from '@/types/GroupDetail';
-import type { GroupInfoPayload, GroupPolicy, GroupRegionPayload, GroupSettings } from '@/types/GroupSettings';
+import type {
+	GroupAppBrandingPayload,
+	GroupInfoPayload,
+	GroupPolicy,
+	GroupRegionPayload,
+	GroupSettings,
+} from '@/types/GroupSettings';
 import { groupApi } from '.';
 
 export const getMyGroups = async (): Promise<MyGroup[]> => {
@@ -53,5 +59,14 @@ export const updateGroupRegion = async (params: {
 	region: GroupRegionPayload;
 }): Promise<GroupSettings> => {
 	const { data } = await groupApi.put<GroupSettings>(`/api/groups/${params.groupId}/region`, params.region);
+	return data;
+};
+
+/** 리더·매니저: 전용 앱 이름·대표 색·아이콘 */
+export const updateGroupApp = async (params: {
+	groupId: number;
+	branding: GroupAppBrandingPayload;
+}): Promise<GroupSettings> => {
+	const { data } = await groupApi.put<GroupSettings>(`/api/groups/${params.groupId}/app`, params.branding);
 	return data;
 };

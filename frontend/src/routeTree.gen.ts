@@ -15,6 +15,7 @@ import { Route as MapRouteImport } from './routes/map'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as GroupsGroupIdRouteImport } from './routes/groups/$groupId'
 import { Route as LoginTestRouteImport } from './routes/login/test'
+import { Route as GGroupIdIndexRouteImport } from './routes/g/$groupId/index'
 import { Route as LoginKakaoLogin_callbackRouteImport } from './routes/login/kakao/login_callback'
 
 const IndexRoute = IndexRouteImport.update({
@@ -47,6 +48,11 @@ const LoginTestRoute = LoginTestRouteImport.update({
   path: '/login/test',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GGroupIdIndexRoute = GGroupIdIndexRouteImport.update({
+  id: '/g/$groupId/',
+  path: '/g/$groupId/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LoginKakaoLogin_callbackRoute =
   LoginKakaoLogin_callbackRouteImport.update({
     id: '/login/kakao/login_callback',
@@ -62,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/login/test': typeof LoginTestRoute
   '/login/kakao/login_callback': typeof LoginKakaoLogin_callbackRoute
+  '/g/$groupId/': typeof GGroupIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -71,6 +78,7 @@ export interface FileRoutesByTo {
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/login/test': typeof LoginTestRoute
   '/login/kakao/login_callback': typeof LoginKakaoLogin_callbackRoute
+  '/g/$groupId': typeof GGroupIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -81,6 +89,7 @@ export interface FileRoutesById {
   '/groups/$groupId': typeof GroupsGroupIdRoute
   '/login/test': typeof LoginTestRoute
   '/login/kakao/login_callback': typeof LoginKakaoLogin_callbackRoute
+  '/g/$groupId/': typeof GGroupIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -92,6 +101,7 @@ export interface FileRouteTypes {
     | '/groups/$groupId'
     | '/login/test'
     | '/login/kakao/login_callback'
+    | '/g/$groupId/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -101,6 +111,7 @@ export interface FileRouteTypes {
     | '/groups/$groupId'
     | '/login/test'
     | '/login/kakao/login_callback'
+    | '/g/$groupId'
   id:
     | '__root__'
     | '/'
@@ -110,6 +121,7 @@ export interface FileRouteTypes {
     | '/groups/$groupId'
     | '/login/test'
     | '/login/kakao/login_callback'
+    | '/g/$groupId/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -120,6 +132,7 @@ export interface RootRouteChildren {
   GroupsGroupIdRoute: typeof GroupsGroupIdRoute
   LoginTestRoute: typeof LoginTestRoute
   LoginKakaoLogin_callbackRoute: typeof LoginKakaoLogin_callbackRoute
+  GGroupIdIndexRoute: typeof GGroupIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -166,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginTestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/g/$groupId/': {
+      id: '/g/$groupId/'
+      path: '/g/$groupId'
+      fullPath: '/g/$groupId/'
+      preLoaderRoute: typeof GGroupIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/login/kakao/login_callback': {
       id: '/login/kakao/login_callback'
       path: '/login/kakao/login_callback'
@@ -184,6 +204,7 @@ const rootRouteChildren: RootRouteChildren = {
   GroupsGroupIdRoute: GroupsGroupIdRoute,
   LoginTestRoute: LoginTestRoute,
   LoginKakaoLogin_callbackRoute: LoginKakaoLogin_callbackRoute,
+  GGroupIdIndexRoute: GGroupIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

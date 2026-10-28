@@ -5,6 +5,7 @@ import {
 	deleteGroupFavorite,
 	updateGroup,
 	updateGroupPolicy,
+	updateGroupApp,
 	updateGroupRegion,
 } from '@/modules/api/group/group';
 import { useModalStore } from '@/modules/stores/client/modal';
@@ -12,6 +13,7 @@ import { authQueries } from '@/modules/stores/server/auth/queries';
 import { mapQueries } from '@/modules/stores/server/map/queries';
 import type { GroupInfoPayload, GroupPolicy, GroupRegionPayload, GroupSettings } from '@/types/GroupSettings';
 import { getErrorMessage } from '@/utils';
+import { getIconLetter, renderAppIconPng } from '@/utils/appIcon';
 import { groupQueries } from './queries';
 
 export const FAVORITE_ACTION = { SET: 'SET', CLEAR: 'CLEAR' } as const;
@@ -143,6 +145,38 @@ export const useUpdateGroupRegion = (groupId: number) => {
 			openModal({
 				type: ModalType.ALERT,
 				message: getErrorMessage(error.response?.data, '활동 지역 저장에 실패했습니다.'),
+			}),
+	});
+};
+
+/** 전용 앱 이름·대표 색 — 아이콘(첫 글자 + 대표 색)을 다시 그려 함께 올린다 */
+export const useUpdateGroupApp = (groupId: number) => {
+	const queryClient = useQueryClient();
+	const openModal = useModalStore(state => state.actions.openModal);
+
+	return useMutation({
+		mutationFn: async (params: { appName: string | null; themeColor: string; groupName: string | null }) => {
+			const iconPng = await renderAppIconPng({
+				letter: getIconLetter(params.appName ?? params.groupName),
+				color: params.themeColor,
+			});
+			return updateGroupApp({ groupId, branding: { appName: params.appName, themeColor: params.themeColor, iconPng } });
+		},
+		onSuccess: (settings: GroupSettings) => {
+			queryClient.setQueryData(groupQueries.settings(groupId).queryKey, settings);
+			queryClient.setQueryData(groupQueries.detail(groupId).queryKey, prev =>
+				prev
+					? {
+							...prev,
+							group: { ...prev.group, appName: settings.appName, appThemeColor: settings.appThemeColor },
+						}
+					: prev,
+			);
+		},
+		onError: error =>
+			openModal({
+				type: ModalType.ALERT,
+				message: getErrorMessage(error.response?.data, '전용 앱 설정에 실패했습니다.'),
 			}),
 	});
 };

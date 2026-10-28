@@ -66,3 +66,12 @@ export const createGroupJoinRejection = async (params: RejectionParams): Promise
 		rejectReason: params.rejectReason || null,
 	});
 };
+
+/** 시스템 관리자: 모임 전용 앱 켜기/끄기 — 켤 때 기본 아이콘(512px PNG base64)을 함께 올린다 */
+export const updateAdminGroupApp = async (params: {
+	groupId: number;
+	enabled: boolean;
+	iconPng: string | null;
+}): Promise<void> => {
+	await adminApi.patch(`/api/admin/groups/${params.groupId}/app`, { enabled: params.enabled, iconPng: params.iconPng });
+};

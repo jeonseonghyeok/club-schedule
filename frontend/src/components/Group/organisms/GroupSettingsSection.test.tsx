@@ -24,6 +24,9 @@ const settings: GroupSettings = {
 	regionName: null,
 	latitude: null,
 	longitude: null,
+	appEnabled: false,
+	appName: null,
+	appThemeColor: null,
 	activeMemberCount: 17,
 	policy: {
 		minRoleToCreate: 'LEADER',

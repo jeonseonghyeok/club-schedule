@@ -8,8 +8,9 @@ import type { GroupSettings } from '@/types/GroupSettings';
 import { cn } from '@/utils';
 import { APP_COLOR_PRESETS, DEFAULT_APP_COLOR, getGroupAppPath, getIconLetter } from '@/utils/appIcon';
 
-// 백엔드 group.app_name VARCHAR(30)
+// 백엔드 group.app_name VARCHAR(30), app_short_name VARCHAR(12)
 const APP_NAME_MAX = 30;
+const APP_SHORT_NAME_MAX = 12;
 
 interface Props {
 	groupId: number;
@@ -20,21 +21,32 @@ interface Props {
 export const GroupAppForm = (props: Props) => {
 	const { groupId, settings } = props;
 	const nameId = useId();
+	const shortNameId = useId();
 	const colorId = useId();
 	const [appName, setAppName] = useState(settings.appName ?? '');
+	const [appShortName, setAppShortName] = useState(settings.appShortName ?? '');
 	const [color, setColor] = useState(settings.appThemeColor ?? DEFAULT_APP_COLOR);
 	const openModal = useModalStore(state => state.actions.openModal);
 	const { mutate: save, isPending } = useUpdateGroupApp(groupId);
 	const appPath = getGroupAppPath(groupId);
 	const appUrl = `${window.location.origin}${appPath}`;
 	const trimmedName = appName.trim();
+	const trimmedShortName = appShortName.trim();
+	const homeScreenName = trimmedShortName || (trimmedName || settings.name).slice(0, APP_SHORT_NAME_MAX);
 	const isUnchanged =
-		trimmedName === (settings.appName ?? '') && color.toLowerCase() === (settings.appThemeColor ?? DEFAULT_APP_COLOR);
+		trimmedName === (settings.appName ?? '') &&
+		trimmedShortName === (settings.appShortName ?? '') &&
+		color.toLowerCase() === (settings.appThemeColor ?? DEFAULT_APP_COLOR);
 
 	const submit = (event: FormEvent<HTMLFormElement>) => {
 		event.preventDefault();
 		save(
-			{ appName: trimmedName || null, themeColor: color.toLowerCase(), groupName: settings.name },
+			{
+				appName: trimmedName || null,
+				appShortName: trimmedShortName || null,
+				themeColor: color.toLowerCase(),
+				groupName: settings.name,
+			},
 			{ onSuccess: () => openModal({ type: ModalType.ALERT, message: '전용 앱 설정이 저장되었습니다.' }) },
 		);
 	};
@@ -76,7 +88,26 @@ export const GroupAppForm = (props: Props) => {
 					onChange={event => setAppName(event.target.value)}
 					className="rounded-lg border border-gray-300 px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-brand-600 sm:text-sm"
 				/>
-				<p className="text-xs text-gray-500">비워 두면 모임 이름을 씁니다. 홈 화면 아이콘 아래에 보이는 이름입니다.</p>
+				<p className="text-xs text-gray-500">
+					앱 화면 위쪽과 설치 창에 보이는 이름입니다. 비워 두면 모임 이름을 씁니다.
+				</p>
+			</div>
+			<div className="flex flex-col gap-1">
+				<label htmlFor={shortNameId} className="text-sm font-medium text-gray-800">
+					홈 화면 이름
+				</label>
+				<input
+					id={shortNameId}
+					type="text"
+					value={appShortName}
+					maxLength={APP_SHORT_NAME_MAX}
+					placeholder={(trimmedName || settings.name).slice(0, APP_SHORT_NAME_MAX)}
+					onChange={event => setAppShortName(event.target.value)}
+					className="w-56 rounded-lg border border-gray-300 px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-brand-600 sm:text-sm"
+				/>
+				<p className="text-xs text-gray-500">
+					아이콘 아래에 보이는 짧은 이름({APP_SHORT_NAME_MAX}자까지). 지금: <strong>{homeScreenName}</strong>
+				</p>
 			</div>
 			<fieldset className="flex flex-col gap-2">
 				<legend className="mb-1 text-sm font-medium text-gray-800">대표 색</legend>

@@ -8,6 +8,7 @@ const group = (groupId: number): Group => ({
 	leaderUserKey: null,
 	capacity: 10,
 	currentMemberCount: 3,
+	appEnabled: null,
 });
 
 describe('group utils', () => {

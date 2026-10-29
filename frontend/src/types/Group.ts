@@ -6,6 +6,8 @@ export interface Group {
 	readonly leaderUserKey: number | null;
 	readonly capacity: number | null;
 	readonly currentMemberCount: number | null;
+	/** 모임 전용 앱(/g/{groupId}/) 제공 여부 */
+	readonly appEnabled: boolean | null;
 }
 
 /** GET /api/groups/me 항목 — 내 모임에만 있는 값이 더 있다 */

@@ -26,6 +26,7 @@ const settings: GroupSettings = {
 	longitude: null,
 	appEnabled: false,
 	appName: null,
+	appShortName: null,
 	appThemeColor: null,
 	activeMemberCount: 17,
 	policy: {

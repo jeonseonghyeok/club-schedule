@@ -30,6 +30,8 @@ export interface GroupSettings {
 	readonly longitude: number | null;
 	readonly appEnabled: boolean;
 	readonly appName: string | null;
+	/** 홈 화면 아이콘 아래 이름(12자) — 없으면 앱 이름 앞부분 */
+	readonly appShortName: string | null;
 	readonly appThemeColor: string | null;
 	readonly activeMemberCount: number;
 	readonly policy: GroupPolicy;
@@ -54,6 +56,7 @@ export interface GroupRegionPayload {
 /** PUT /api/groups/{groupId}/app — 리더·매니저, 전용 앱이 켜진 모임만 */
 export interface GroupAppBrandingPayload {
 	readonly appName: string | null;
+	readonly appShortName: string | null;
 	readonly themeColor: string;
 	/** 512px PNG base64(화면이 그린 아이콘) */
 	readonly iconPng: string;

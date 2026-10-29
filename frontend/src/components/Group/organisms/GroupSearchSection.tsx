@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import { useId, useState } from 'react';
 import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
+import { GroupAppBadge } from '@/components/Group/atoms/GroupAppBadge';
 import { Icon } from '@/components/common/atoms/Icon';
 import { SectionCard } from '@/components/common/molecules/SectionCard';
 import { useDebouncedValue } from '@/hooks/useDebouncedValue';
@@ -37,7 +38,10 @@ export const GroupSearchSection = () => {
 							className="-mx-2 flex items-center gap-3 rounded-xl px-2 py-3 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-brand-600"
 						>
 							<span className="min-w-0 flex-1">
-								<span className="block truncate font-semibold text-gray-900">{getGroupName(group)}</span>
+								<span className="flex items-center gap-1.5">
+									<span className="truncate font-semibold text-gray-900">{getGroupName(group)}</span>
+									{group.appEnabled && <GroupAppBadge />}
+								</span>
 								<span className="mt-0.5 block truncate text-sm text-gray-500">
 									{getDescriptionPreview(group.description)}
 								</span>

@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router';
 import { Button } from '@/components/common/atoms/Button';
 import { Icon } from '@/components/common/atoms/Icon';
 import { FavoriteToggle } from '@/components/Group/organisms/FavoriteToggle';
@@ -64,6 +65,15 @@ export const GroupHero = (props: Props) => {
 					)}
 					정원 {group.capacity ?? 0}명
 				</p>
+				{!isCompact && group.appEnabled && (
+					<Link
+						to="/g/$groupId/"
+						params={{ groupId: String(groupId) }}
+						className="mt-1 inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-brand-600"
+					>
+						전용 앱으로 보기 ›
+					</Link>
+				)}
 			</div>
 			{viewer.isMember && <FavoriteToggle groupId={groupId} viewer={viewer} />}
 			{!viewer.isMember && viewer.userKey !== null && <JoinAction groupId={groupId} userKey={viewer.userKey} />}

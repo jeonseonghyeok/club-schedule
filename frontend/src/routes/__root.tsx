@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { createRootRouteWithContext, Outlet } from '@tanstack/react-router';
 import { lazy, Suspense } from 'react';
 import { ModalHost } from '@/components/layout/ModalHost';
+import { OfflineBanner } from '@/components/layout/OfflineBanner';
 import { ToastHost } from '@/components/layout/ToastHost';
 import { useAppBackNavigation } from '@/hooks/useAppBackNavigation';
 
@@ -34,6 +35,7 @@ const RootLayout = () => {
 			<Outlet />
 			<ModalHost />
 			<ToastHost />
+			<OfflineBanner />
 			<Suspense>
 				<Devtools />
 			</Suspense>

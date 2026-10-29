@@ -8,7 +8,9 @@
     </update>
 
     <update id="updateBranding">
-        UPDATE `group` SET app_name = #{appName}, app_theme_color = #{themeColor} WHERE group_id = #{groupId}
+        UPDATE `group`
+        SET app_name = #{appName}, app_short_name = #{appShortName}, app_theme_color = #{themeColor}
+        WHERE group_id = #{groupId}
     </update>
 
     <insert id="upsertIcon">

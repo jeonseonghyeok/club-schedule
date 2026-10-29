@@ -45,16 +45,18 @@ public class GroupAppController {
         return ResponseEntity.ok(Map.of("groupId", groupId, "appEnabled", enabled));
     }
 
-    /** 리더·매니저: 앱 이름·대표 색·아이콘 — Body {appName, themeColor, iconPng?}. 저장 후 설정 전체를 돌려준다 */
+    /** 리더·매니저: 앱 이름·홈 화면 이름·대표 색·아이콘 — Body {appName, appShortName, themeColor, iconPng?}. 저장 후 설정 전체를 돌려준다 */
     @PreAuthorize("@groupManageService.isManager(#groupId, principal.userKey)")
     @PutMapping("/api/groups/{groupId}/app")
     public ResponseEntity<?> updateBranding(@PathVariable Long groupId, @RequestBody Map<String, Object> body) {
         Object name = body.get("appName");
+        Object shortName = body.get("appShortName");
         Object color = body.get("themeColor");
         Object icon = body.get("iconPng");
         try {
             if (!groupAppService.updateBranding(groupId,
                     name != null ? name.toString() : null,
+                    shortName != null ? shortName.toString() : null,
                     color != null ? color.toString() : null,
                     icon != null ? icon.toString() : null)) {
                 return ApiErrors.notFound("모임을 찾을 수 없습니다.");

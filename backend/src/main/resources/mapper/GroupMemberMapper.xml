@@ -31,6 +31,7 @@
                g.auto_approve as autoApprove,
                g.allow_self_nickname as allowSelfNickname,
                g.region_name as regionName,
+               g.app_enabled as appEnabled,
                m.nickname as myNickname,
                g.schedule_policy as schedulePolicy,
                g.created_at as createdAt,

@@ -14,6 +14,8 @@ public class WhitelistConfig {
      * {groupId} 는 숫자만 — /api/groups/me 같은 로그인 전용 경로와 겹치지 않게 한다.
      */
     public static final String[] PUBLIC_GET = {
+        // 로그인 여부 확인 — 비회원은 204(본문 없음). 401 로 두면 비회원 화면마다 콘솔 오류가 남는다
+        "/api/auth/me",
         "/api/groups/recommended",
         "/api/groups/{groupId:[0-9]+}",
         "/api/groups/{groupId:[0-9]+}/schedules",

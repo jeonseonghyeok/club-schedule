@@ -79,7 +79,7 @@
 ## 로그인 API
 
 ### GET /api/auth/me
-로그인 사용자 정보. `{"userKey", "nickname", "roles": [{"authority": "ROLE_USER"}], "isAdmin", "favoriteGroupId": Number|null}`
+로그인 사용자 정보. 공개 경로 — 비회원(토큰 없음·만료)은 **204**(본문 없음). `{"userKey", "nickname", "roles": [{"authority": "ROLE_USER"}], "isAdmin", "favoriteGroupId": Number|null}`
 — `favoriteGroupId` 가 있으면 메인 화면이 그 모임으로 이동한다(`/?list=1` 이면 이동하지 않음).
 
 ### POST /api/login/kakao
@@ -343,12 +343,13 @@ ACTIVE 면 `KICKED` 로 바꾸고, 이미 탈퇴(WITHDRAWN)한 회원이면 상�
 | Method | Path | 권한 | 설명 |
 |---|---|---|---|
 | PATCH | `/api/admin/groups/{groupId}/app` | 시스템 관리자 | Body `{enabled, iconPng?}` — 켜기/끄기. `iconPng` 는 512px PNG base64(화면이 그림) |
-| PUT | `/api/groups/{groupId}/app` | 리더·매니저 | Body `{appName?(≤30), themeColor(#RRGGBB), iconPng?}`. 꺼진 모임은 409. 응답: settings |
+| PUT | `/api/groups/{groupId}/app` | 리더·매니저 | Body `{appName?(≤30), appShortName?(≤12, 홈 화면 아이콘 아래 이름), themeColor(#RRGGBB), iconPng?}`. 꺼진 모임은 409. 응답: settings |
 | GET | `/api/groups/{groupId}/app-manifest` | 공개 | 웹 앱 매니페스트(`application/manifest+json`). 꺼져 있으면 404 |
 | GET | `/api/groups/{groupId}/app-icon.png` | 공개 | 아이콘 PNG(30일 캐시, 매니페스트의 `?v=` 로 갱신) |
 | GET | `/api/groups/{groupId}/og?app=` | 공개 | 링크 미리보기 `<meta property="og:…">` 조각(text/html). 웹 nginx 가 `/g/{id}/`·`/groups/{id}` 의 index.html 에 SSI 로 넣는다. 절대 주소는 `X-Forwarded-Host/Proto` 기준 |
 
-모임 상세(`GET /api/groups/{id}`)의 `group` 과 settings 에 `appEnabled`, `appName`, `appThemeColor` 가 포함된다.
+모임 상세(`GET /api/groups/{id}`)의 `group` 과 settings 에 `appEnabled`, `appName`, `appShortName`, `appThemeColor` 가 포함된다.
+`GET /api/groups/me`·`/api/groups/recommended` 항목에도 `appEnabled` 가 있다. 매니페스트 `short_name` 은 `appShortName`, 없으면 이름 앞 12자.
 
 ---
 

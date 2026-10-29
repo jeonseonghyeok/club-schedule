@@ -80,6 +80,7 @@ public class GroupManageService {
         settings.put("regionName", group.getRegionName());
         settings.put("appEnabled", Boolean.TRUE.equals(group.getAppEnabled()));
         settings.put("appName", group.getAppName());
+        settings.put("appShortName", group.getAppShortName());
         settings.put("appThemeColor", group.getAppThemeColor());
         settings.put("latitude", group.getLatitude());
         settings.put("longitude", group.getLongitude());

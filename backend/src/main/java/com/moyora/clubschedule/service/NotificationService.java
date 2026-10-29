@@ -19,20 +19,21 @@ public class NotificationService {
         notificationMapper.insertNotification(notification);
     }
 
-    public List<NotificationListItem> listRecent(Long userKey, int limit) {
+    /** groupId 가 있으면 그 모임 알림만 */
+    public List<NotificationListItem> listRecent(Long userKey, int limit, Long groupId) {
         int safeLimit = Math.min(Math.max(limit, 1), MAX_LIST_SIZE);
-        return notificationMapper.selectRecentByUserKey(userKey, safeLimit);
+        return notificationMapper.selectRecentByUserKey(userKey, safeLimit, groupId);
     }
 
-    public int unreadCount(Long userKey) {
-        return notificationMapper.countUnreadByUserKey(userKey);
+    public int unreadCount(Long userKey, Long groupId) {
+        return notificationMapper.countUnreadByUserKey(userKey, groupId);
     }
 
     public boolean markRead(Long notificationId, Long userKey) {
         return notificationMapper.markRead(notificationId, userKey) > 0;
     }
 
-    public int markAllRead(Long userKey) {
-        return notificationMapper.markAllRead(userKey);
+    public int markAllRead(Long userKey, Long groupId) {
+        return notificationMapper.markAllRead(userKey, groupId);
     }
 }

@@ -50,12 +50,29 @@
         LEFT JOIN group_join_request gjr ON n.source_table = 'GROUP_JOIN_REQUEST' AND gjr.request_id = n.source_id
         LEFT JOIN group_schedule gs      ON n.source_table = 'SCHEDULE'           AND gs.schedule_id = n.source_id
         WHERE n.user_key = #{userKey}
+        <if test="groupId != null">
+            AND (gjr.group_id = #{groupId} OR gs.group_id = #{groupId})
+        </if>
         ORDER BY n.created_at DESC, n.notification_id DESC
         LIMIT #{limit}
     </select>
 
+    <!-- groupId 가 있으면 그 모임 알림만(모임 전용 앱) -->
+    <sql id="groupScope">
+        <if test="groupId != null">
+            AND (
+                (n.source_table = 'GROUP_JOIN_REQUEST'
+                    AND EXISTS (SELECT 1 FROM group_join_request gjr WHERE gjr.request_id = n.source_id AND gjr.group_id = #{groupId}))
+                OR (n.source_table = 'SCHEDULE'
+                    AND EXISTS (SELECT 1 FROM group_schedule gs WHERE gs.schedule_id = n.source_id AND gs.group_id = #{groupId}))
+            )
+        </if>
+    </sql>
+
     <select id="countUnreadByUserKey" resultType="int">
-        SELECT COUNT(*) FROM notification WHERE user_key = #{userKey} AND is_read = 0
+        SELECT COUNT(*) FROM notification n
+        WHERE n.user_key = #{userKey} AND n.is_read = 0
+        <include refid="groupScope"/>
     </select>
 
     <update id="markRead">
@@ -64,7 +81,9 @@
     </update>
 
     <update id="markAllRead">
-        UPDATE notification SET is_read = 1 WHERE user_key = #{userKey} AND is_read = 0
+        UPDATE notification n SET n.is_read = 1
+        WHERE n.user_key = #{userKey} AND n.is_read = 0
+        <include refid="groupScope"/>
     </update>
 
 </mapper>

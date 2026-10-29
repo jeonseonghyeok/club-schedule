@@ -317,10 +317,10 @@ ACTIVE 면 `KICKED` 로 바꾸고, 이미 탈퇴(WITHDRAWN)한 회원이면 상�
 
 | Method | Path | 설명 |
 |---|---|---|
-| GET | `/api/notifications?limit=` | 최근 N건(기본 20, 1~30) — `notificationId, sourceTable, sourceId, category, title, content, isRead, createdAt, groupId, targetUrl` |
-| GET | `/api/notifications/unread-count` | `{count}` |
+| GET | `/api/notifications?limit=&groupId=` | 최근 N건(기본 20, 1~30). `groupId` 를 주면 그 모임 알림만(모임 전용 앱) — `notificationId, sourceTable, sourceId, category, title, content, isRead, createdAt, groupId, targetUrl` |
+| GET | `/api/notifications/unread-count?groupId=` | `{count}` |
 | PATCH | `/api/notifications/{notificationId}/read` | 단건 읽음(본인 것만, 멱등) |
-| PATCH | `/api/notifications/read-all` | `{updated}` |
+| PATCH | `/api/notifications/read-all?groupId=` | `{updated}` — `groupId` 를 주면 그 모임 알림만 |
 
 `groupId`/`targetUrl` 은 `source_table`+`source_id` 로 서버가 계산한다. 모임 생성 신청 알림은 둘 다 `null`.
 
@@ -346,6 +346,7 @@ ACTIVE 면 `KICKED` 로 바꾸고, 이미 탈퇴(WITHDRAWN)한 회원이면 상�
 | PUT | `/api/groups/{groupId}/app` | 리더·매니저 | Body `{appName?(≤30), themeColor(#RRGGBB), iconPng?}`. 꺼진 모임은 409. 응답: settings |
 | GET | `/api/groups/{groupId}/app-manifest` | 공개 | 웹 앱 매니페스트(`application/manifest+json`). 꺼져 있으면 404 |
 | GET | `/api/groups/{groupId}/app-icon.png` | 공개 | 아이콘 PNG(30일 캐시, 매니페스트의 `?v=` 로 갱신) |
+| GET | `/api/groups/{groupId}/og?app=` | 공개 | 링크 미리보기 `<meta property="og:…">` 조각(text/html). 웹 nginx 가 `/g/{id}/`·`/groups/{id}` 의 index.html 에 SSI 로 넣는다. 절대 주소는 `X-Forwarded-Host/Proto` 기준 |
 
 모임 상세(`GET /api/groups/{id}`)의 `group` 과 settings 에 `appEnabled`, `appName`, `appThemeColor` 가 포함된다.
 

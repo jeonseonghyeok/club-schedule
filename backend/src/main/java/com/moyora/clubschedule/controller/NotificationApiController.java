@@ -28,15 +28,16 @@ public class NotificationApiController {
 
     private final NotificationService notificationService;
 
-    /** 내 알림 목록 — 최신순, 페이지네이션 없이 최근 N건(기본 20, 최대 30) */
+    /** 내 알림 목록 — 최신순, 페이지네이션 없이 최근 N건(기본 20, 최대 30). groupId 가 있으면 그 모임 알림만 */
     @GetMapping
     public ResponseEntity<?> list(
             @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) Long groupId,
             @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
         if (userKey == null) return ApiErrors.unauthorized();
 
-        List<NotificationListItem> items = notificationService.listRecent(userKey, limit != null ? limit : 20);
+        List<NotificationListItem> items = notificationService.listRecent(userKey, limit != null ? limit : 20, groupId);
         List<Map<String, Object>> result = new ArrayList<>();
         for (NotificationListItem n : items) result.add(toMap(n));
         return ResponseEntity.ok(result);
@@ -44,10 +45,12 @@ public class NotificationApiController {
 
     /** 안 읽은 알림 수 */
     @GetMapping("/unread-count")
-    public ResponseEntity<?> unreadCount(@AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> unreadCount(
+            @RequestParam(required = false) Long groupId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
         if (userKey == null) return ApiErrors.unauthorized();
-        return ResponseEntity.ok(Map.of("count", notificationService.unreadCount(userKey)));
+        return ResponseEntity.ok(Map.of("count", notificationService.unreadCount(userKey, groupId)));
     }
 
     /** 단건 읽음 처리 */
@@ -63,10 +66,12 @@ public class NotificationApiController {
 
     /** 전체 읽음 처리 */
     @PatchMapping("/read-all")
-    public ResponseEntity<?> markAllRead(@AuthenticationPrincipal CustomUserDetails userDetails) {
+    public ResponseEntity<?> markAllRead(
+            @RequestParam(required = false) Long groupId,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
         Long userKey = userKey(userDetails);
         if (userKey == null) return ApiErrors.unauthorized();
-        int updated = notificationService.markAllRead(userKey);
+        int updated = notificationService.markAllRead(userKey, groupId);
         return ResponseEntity.ok(Map.of("updated", updated));
     }
 

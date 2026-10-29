@@ -7,6 +7,7 @@ import { useModalStore } from '@/modules/stores/client/modal';
 import { useUpdateMyNickname } from '@/modules/stores/server/member/mutations';
 import type { MyGroup } from '@/types/Group';
 import { getGroupName } from '@/utils/group';
+import { NICKNAME_LOCKED_MESSAGE } from '@/utils/member';
 
 // 백엔드 group_member.nickname VARCHAR(30)
 const NICKNAME_MAX = 30;
@@ -56,7 +57,7 @@ const GroupNicknameRow = (props: RowProps) => {
 						</Button>
 					)}
 				</div>
-				{!isEditable && <p className="text-xs text-gray-500">이 모임은 리더만 닉네임을 바꿀 수 있습니다.</p>}
+				{!isEditable && <p className="text-xs text-gray-500">{NICKNAME_LOCKED_MESSAGE}</p>}
 			</form>
 		</li>
 	);

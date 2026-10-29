@@ -35,6 +35,7 @@ import { VISIBILITY_TYPE } from '@/types/GroupDetail';
 import type { GroupMember } from '@/types/Member';
 import { getGroupAppPath } from '@/utils/appIcon';
 import { getGroupName } from '@/utils/group';
+import { NICKNAME_LOCKED_MESSAGE } from '@/utils/member';
 
 const GROUP_TAB_KEYS = ['home', 'schedule', 'members', 'manage'] as const;
 type GroupTabKey = (typeof GROUP_TAB_KEYS)[number];
@@ -205,7 +206,7 @@ const GroupPage = () => {
 					onClose={() => setMyInfo(null)}
 				>
 					{/* 모임이 막아둬도 리더는 자기 닉네임을 바꿀 수 있다 */}
-					{(viewer.isLeader || detail.group.allowSelfNickname) && (
+					{viewer.isLeader || detail.group.allowSelfNickname ? (
 						<MyNicknameForm
 							groupId={groupId}
 							groupNickname={myInfo.groupNickname}
@@ -214,6 +215,8 @@ const GroupPage = () => {
 								openModal({ type: ModalType.ALERT, message: '모임 닉네임이 저장되었습니다.' });
 							}}
 						/>
+					) : (
+						<p className="mt-4 border-t border-gray-100 pt-3 text-sm text-gray-500">{NICKNAME_LOCKED_MESSAGE}</p>
 					)}
 				</MemberInfoDialog>
 			)}

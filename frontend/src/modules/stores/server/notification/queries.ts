@@ -3,16 +3,19 @@ import { getNotifications, getUnreadNotificationCount } from '@/modules/api/noti
 
 const RECENT_NOTIFICATION_LIMIT = 20;
 
+/** groupId: null 이면 내 모든 알림(모요라), 있으면 그 모임 알림(모임 전용 앱) */
 export const notificationQueries = {
 	all: () => ['notifications'],
-	recent: () =>
+	recentAll: () => [...notificationQueries.all(), 'recent'],
+	unreadCountAll: () => [...notificationQueries.all(), 'unreadCount'],
+	recent: (groupId: number | null) =>
 		queryOptions({
-			queryKey: [...notificationQueries.all(), 'recent'],
-			queryFn: () => getNotifications(RECENT_NOTIFICATION_LIMIT),
+			queryKey: [...notificationQueries.recentAll(), groupId],
+			queryFn: () => getNotifications({ limit: RECENT_NOTIFICATION_LIMIT, groupId }),
 		}),
-	unreadCount: () =>
+	unreadCount: (groupId: number | null) =>
 		queryOptions({
-			queryKey: [...notificationQueries.all(), 'unreadCount'],
-			queryFn: getUnreadNotificationCount,
+			queryKey: [...notificationQueries.unreadCountAll(), groupId],
+			queryFn: () => getUnreadNotificationCount(groupId),
 		}),
 };

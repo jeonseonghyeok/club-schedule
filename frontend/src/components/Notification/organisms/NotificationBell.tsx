@@ -2,12 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useRouter } from '@tanstack/react-router';
 import { useEffect, useId, useRef, useState } from 'react';
 import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
+import { Icon } from '@/components/common/atoms/Icon';
 import { useReadAllNotifications, useReadNotification } from '@/modules/stores/server/notification/mutations';
 import { notificationQueries } from '@/modules/stores/server/notification/queries';
+import { NOTIFICATION_SOURCE } from '@/types/Notification';
 import type { Notification, NotificationCategory } from '@/types/Notification';
 import { cn } from '@/utils';
+import { getGroupAppPath } from '@/utils/appIcon';
 import { formatDateTime } from '@/utils/date';
-import { Icon } from '@/components/common/atoms/Icon';
 
 const CATEGORY_ICON = { APPROVE: '✅', REJECT: '❌', NOTICE: '📢' } as const satisfies Record<
 	NotificationCategory,
@@ -54,16 +56,34 @@ const NotificationItem = (props: ItemProps) => {
 	);
 };
 
-export const NotificationBell = () => {
+/**
+ * 알림을 누르면 갈 화면. 모임 전용 앱 안에서는 그 모임 알림을 앱 안(/g/{id}/)으로 연다 — 앱 범위를 벗어나면
+ * 설치한 앱에서 브라우저 막대가 뜬다. 그 밖에는 서버가 준 모요라 경로(/groups/{id}).
+ */
+export const getNotificationTarget = (notification: Notification, appGroupId: number | null): string | null => {
+	if (appGroupId !== null && notification.groupId === appGroupId) {
+		const tab = notification.sourceTable === NOTIFICATION_SOURCE.SCHEDULE ? 'schedule' : 'home';
+		return `${getGroupAppPath(appGroupId)}?tab=${tab}`;
+	}
+	return notification.targetUrl;
+};
+
+interface Props {
+	/** 모임 전용 앱: 이 모임 알림만 보이고, 누르면 앱 안에서 연다 */
+	scopeGroupId?: number;
+}
+
+export const NotificationBell = (props: Props) => {
+	const scopeGroupId = props.scopeGroupId ?? null;
 	const router = useRouter();
 	const [isOpen, setIsOpen] = useState(false);
 	const [filter, setFilter] = useState<Filter>(FILTER.ALL);
 	const panelId = useId();
 	const containerRef = useRef<HTMLDivElement>(null);
-	const { data: unread } = useQuery({ ...notificationQueries.unreadCount() });
-	const recentQuery = useQuery({ ...notificationQueries.recent(), enabled: isOpen });
+	const { data: unread } = useQuery({ ...notificationQueries.unreadCount(scopeGroupId) });
+	const recentQuery = useQuery({ ...notificationQueries.recent(scopeGroupId), enabled: isOpen });
 	const { mutate: readNotification } = useReadNotification();
-	const { mutate: readAll } = useReadAllNotifications();
+	const { mutate: readAll } = useReadAllNotifications(scopeGroupId);
 	const unreadCount = unread?.count ?? 0;
 
 	// 바깥 클릭·Esc 로 닫는다
@@ -84,10 +104,10 @@ export const NotificationBell = () => {
 	}, [isOpen]);
 
 	const select = (notification: Notification) => {
-		if (!notification.isRead) readNotification(notification.notificationId);
+		if (!notification.isRead) readNotification(notification);
 		setIsOpen(false);
-		// targetUrl 은 서버가 주는 화면 경로(/groups/3) — 라우터 기록에 넣어 SPA 안에서 이동한다
-		if (notification.targetUrl) router.history.push(notification.targetUrl);
+		const target = getNotificationTarget(notification, scopeGroupId);
+		if (target) router.history.push(target);
 	};
 
 	const renderList = () => {

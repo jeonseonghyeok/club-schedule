@@ -16,29 +16,38 @@ const getViewerRoleLabel = (viewer: GroupViewer): string | null => {
 interface Props {
 	groupId: number;
 	detail: GroupDetail;
-	/** 모임 전용 앱에서는 그 앱의 대표 색으로 머리 글자를 칠한다 */
-	accentColor?: string;
+	/** full: 머리 글자·이름 포함 / compact: 모임 전용 앱(상단 바에 이름이 이미 있다) — 역할·지역·정원과 버튼만 */
+	variant?: GroupHeroVariant;
 }
+
+export const GROUP_HERO_VARIANT = { FULL: 'full', COMPACT: 'compact' } as const;
+export type GroupHeroVariant = (typeof GROUP_HERO_VARIANT)[keyof typeof GROUP_HERO_VARIANT];
 
 /** 모임 화면 머리 카드: 이름·활동 지역·정원·내 역할 + 우선모임 별 / 가입 버튼 */
 export const GroupHero = (props: Props) => {
-	const { groupId, detail, accentColor } = props;
+	const { groupId, detail, variant = GROUP_HERO_VARIANT.FULL } = props;
+	const isCompact = variant === GROUP_HERO_VARIANT.COMPACT;
 	const { group, viewer } = detail;
 	const roleLabel = getViewerRoleLabel(viewer);
 	const promptLogin = useLoginPrompt();
 
 	return (
 		<section aria-label="모임 정보" className="flex items-center gap-3 rounded-2xl bg-white p-4 ring-1 ring-gray-200">
-			<span
-				aria-hidden="true"
-				style={accentColor ? { backgroundColor: accentColor } : undefined}
-				className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-700 text-lg font-bold text-white"
-			>
-				{getGroupName(group).slice(0, 1)}
-			</span>
+			{!isCompact && (
+				<span
+					aria-hidden="true"
+					className="flex size-12 shrink-0 items-center justify-center rounded-xl bg-brand-700 text-lg font-bold text-white"
+				>
+					{getGroupName(group).slice(0, 1)}
+				</span>
+			)}
 			<div className="min-w-0 flex-1">
 				<p className="flex items-center gap-1.5">
-					<span className="truncate text-base font-bold text-gray-900">{getGroupName(group)}</span>
+					{isCompact ? (
+						<span className="text-sm font-semibold text-gray-700">{roleLabel ? '내 역할' : '둘러보는 중'}</span>
+					) : (
+						<span className="truncate text-base font-bold text-gray-900">{getGroupName(group)}</span>
+					)}
 					{roleLabel && (
 						<span className="shrink-0 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-bold text-brand-700">
 							{roleLabel}

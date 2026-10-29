@@ -5,7 +5,7 @@ import { useEffect } from 'react';
 import { z } from 'zod';
 import { buttonClassName } from '@/components/common/atoms/Button';
 import { VisibilityNotice } from '@/components/Group/molecules/VisibilityNotice';
-import { GroupHero } from '@/components/Group/organisms/GroupHero';
+import { GROUP_HERO_VARIANT, GroupHero } from '@/components/Group/organisms/GroupHero';
 import {
 	HomePanel,
 	MANAGE_SECTION_KEYS,
@@ -14,6 +14,7 @@ import {
 	SchedulePanel,
 } from '@/components/Group/organisms/GroupPanels';
 import { GroupAppMePanel } from '@/components/GroupApp/organisms/GroupAppMePanel';
+import { InstallBanner } from '@/components/GroupApp/organisms/InstallBanner';
 import { GROUP_APP_TAB_KEYS, GroupAppShell } from '@/components/layout/GroupAppShell';
 import type { GroupAppTab } from '@/components/layout/GroupAppShell';
 import { ScheduleDialogs } from '@/components/Schedule/organisms/ScheduleDialogs';
@@ -87,7 +88,8 @@ const GroupAppPage = () => {
 			case 'home':
 				return (
 					<>
-						<GroupHero groupId={groupId} detail={detail} accentColor={themeColor} />
+						<InstallBanner groupId={groupId} appName={appName} themeColor={themeColor} />
+						<GroupHero groupId={groupId} detail={detail} variant={GROUP_HERO_VARIANT.COMPACT} />
 						{!viewer.isMember && <VisibilityNotice visibilityType={detail.visibilityType} />}
 						<HomePanel groupId={groupId} detail={detail} />
 					</>

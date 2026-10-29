@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { usePwaStore } from '@/modules/stores/client/pwa';
 
 interface GroupAppHead {
 	groupId: number;
@@ -38,6 +39,10 @@ export const useGroupAppHead = (head: GroupAppHead): void => {
 
 	useEffect(() => {
 		if (!isEnabled) return;
+		// 받아 둔 설치 제안은 모요라(이전 manifest) 것이다 — 그대로 쓰면 엉뚱한 앱이 설치될 수 있어 버리고,
+		// 브라우저가 이 모임 manifest 로 새로 주는 제안을 기다린다. 화면을 떠날 때도 같은 이유로 버린다.
+		const { setInstallPrompt } = usePwaStore.getState().actions;
+		setInstallPrompt(null);
 		const previousTitle = document.title;
 		document.title = appName;
 		const restores = [
@@ -49,6 +54,7 @@ export const useGroupAppHead = (head: GroupAppHead): void => {
 		return () => {
 			document.title = previousTitle;
 			restores.forEach(restore => restore());
+			setInstallPrompt(null);
 		};
 	}, [groupId, appName, themeColor, isEnabled]);
 };

@@ -4,6 +4,8 @@
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 		<meta name="description" content="모임 일정과 참가를 한곳에서 관리하는 앱" />
+		<!-- 모임 화면(/g/{id}/, /groups/{id})만 nginx 가 SSI 로 링크 미리보기(og) 태그를 넣는다. 다른 화면에서는 그냥 주석 -->
+		<!--# include virtual="/__og" -->
 		<meta name="theme-color" content="#1b5a46" />
 		<link rel="icon" href="/favicon.ico" sizes="any" />
 		<link rel="icon" href="/icons/icon.svg" type="image/svg+xml" />

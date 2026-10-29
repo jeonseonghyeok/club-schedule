@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { startBackNavigation } from '@/hooks/useAppBackNavigation';
+import { RouteError, RouteNotFound } from '@/components/layout/RouteError';
 import { usePwaStore } from '@/modules/stores/client/pwa';
 import { routeTree } from '@/routeTree.gen';
 import '@/styles.css';
@@ -25,7 +26,15 @@ if (navigator.standalone === true) {
 	}
 }
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+	defaultOptions: {
+		// 오프라인이어도 요청을 보낸다 — 서비스 워커가 마지막으로 받은 응답을 돌려준다(sw.js).
+		// 기본값(online)은 오프라인에서 요청을 멈춰 화면이 로딩 상태로 굳는다.
+		queries: { networkMode: 'offlineFirst' },
+		// 변경은 오프라인이면 바로 실패시켜 안내한다(멈춘 채 기다리지 않게)
+		mutations: { networkMode: 'always' },
+	},
+});
 
 const router = createRouter({
 	routeTree,
@@ -34,6 +43,9 @@ const router = createRouter({
 	defaultPreloadStaleTime: 0,
 	// 모임 전용 앱의 범위(scope)가 /g/{id}/ 라 끝의 / 를 없애면 앱 범위를 벗어난다
 	trailingSlash: 'preserve',
+	// 기본(영문 "Something went wrong!") 대신 한국어 안내 — 오프라인이면 연결 안내
+	defaultErrorComponent: RouteError,
+	defaultNotFoundComponent: RouteNotFound,
 });
 
 // 뒤로가기 처리를 첫 렌더 전에 시작한다(Android 는 화면이 데이터를 불러오는 동안 누른 뒤로가기도 받는다)

@@ -4,7 +4,7 @@ import { getMe } from '@/modules/api/auth/auth';
 import { getTestAccounts } from '@/modules/api/auth/login';
 import type { AuthMe } from '@/types/Auth';
 
-// 비로그인(401)은 에러가 아니라 "로그인 안 됨" 상태로 다룬다.
+// 비로그인(204, 예전 서버는 401)은 에러가 아니라 "로그인 안 됨" 상태로 다룬다.
 const getMeOrNull = async (): Promise<AuthMe | null> => {
 	try {
 		return await getMe();

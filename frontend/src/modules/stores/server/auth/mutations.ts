@@ -7,6 +7,9 @@ import { getErrorMessage } from '@/utils';
 import type { KakaoLoginRequest } from '@/types/Auth';
 import { authQueries } from './queries';
 
+/** public/sw.js 의 API_CACHE 와 같아야 한다 */
+const API_CACHE_NAME = 'moyora-api-v1';
+
 // 로그인 응답에는 /api/auth/me 의 전체 정보(roles 등)가 없어 캐시를 직접 채울 수 없다.
 // 다른 사용자의 이전 인증 정보가 남지 않도록 비우고, 다음 조회 때 새로 가져오게 한다.
 const AUTH_QUERY_FILTER = { queryKey: authQueries.all() };
@@ -41,7 +44,11 @@ export const useDeleteAuthSession = () => {
 
 	return useMutation({
 		mutationFn: deleteAuthSession,
-		onSuccess: () => queryClient.clear(),
+		onSuccess: () => {
+			queryClient.clear();
+			// 서비스 워커가 오프라인용으로 저장해 둔 내 데이터도 지운다(같은 기기를 다른 사람이 쓸 수 있다)
+			if ('caches' in window) void caches.delete(API_CACHE_NAME);
+		},
 		onError: error =>
 			openModal({ type: ModalType.ALERT, message: getErrorMessage(error.response?.data, '로그아웃에 실패했습니다.') }),
 	});

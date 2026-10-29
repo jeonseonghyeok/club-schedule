@@ -13,7 +13,7 @@ import { authQueries } from '@/modules/stores/server/auth/queries';
 import { mapQueries } from '@/modules/stores/server/map/queries';
 import type { GroupInfoPayload, GroupPolicy, GroupRegionPayload, GroupSettings } from '@/types/GroupSettings';
 import { getErrorMessage } from '@/utils';
-import { getIconLetter, renderAppIconPng } from '@/utils/appIcon';
+import { DEFAULT_APP_COLOR, getIconLetter, renderAppIconPng } from '@/utils/appIcon';
 import { groupQueries } from './queries';
 
 export const FAVORITE_ACTION = { SET: 'SET', CLEAR: 'CLEAR' } as const;
@@ -49,7 +49,25 @@ export const useUpdateGroupInfo = (groupId: number) => {
 	const openModal = useModalStore(state => state.actions.openModal);
 
 	return useMutation({
-		mutationFn: (payload: GroupInfoPayload) => updateGroup({ groupId, payload }),
+		mutationFn: async (payload: GroupInfoPayload) => {
+			const settings = await updateGroup({ groupId, payload });
+			// 앱 이름을 따로 정하지 않은 전용 앱은 아이콘 글자가 모임 이름 첫 글자 — 이름이 바뀌면 다시 그린다
+			const previous = queryClient.getQueryData(groupQueries.settings(groupId).queryKey);
+			if (!settings.appEnabled || settings.appName || previous?.name === settings.name) return settings;
+			const iconPng = await renderAppIconPng({
+				letter: getIconLetter(settings.name),
+				color: settings.appThemeColor ?? DEFAULT_APP_COLOR,
+			});
+			return updateGroupApp({
+				groupId,
+				branding: {
+					appName: null,
+					appShortName: settings.appShortName,
+					themeColor: settings.appThemeColor ?? DEFAULT_APP_COLOR,
+					iconPng,
+				},
+			});
+		},
 		onSuccess: (settings: GroupSettings) => {
 			queryClient.setQueryData(groupQueries.settings(groupId).queryKey, settings);
 			queryClient.setQueryData(groupQueries.detail(groupId).queryKey, prev =>
@@ -155,12 +173,25 @@ export const useUpdateGroupApp = (groupId: number) => {
 	const openModal = useModalStore(state => state.actions.openModal);
 
 	return useMutation({
-		mutationFn: async (params: { appName: string | null; themeColor: string; groupName: string | null }) => {
+		mutationFn: async (params: {
+			appName: string | null;
+			appShortName: string | null;
+			themeColor: string;
+			groupName: string | null;
+		}) => {
 			const iconPng = await renderAppIconPng({
 				letter: getIconLetter(params.appName ?? params.groupName),
 				color: params.themeColor,
 			});
-			return updateGroupApp({ groupId, branding: { appName: params.appName, themeColor: params.themeColor, iconPng } });
+			return updateGroupApp({
+				groupId,
+				branding: {
+					appName: params.appName,
+					appShortName: params.appShortName,
+					themeColor: params.themeColor,
+					iconPng,
+				},
+			});
 		},
 		onSuccess: (settings: GroupSettings) => {
 			queryClient.setQueryData(groupQueries.settings(groupId).queryKey, settings);

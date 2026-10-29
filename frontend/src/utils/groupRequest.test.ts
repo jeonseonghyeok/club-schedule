@@ -20,6 +20,7 @@ const groupLedBy = (leaderUserKey: number): Group => ({
 	leaderUserKey,
 	capacity: 10,
 	currentMemberCount: 1,
+	appEnabled: null,
 });
 
 describe('getGroupRequestBlockReason', () => {

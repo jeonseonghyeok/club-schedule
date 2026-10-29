@@ -49,7 +49,7 @@
     </select>
 
     <select id="findRecentBySchedule" resultType="GroupVo" parameterType="int">
-        SELECT g.group_id, g.name, g.description, g.leader_user_key, g.capacity
+        SELECT g.group_id, g.name, g.description, g.leader_user_key, g.capacity, g.app_enabled
         FROM `group` g
         JOIN (
             SELECT group_id, MAX(created_at) AS latest
@@ -62,7 +62,7 @@
     </select>
 
     <select id="searchByName" resultType="GroupVo" parameterType="string">
-        SELECT group_id, name, description, leader_user_key, capacity
+        SELECT group_id, name, description, leader_user_key, capacity, app_enabled
         FROM `group`
         WHERE name LIKE CONCAT('%', #{q}, '%')
         ORDER BY group_id DESC

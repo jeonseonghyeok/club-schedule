@@ -5,7 +5,6 @@ import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,15 +23,12 @@ public class AuthController {
     private UserService userService;
 
     /**
-     * 로그인 사용자 정보. 토큰이 없거나 유효하지 않으면 JwtAuthenticationFilter 가 먼저 401 을 준다
-     * (이 경로는 화이트리스트가 아니므로 여기까지 오면 항상 인증된 요청이다).
+     * 로그인 사용자 정보. 비회원(토큰 없음·만료)도 들어올 수 있는 공개 경로라 204 를 준다 — 로그인 여부 확인이
+     * 오류가 아니도록(화면은 204 를 "로그인 안 됨"으로 본다).
      */
     @GetMapping("/api/auth/me")
     public ResponseEntity<?> me(@AuthenticationPrincipal CustomUserDetails userDetails) {
-        if (userDetails == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                    .body(Map.of("error", "Unauthorized", "message", "로그인이 필요합니다."));
-        }
+        if (userDetails == null) return ResponseEntity.noContent().build();
         Map<String, Object> resp = new HashMap<>();
         resp.put("userKey", userDetails.getUserKey());
         resp.put("roles", userDetails.getAuthorities());

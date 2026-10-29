@@ -11,6 +11,7 @@ public interface GroupAppMapper {
 
     int updateBranding(@Param("groupId") Long groupId,
                        @Param("appName") String appName,
+                       @Param("appShortName") String appShortName,
                        @Param("themeColor") String themeColor);
 
     int upsertIcon(@Param("groupId") Long groupId, @Param("png") byte[] png);

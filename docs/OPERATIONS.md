@@ -47,7 +47,8 @@
 - [x] `migration_v9.sql`(일정 반려·취소 사유, 모임별 닉네임) — dev(`app_dev`) 적용 2026-10-27. NULL 허용 컬럼 추가라 배포 순서 무관
 - [x] `migration_v10.sql`(모임 대표 활동 지역) — dev 적용 2026-10-28
 - [x] `migration_v11.sql`(모임 전용 앱) — dev 적용 2026-10-29
-- [ ] 운영 DB 구성 시 v11 까지 적용
+- [x] `migration_v12.sql`(전용 앱 홈 화면 이름) — dev 적용 2026-10-30
+- [ ] 운영 DB 구성 시 v12 까지 적용
 
 ### 카카오맵 (지도 탭·장소 검색)
 - [ ] 카카오 개발자 콘솔 clubSchedule 앱: 제품 설정 > 카카오맵 활성화(지금은 `/api/places` 가 503 — `disabled OPEN_MAP_AND_LOCAL service`)

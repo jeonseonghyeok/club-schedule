@@ -29,6 +29,9 @@ services:
     image: ${WEB_IMAGE:-tony3389/club-schedule-web}${IMAGE_TAG:+:${IMAGE_TAG}}
     container_name: club-schedule-web-${APP_ENV}
     restart: unless-stopped
+    environment:
+      # 링크 미리보기(og) 조각을 가져올 API 컨테이너(같은 app-network)
+      API_UPSTREAM: club-schedule-api-${APP_ENV}:8080
     expose:
       - "80"
     networks:

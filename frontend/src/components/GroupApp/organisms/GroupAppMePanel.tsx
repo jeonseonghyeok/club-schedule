@@ -12,6 +12,7 @@ import { ModalType } from '@/constants';
 import { useModalStore } from '@/modules/stores/client/modal';
 import { memberQueries } from '@/modules/stores/server/member/queries';
 import type { GroupDetail } from '@/types/GroupDetail';
+import { NICKNAME_LOCKED_MESSAGE } from '@/utils/member';
 
 interface Props {
 	groupId: number;
@@ -45,6 +46,7 @@ export const GroupAppMePanel = (props: Props) => {
 								onSaved={() => openModal({ type: ModalType.ALERT, message: '모임 닉네임이 저장되었습니다.' })}
 							/>
 						)}
+						{!canEditNickname && <p className="mt-3 text-sm text-gray-500">{NICKNAME_LOCKED_MESSAGE}</p>}
 					</SectionCard>
 				)
 			)}

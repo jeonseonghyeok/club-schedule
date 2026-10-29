@@ -36,3 +36,6 @@ export const canChangeRole = (member: GroupMember, viewerIsLeader: boolean): boo
 
 /** 매니저 이상이 활동 중인 일반회원을 내보낼 수 있다 */
 export const canKick = (member: GroupMember): boolean => isActiveMember(member) && member.role === GROUP_ROLE.MEMBER;
+
+/** 모임이 회원의 닉네임 수정을 막아 두었을 때(allow_self_nickname=0) 보여줄 안내 */
+export const NICKNAME_LOCKED_MESSAGE = '이 모임은 리더만 모임 닉네임을 바꿀 수 있어요.';

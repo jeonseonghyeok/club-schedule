@@ -77,6 +77,8 @@ com.moyora.clubschedule
 - PWA: `public/manifest.webmanifest`, `public/sw.js`(정적 파일만 캐시, `/api` 는 항상 네트워크), 아이콘 원본 `public/icons/icon.svg`. 서비스 워커는 운영 빌드에서만 등록한다.
   모임 전용 앱은 `/api/groups/{id}/app-manifest`(scope·start_url `/g/{id}/`) — `/g/` 로 바로 들어오면 nginx 가 index.html 의 manifest 링크를 바꾸고, 화면에서도 `useGroupAppHead` 가 맞춘다. 아이콘은 `utils/appIcon.ts` 가 캔버스로 그려 올린다.
   iOS 홈 화면 앱은 추가할 때 주소로 시작하므로 `main.tsx` 가 실행 때마다 그 앱의 시작 화면으로 맞춘다.
+- 링크 미리보기: `/g/{id}/`·`/groups/{id}` 는 web nginx 가 SSI 로 `/api/groups/{id}/og` 조각을 index.html 에 넣는다.
+  nginx.conf 는 템플릿(`API_UPSTREAM` — compose 가 환경별 api 컨테이너로 채움)이다.
 
 ## 주요 도메인 구분
 | 도메인 | 설명 |

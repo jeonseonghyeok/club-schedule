@@ -1,6 +1,6 @@
 import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { NotificationBell } from '@/components/Notification/organisms/NotificationBell';
+import { getNotificationTarget, NotificationBell } from '@/components/Notification/organisms/NotificationBell';
 import {
 	getNotifications,
 	getUnreadNotificationCount,
@@ -24,6 +24,7 @@ vi.mock('@tanstack/react-router', async importOriginal => ({
 
 const notification = (overrides: Partial<Notification>): Notification => ({
 	notificationId: 1,
+	sourceTable: 'SCHEDULE',
 	category: 'APPROVE',
 	title: '가입 승인',
 	content: '모임01 가입이 승인되었습니다.',
@@ -93,5 +94,14 @@ describe('NotificationBell', () => {
 		await userEvent.click(bell);
 		await userEvent.keyboard('{Escape}');
 		expect(bell).toHaveAttribute('aria-expanded', 'false');
+	});
+
+	it('모임 전용 앱에서는 그 모임 알림을 앱 안에서 연다', () => {
+		const schedule = notification({ groupId: 4, targetUrl: '/groups/4' });
+		expect(getNotificationTarget(schedule, 4)).toBe('/g/4/?tab=schedule');
+		expect(getNotificationTarget({ ...schedule, sourceTable: 'GROUP_JOIN_REQUEST' }, 4)).toBe('/g/4/?tab=home');
+		// 다른 모임·모요라에서는 서버가 준 경로
+		expect(getNotificationTarget(schedule, 5)).toBe('/groups/4');
+		expect(getNotificationTarget(schedule, null)).toBe('/groups/4');
 	});
 });

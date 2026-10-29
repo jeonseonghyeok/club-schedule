@@ -20,6 +20,8 @@ public class WhitelistConfig {
         "/api/map/groups",
         // 모임 전용 앱(PWA) 설치에 필요한 파일
         "/api/groups/{groupId:[0-9]+}/app-manifest",
-        "/api/groups/{groupId:[0-9]+}/app-icon.png"
+        "/api/groups/{groupId:[0-9]+}/app-icon.png",
+        // 링크 미리보기 태그(웹 nginx 가 SSI 로 끼워 넣음)
+        "/api/groups/{groupId:[0-9]+}/og"
     };
 }

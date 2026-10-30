@@ -28,8 +28,8 @@ export const GroupAppForm = (props: Props) => {
 	const [color, setColor] = useState(settings.appThemeColor ?? DEFAULT_APP_COLOR);
 	const openModal = useModalStore(state => state.actions.openModal);
 	const { mutate: save, isPending } = useUpdateGroupApp(groupId);
-	const appPath = getGroupAppPath(groupId);
-	const appUrl = `${window.location.origin}${appPath}`;
+	// 전용 앱은 이 주소로 들어온 사람에게만 제공된다(모요라 화면에는 따로 표시하지 않는다) — 공유는 주소 복사로
+	const appUrl = `${window.location.origin}${getGroupAppPath(groupId)}`;
 	const trimmedName = appName.trim();
 	const trimmedShortName = appShortName.trim();
 	const homeScreenName = trimmedShortName || (trimmedName || settings.name).slice(0, APP_SHORT_NAME_MAX);
@@ -140,14 +140,6 @@ export const GroupAppForm = (props: Props) => {
 			</fieldset>
 			<div className="flex flex-wrap justify-between gap-2">
 				<span className="flex gap-2">
-					<a
-						href={appPath}
-						target="_blank"
-						rel="noreferrer"
-						className="inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-semibold text-brand-700 ring-1 ring-gray-300 hover:bg-gray-50 focus-visible:outline-2 focus-visible:outline-brand-600"
-					>
-						전용 앱 열기
-					</a>
 					<Button variant="secondary" onClick={() => void copyAddress()}>
 						주소 복사
 					</Button>

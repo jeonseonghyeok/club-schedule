@@ -1,7 +1,6 @@
 import { Link } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { LoginCard } from '@/components/Auth/organisms/LoginCard';
-import { GroupAppBadge } from '@/components/Group/atoms/GroupAppBadge';
 import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
 import { Icon } from '@/components/common/atoms/Icon';
 import { SectionCard } from '@/components/common/molecules/SectionCard';
@@ -47,7 +46,6 @@ const GroupItem = (props: GroupItemProps) => {
 								우선모임
 							</span>
 						)}
-						{group.appEnabled && <GroupAppBadge />}
 					</span>
 					<span className="mt-0.5 block truncate text-sm text-gray-500">
 						{formatMemberCount(group)}

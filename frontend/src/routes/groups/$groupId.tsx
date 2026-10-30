@@ -33,7 +33,6 @@ import { memberQueries } from '@/modules/stores/server/member/queries';
 import type { GroupDetail } from '@/types/GroupDetail';
 import { VISIBILITY_TYPE } from '@/types/GroupDetail';
 import type { GroupMember } from '@/types/Member';
-import { getGroupAppPath } from '@/utils/appIcon';
 import { getGroupName } from '@/utils/group';
 import { NICKNAME_LOCKED_MESSAGE } from '@/utils/member';
 
@@ -168,14 +167,6 @@ const GroupPage = () => {
 							items={[
 								{ label: '내 참가 이력', onSelect: () => setIsHistoryOpen(true) },
 								{ label: '내 정보 · 모임 닉네임', onSelect: () => void openMyInfo() },
-								...(detail.group.appEnabled
-									? [
-											{
-												label: '전용 앱으로 열기',
-												onSelect: () => window.open(getGroupAppPath(groupId), '_blank', 'noopener'),
-											},
-										]
-									: []),
 								{ label: '모임 탈퇴', onSelect: confirmWithdraw, tone: 'danger' },
 							]}
 						/>

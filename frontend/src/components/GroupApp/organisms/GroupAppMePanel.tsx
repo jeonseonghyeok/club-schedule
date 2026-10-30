@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { LoginCard } from '@/components/Auth/organisms/LoginCard';
 import { LogoutButton } from '@/components/Auth/organisms/LogoutButton';
@@ -52,14 +51,6 @@ export const GroupAppMePanel = (props: Props) => {
 			)}
 			<SectionCard title="앱">
 				<AppInstallSection />
-				<Link
-					to="/groups/$groupId"
-					params={{ groupId: String(groupId) }}
-					search={{ tab: 'home' }}
-					className="mt-3 inline-block text-sm font-medium text-brand-700 hover:underline focus-visible:outline-2 focus-visible:outline-brand-600"
-				>
-					모요라에서 다른 모임도 보기 ›
-				</Link>
 			</SectionCard>
 			{viewer.userKey !== null && <LogoutButton />}
 			{isHistoryOpen && <MyAttendanceDialog groupId={groupId} onClose={() => setIsHistoryOpen(false)} />}

@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { startBackNavigation } from '@/hooks/useAppBackNavigation';
+import { startAuthReloadOnRestore } from '@/utils/loginHistory';
 import { RouteError, RouteNotFound } from '@/components/layout/RouteError';
 import { usePwaStore } from '@/modules/stores/client/pwa';
 import { routeTree } from '@/routeTree.gen';
@@ -29,6 +30,9 @@ if (navigator.standalone === true) {
 		// 저장소를 쓸 수 없으면 주소를 그대로 둔다
 	}
 }
+
+// 로그인 뒤 기록을 되돌아온 화면이 bfcache 에서 살아나면 다시 불러온다(utils/loginHistory)
+startAuthReloadOnRestore();
 
 const queryClient = new QueryClient({
 	defaultOptions: {

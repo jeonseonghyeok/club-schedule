@@ -168,6 +168,28 @@ export const useAppBackNavigation = (): void => {
 	);
 };
 
+// 기록 이동이 끝나지 않는 환경을 위한 대비 — 이 시간 안에 이동하지 않으면 시작 화면을 새로 연다
+const RESET_FALLBACK_MS = 1500;
+
+/**
+ * 로그아웃처럼 앱을 처음 상태로 돌릴 때 — 맨 아래 기록(시작 화면)으로 내려가 그 자리에서 다시 불러온다.
+ * 그 위의 기록은 "앞으로" 쪽에만 남으므로, 이후 뒤로가기는 시작 화면의 종료 확인으로 이어진다.
+ */
+export const resetToRoot = (history: RouterHistory): void => {
+	const location = history.location;
+	const index = indexOf(location);
+	const rootHref = getRootHref(location.pathname);
+	if (index > 0) {
+		window.addEventListener('popstate', () => window.location.reload(), { once: true });
+		window.setTimeout(() => window.location.replace(rootHref), RESET_FALLBACK_MS);
+		history.go(-index, { ignoreBlocker: true });
+		return;
+	}
+	// 이미 맨 아래면 이 기록을 시작 화면으로 바꿔 다시 불러온다(기록 상태는 유지된다)
+	window.history.replaceState(window.history.state, '', rootHref);
+	window.location.reload();
+};
+
 /** 화면 안의 "홈으로"(상단 뒤로·하단 탭 홈) — 기록을 쌓지 않고 맨 아래 루트로 돌아간다 */
 export const useGoHome = (): (() => void) => {
 	const router = useRouter();

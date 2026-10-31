@@ -7,10 +7,7 @@ import { useModalStore } from '@/modules/stores/client/modal';
 import { useUpdateMyNickname } from '@/modules/stores/server/member/mutations';
 import type { MyGroup } from '@/types/Group';
 import { getGroupName } from '@/utils/group';
-import { canEditOwnNickname, NICKNAME_LOCKED_MESSAGE } from '@/utils/member';
-
-// 백엔드 group_member.nickname VARCHAR(30)
-const NICKNAME_MAX = 30;
+import { canEditOwnNickname, NICKNAME_LOCKED_MESSAGE, NICKNAME_MAX_LENGTH } from '@/utils/member';
 
 interface RowProps {
 	group: MyGroup;
@@ -51,7 +48,7 @@ const GroupNicknameRow = (props: RowProps) => {
 						id={inputId}
 						type="text"
 						value={nickname}
-						maxLength={NICKNAME_MAX}
+						maxLength={NICKNAME_MAX_LENGTH}
 						disabled={!isEditable}
 						placeholder={accountNickname ?? '계정 닉네임'}
 						onChange={event => setNickname(event.target.value)}

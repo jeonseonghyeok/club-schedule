@@ -11,18 +11,29 @@ interface Props {
 	userKey: number;
 }
 
-/** 회원 정보 안의 "닉네임 변경 이력" — 펼칠 때 불러온다(본인 또는 모임장·매니저만 볼 수 있다) */
-export const MemberNicknameHistory = (props: Props) => {
-	const { groupId, userKey } = props;
-	const panelId = useId();
-	const [isOpen, setIsOpen] = useState(false);
-	const { data: items, isError } = useQuery({ ...memberQueries.nicknameHistory(groupId, userKey), enabled: isOpen });
+/** 한 회원의 이 모임 닉네임 변경 이력 — 그려질 때 불러온다(같은 모임 회원 누구나 볼 수 있다) */
+export const MemberNicknameHistoryPanel = (props: Props & { id?: string }) => {
+	const { groupId, userKey, id } = props;
+	const { data: items, isError } = useQuery({ ...memberQueries.nicknameHistory(groupId, userKey) });
 
-	const renderPanel = () => {
+	const renderBody = () => {
 		if (isError) return <EmptyMessage message="이력을 불러오지 못했습니다." />;
 		if (!items) return <EmptyMessage message="로딩 중..." />;
 		return <NicknameHistoryList items={items} />;
 	};
+
+	return (
+		<div id={id} className="max-h-60 overflow-y-auto">
+			{renderBody()}
+		</div>
+	);
+};
+
+/** 펼쳐 보는 "닉네임 변경 이력"(전용 앱 내 정보) */
+export const MemberNicknameHistory = (props: Props) => {
+	const { groupId, userKey } = props;
+	const panelId = useId();
+	const [isOpen, setIsOpen] = useState(false);
 
 	return (
 		<section className="mt-4 border-t border-gray-100 pt-3">
@@ -37,8 +48,8 @@ export const MemberNicknameHistory = (props: Props) => {
 				<Icon name="chevronRight" className={cn('text-gray-400 transition-transform', isOpen && 'rotate-90')} />
 			</button>
 			{isOpen && (
-				<div id={panelId} className="mt-1 max-h-60 overflow-y-auto">
-					{renderPanel()}
+				<div className="mt-1">
+					<MemberNicknameHistoryPanel id={panelId} groupId={groupId} userKey={userKey} />
 				</div>
 			)}
 		</section>

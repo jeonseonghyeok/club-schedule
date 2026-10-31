@@ -7,10 +7,7 @@ import { useUpdateAccountNickname } from '@/modules/stores/server/user/mutations
 import type { AccountNickname } from '@/types/Auth';
 import type { MyGroup } from '@/types/Group';
 import { getGroupName } from '@/utils/group';
-import { canEditOwnNickname } from '@/utils/member';
-
-// 백엔드 PATCH /api/users/me 검증과 같은 제한
-const NICKNAME_MAX = 30;
+import { canEditOwnNickname, NICKNAME_MAX_LENGTH } from '@/utils/member';
 
 const isEditableGroup = (group: MyGroup): boolean =>
 	canEditOwnNickname({ allowSelfNickname: group.allowSelfNickname, role: group.myRole });
@@ -86,7 +83,7 @@ export const AccountNicknameForm = (props: Props) => {
 					id={inputId}
 					type="text"
 					value={nickname}
-					maxLength={NICKNAME_MAX}
+					maxLength={NICKNAME_MAX_LENGTH}
 					aria-describedby={helpId}
 					autoComplete="nickname"
 					onChange={event => setNickname(event.target.value)}
@@ -97,7 +94,7 @@ export const AccountNicknameForm = (props: Props) => {
 				</Button>
 			</div>
 			<p id={helpId} className="text-xs text-gray-500">
-				계정에 하나뿐인 이름입니다. 모임에서 보이는 이름은 모임마다 따로 관리됩니다.
+				계정에 하나뿐인 이름입니다(최대 {NICKNAME_MAX_LENGTH}자). 모임에서 보이는 이름은 모임마다 따로 관리됩니다.
 			</p>
 			{canSave && groups.length > 0 && (
 				<div className="mt-2 rounded-xl bg-gray-50 p-3">

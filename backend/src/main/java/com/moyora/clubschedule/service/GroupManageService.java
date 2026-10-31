@@ -186,10 +186,10 @@ public class GroupManageService {
         return changeNickname(groupId, targetUserKey, nickname, operatorUserKey);
     }
 
-    /** 한 회원의 이 모임 닉네임 이력 — 본인 또는 모임장·매니저만 */
+    /** 한 회원의 이 모임 닉네임 이력 — 같은 모임 회원이면 누구나(누가 누구였는지 알아볼 수 있게) */
     public java.util.List<NicknameHistoryVo> getNicknameHistory(Long groupId, Long targetUserKey, Long viewerUserKey) {
-        if (!targetUserKey.equals(viewerUserKey) && !isManager(groupId, viewerUserKey)) {
-            throw new GroupAccessDeniedException("본인 또는 모임장·매니저만 볼 수 있습니다.");
+        if (!isMember(groupId, viewerUserKey)) {
+            throw new GroupAccessDeniedException("모임 회원만 볼 수 있습니다.");
         }
         return nicknameHistoryMapper.selectByGroupMember(groupId, targetUserKey);
     }

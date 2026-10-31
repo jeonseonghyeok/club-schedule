@@ -4,7 +4,6 @@ import { GroupDescription } from '@/components/Group/organisms/GroupDescription'
 import { GroupSettingsSection } from '@/components/Group/organisms/GroupSettingsSection';
 import { JoinRequestsSection } from '@/components/JoinRequest/organisms/JoinRequestsSection';
 import { MemberListSection } from '@/components/Member/organisms/MemberListSection';
-import { MembersManageSection } from '@/components/Member/organisms/MembersManageSection';
 import { PermissionsSection } from '@/components/Member/organisms/PermissionsSection';
 import { ScheduleCalendar } from '@/components/Schedule/organisms/ScheduleCalendar';
 import { ScheduleManageList } from '@/components/Schedule/organisms/ScheduleManageList';
@@ -18,12 +17,13 @@ import { SCHEDULE_STATUS } from '@/types/Schedule';
 import type { Schedule, ScheduleAction } from '@/types/Schedule';
 import { cn } from '@/utils';
 
-export const MANAGE_SECTION_KEYS = ['requests', 'members', 'schedules', 'settings'] as const;
+// 회원 관리는 멤버 탭(회원 정보)에서 한다 — 관리 탭에는 리더의 매니저 권한 설정만 남는다
+export const MANAGE_SECTION_KEYS = ['requests', 'permissions', 'schedules', 'settings'] as const;
 export type ManageSection = (typeof MANAGE_SECTION_KEYS)[number];
 
 const MANAGE_SECTION_LABEL = {
 	requests: '요청',
-	members: '회원',
+	permissions: '권한',
 	schedules: '일정',
 	settings: '설정',
 } as const satisfies Record<ManageSection, string>;
@@ -80,7 +80,11 @@ export const SchedulePanel = (props: PanelProps) => {
 };
 
 export const MembersPanel = (props: PanelProps) => (
-	<MemberListSection groupId={props.groupId} viewerUserKey={props.detail.viewer.userKey} />
+	<MemberListSection
+		groupId={props.groupId}
+		viewer={props.detail.viewer}
+		allowSelfNickname={props.detail.group.allowSelfNickname}
+	/>
 );
 
 interface ManagePanelProps extends PanelProps {
@@ -98,8 +102,11 @@ const usePendingCount = (groupId: number, isLeader: boolean): number => {
 
 /** 관리 탭: 요청(가입·일정 승인) / 회원 / 일정 / 설정 으로 나눠 한 화면이 길어지지 않게 한다 */
 export const ManagePanel = (props: ManagePanelProps) => {
-	const { groupId, detail, section, onSectionChange } = props;
+	const { groupId, detail, onSectionChange } = props;
 	const { viewer } = detail;
+	// 매니저 권한 설정은 리더만 한다
+	const sectionKeys = MANAGE_SECTION_KEYS.filter(key => key !== 'permissions' || viewer.isLeader);
+	const section = sectionKeys.includes(props.section) ? props.section : 'requests';
 	const { open } = useScheduleDialogStore(state => state.actions);
 	const { data: schedules, isError } = useQuery({ ...scheduleQueries.list(groupId) });
 	const changeStatus = useScheduleStatusChange(groupId);
@@ -123,13 +130,8 @@ export const ManagePanel = (props: ManagePanelProps) => {
 						</SectionCard>
 					</>
 				);
-			case 'members':
-				return (
-					<>
-						<MembersManageSection groupId={groupId} viewerIsLeader={viewer.isLeader} />
-						{viewer.isLeader && <PermissionsSection groupId={groupId} />}
-					</>
-				);
+			case 'permissions':
+				return <PermissionsSection groupId={groupId} />;
 			case 'schedules':
 				return (
 					<SectionCard title="일정 관리">
@@ -148,7 +150,7 @@ export const ManagePanel = (props: ManagePanelProps) => {
 	return (
 		<div className="flex flex-col gap-4">
 			<nav aria-label="관리 메뉴" className="flex gap-2 overflow-x-auto [scrollbar-width:none]">
-				{MANAGE_SECTION_KEYS.map(key => {
+				{sectionKeys.map(key => {
 					const isSelected = key === section;
 					return (
 						<button

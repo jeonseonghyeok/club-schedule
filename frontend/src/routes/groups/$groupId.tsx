@@ -1,4 +1,4 @@
-import { useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
+import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, Link, notFound } from '@tanstack/react-router';
 import { AxiosError, HttpStatusCode } from 'axios';
 import { useEffect, useState } from 'react';
@@ -20,8 +20,6 @@ import {
 import { AppShell } from '@/components/layout/AppShell';
 import { MemberInfoDialog } from '@/components/Member/organisms/MemberInfoDialog';
 import { MyAttendanceDialog } from '@/components/Member/organisms/MyAttendanceDialog';
-import { GroupNicknameForm } from '@/components/Member/organisms/GroupNicknameForm';
-import { MemberNicknameHistory } from '@/components/Nickname/organisms/MemberNicknameHistory';
 import { ScheduleDialogs } from '@/components/Schedule/organisms/ScheduleDialogs';
 import { ModalType } from '@/constants';
 import { useGoHome } from '@/hooks/useAppBackNavigation';
@@ -30,12 +28,9 @@ import { useScheduleDialogStore } from '@/modules/stores/client/scheduleDialog';
 import { authQueries } from '@/modules/stores/server/auth/queries';
 import { groupQueries } from '@/modules/stores/server/group/queries';
 import { useWithdrawGroup } from '@/modules/stores/server/member/mutations';
-import { memberQueries } from '@/modules/stores/server/member/queries';
 import type { GroupDetail } from '@/types/GroupDetail';
 import { VISIBILITY_TYPE } from '@/types/GroupDetail';
-import type { GroupMember } from '@/types/Member';
 import { getGroupName } from '@/utils/group';
-import { canEditOwnNickname, NICKNAME_LOCKED_MESSAGE } from '@/utils/member';
 
 const GROUP_TAB_KEYS = ['home', 'schedule', 'members', 'manage'] as const;
 type GroupTabKey = (typeof GROUP_TAB_KEYS)[number];
@@ -70,12 +65,11 @@ const GroupPage = () => {
 	const groupId = parseGroupId(rawGroupId);
 	const { tab, section = 'requests' } = Route.useSearch();
 	const navigate = Route.useNavigate();
-	const queryClient = useQueryClient();
 	const { data: detail } = useSuspenseQuery({ ...groupQueries.detail(groupId) });
 	const { close } = useScheduleDialogStore(state => state.actions);
 	const openModal = useModalStore(state => state.actions.openModal);
 	const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-	const [myInfo, setMyInfo] = useState<GroupMember | null>(null);
+	const [isMyInfoOpen, setIsMyInfoOpen] = useState(false);
 	const { mutate: withdraw } = useWithdrawGroup(groupId);
 	const goHome = useGoHome();
 	const { viewer } = detail;
@@ -114,19 +108,8 @@ const GroupPage = () => {
 		render: () => renderPanel(key),
 	}));
 
-	const openMyInfo = async () => {
-		try {
-			const members = await queryClient.fetchQuery(memberQueries.list(groupId));
-			const me = members.find(member => member.userKey === viewer.userKey);
-			if (me) setMyInfo(me);
-			else openModal({ type: ModalType.ALERT, message: '내 정보를 찾을 수 없습니다.' });
-		} catch {
-			openModal({ type: ModalType.ALERT, message: '내 정보를 불러오지 못했습니다.' });
-		}
-	};
-
 	const confirmWithdraw = () => {
-		setMyInfo(null);
+		setIsMyInfoOpen(false);
 		if (viewer.isLeader) {
 			openModal({ type: ModalType.ALERT, message: '리더는 다른 회원에게 리더를 넘긴 뒤 탈퇴할 수 있습니다.' });
 			return;
@@ -167,7 +150,7 @@ const GroupPage = () => {
 							icon={<Icon name="more" size={22} strokeWidth={3} />}
 							items={[
 								{ label: '내 참가 이력', onSelect: () => setIsHistoryOpen(true) },
-								{ label: '내 정보 · 모임 닉네임', onSelect: () => void openMyInfo() },
+								{ label: '내 정보 · 모임 닉네임', onSelect: () => setIsMyInfoOpen(true) },
 								{ label: '모임 탈퇴', onSelect: confirmWithdraw, tone: 'danger' },
 							]}
 						/>
@@ -187,30 +170,15 @@ const GroupPage = () => {
 			</AppShell>
 			<ScheduleDialogs groupId={groupId} viewer={viewer} />
 			{isHistoryOpen && <MyAttendanceDialog groupId={groupId} onClose={() => setIsHistoryOpen(false)} />}
-			{myInfo && (
+			{isMyInfoOpen && viewer.userKey !== null && (
 				<MemberInfoDialog
 					groupId={groupId}
-					member={myInfo}
-					canEditRole={false}
-					canKick={false}
-					onKick={() => {}}
+					userKey={viewer.userKey}
+					viewer={viewer}
+					allowSelfNickname={detail.group.allowSelfNickname}
 					onWithdraw={confirmWithdraw}
-					onClose={() => setMyInfo(null)}
-				>
-					{canEditOwnNickname({ allowSelfNickname: detail.group.allowSelfNickname, role: myInfo.role }) ? (
-						<GroupNicknameForm
-							groupId={groupId}
-							groupNickname={myInfo.groupNickname}
-							onSaved={() => {
-								setMyInfo(null);
-								openModal({ type: ModalType.ALERT, message: '모임 닉네임이 저장되었습니다.' });
-							}}
-						/>
-					) : (
-						<p className="mt-4 border-t border-gray-100 pt-3 text-sm text-gray-500">{NICKNAME_LOCKED_MESSAGE}</p>
-					)}
-					<MemberNicknameHistory groupId={groupId} userKey={myInfo.userKey} />
-				</MemberInfoDialog>
+					onClose={() => setIsMyInfoOpen(false)}
+				/>
 			)}
 		</>
 	);

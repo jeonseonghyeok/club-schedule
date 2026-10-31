@@ -40,13 +40,15 @@ export const GroupAppMePanel = (props: Props) => {
 							내 참가 이력
 						</Button>
 						{canEditNickname && me && (
-							<GroupNicknameForm
-								// 저장 뒤 회원 목록이 새로 오면 입력을 그 값으로 다시 맞춘다
-								key={me.groupNickname}
-								groupId={groupId}
-								groupNickname={me.groupNickname}
-								onSaved={() => openModal({ type: ModalType.ALERT, message: '모임 닉네임이 저장되었습니다.' })}
-							/>
+							<div className="mt-4 border-t border-gray-100 pt-3">
+								<GroupNicknameForm
+									// 저장 뒤 회원 목록이 새로 오면 입력을 그 값으로 다시 맞춘다
+									key={me.groupNickname}
+									groupId={groupId}
+									groupNickname={me.groupNickname}
+									onSaved={() => openModal({ type: ModalType.ALERT, message: '모임 닉네임이 저장되었습니다.' })}
+								/>
+							</div>
 						)}
 						{me && !canEditNickname && <p className="mt-3 text-sm text-gray-500">{NICKNAME_LOCKED_MESSAGE}</p>}
 						{me && <MemberNicknameHistory groupId={groupId} userKey={me.userKey} />}

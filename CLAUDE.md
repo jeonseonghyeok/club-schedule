@@ -91,7 +91,7 @@ com.moyora.clubschedule
 ### 닉네임
 - 계정 닉네임(`user.nickname`)은 계정당 하나. 모임 닉네임(`group_member.nickname`)은 가입 때 계정 닉네임을 복사해 모임마다 따로 둔다 — 계정 이름을 바꿔도 모임 이름은 그대로이고, 설정 화면에서 같이 바꿀 모임을 체크한다(`PATCH /api/users/me` 의 `groupIds`).
 - 모임 설정 `allow_self_nickname`: 0(기본)=모임장·매니저가 관리(회원 정보에서 수정), 1=회원도 직접 수정. 모임장·매니저는 항상 자기·회원 이름을 바꿀 수 있다.
-- 모든 변경은 `nickname_history`(group_id NULL=계정)에 남는다 — 본인(설정 > 변경 이력, 모임 내 정보)과 모임장·매니저(회원 정보)가 본다. `NicknameService`·`GroupManageService`.
+- 모든 변경은 `nickname_history`(group_id NULL=계정)에 남는다 — 모임 이력은 같은 모임 회원 누구나(멤버 탭 회원 정보), 계정 이력은 본인(설정 > 변경 이력)이 본다. `NicknameService`·`GroupManageService`.
 
 ## 화면(frontend/src/routes)
 모든 화면은 `AppShell`(상단 바 + 주 메뉴: 휴대폰은 하단 탭바, md 이상은 왼쪽 레일) 안에 그린다. 주 메뉴는 홈·지도·설정.
@@ -104,7 +104,7 @@ Android 는 `CloseWatcher` 로 기록 없이 뒤로가기를 받아, 링크로 �
 | URL | 화면 |
 |-----|------|
 | `/` | 홈 — 내 모임·모임 찾기·모임 생성 신청 (우선모임이 있으면 그 모임으로, `?list=1` 이면 목록 — 하단 탭 홈은 `list=1`) |
-| `/groups/$groupId?tab=home\|schedule\|members\|manage&section=requests\|members\|schedules\|settings` | 모임 — 홈·일정 달력·멤버·관리(요청/회원/일정/설정). ⋯ 메뉴: 참가 이력·내 정보·탈퇴 |
+| `/groups/$groupId?tab=home\|schedule\|members\|manage&section=requests\|permissions\|schedules\|settings` | 모임 — 홈·일정 달력·멤버·관리(요청/권한(리더)/일정/설정). 회원 관리는 멤버 탭: 회원을 누르면 회원 정보(닉네임 이력 — 회원 누구나)와 권한별 직책 변경·닉네임 변경·내보내기(각각 다음 대화상자), 매니저 이상은 정지 회원·벤. ⋯ 메뉴: 참가 이력·내 정보·탈퇴 |
 | `/map?view=groups\|schedules` | 지도 — 모임 활동 지역 / 내 모임 일정 장소. 카카오맵 키(`VITE_KAKAO_JS_KEY`)가 없으면 목록만 |
 | `/settings` | 설정 — 계정 닉네임(같이 바꿀 모임 체크)·모임 닉네임·변경 이력, 우선모임, 앱 설치, 관리자 링크, 로그아웃 |
 | `/g/$groupId/?tab=home\|schedule\|members\|manage\|me` | 모임 전용 앱(모임별 PWA, 시스템 관리자가 켠 모임만) — `GroupAppShell`(그 모임 메뉴만). **주소로 들어온 사람에게만 제공**, **설치해야 쓸 수 있다** — 브라우저로 열면 `InstallGate`(설치 방법·카카오톡 등 인앱 브라우저는 외부 브라우저로 열기, 개발 서버만 우회 버튼)만 보인다 — 모요라 화면에는 표시·링크를 두지 않고, 전용 앱도 모요라로 넘어가는 링크를 두지 않는다(두 앱을 오가면 뒤로가기가 꼬인다). 우선모임(모요라 시작 모임)은 전용 앱에 보이지도, 동작하지도 않는다. 끝의 `/` 가 설치 범위라 라우터는 `trailingSlash: 'preserve'` |

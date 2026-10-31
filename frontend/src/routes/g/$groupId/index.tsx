@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { createFileRoute, Link, notFound } from '@tanstack/react-router';
 import { AxiosError, HttpStatusCode } from 'axios';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { buttonClassName } from '@/components/common/atoms/Button';
 import { VisibilityNotice } from '@/components/Group/molecules/VisibilityNotice';
@@ -14,11 +14,12 @@ import {
 	SchedulePanel,
 } from '@/components/Group/organisms/GroupPanels';
 import { GroupAppMePanel } from '@/components/GroupApp/organisms/GroupAppMePanel';
-import { InstallBanner } from '@/components/GroupApp/organisms/InstallBanner';
+import { InstallGate } from '@/components/GroupApp/organisms/InstallGate';
 import { GROUP_APP_TAB_KEYS, GroupAppShell } from '@/components/layout/GroupAppShell';
 import type { GroupAppTab } from '@/components/layout/GroupAppShell';
 import { ScheduleDialogs } from '@/components/Schedule/organisms/ScheduleDialogs';
 import { useGroupAppHead } from '@/hooks/useGroupAppHead';
+import { useStandaloneDisplay } from '@/hooks/useStandaloneDisplay';
 import { useScheduleDialogStore } from '@/modules/stores/client/scheduleDialog';
 import { authQueries } from '@/modules/stores/server/auth/queries';
 import { groupQueries } from '@/modules/stores/server/group/queries';
@@ -74,11 +75,25 @@ const GroupAppPage = () => {
 	const appName = group.appName || getGroupName(group);
 	const themeColor = group.appThemeColor ?? DEFAULT_APP_COLOR;
 	useGroupAppHead({ groupId, appName, themeColor, isEnabled: !!group.appEnabled });
+	const isStandalone = useStandaloneDisplay();
+	// 개발 서버에서는 브라우저로도 앱 화면을 확인할 수 있게 한다
+	const [isDevBypassed, setIsDevBypassed] = useState(false);
 
 	// 다른 모임으로 이동하거나 화면을 떠나면 열려 있던 일정 모달을 닫는다
 	useEffect(() => close, [groupId, close]);
 
 	if (!group.appEnabled) return <AppUnavailable groupId={groupId} name={getGroupName(group)} />;
+	// 전용 앱은 설치해서 쓴다 — 브라우저로 열면 설치 방법만 보여준다(그냥 볼 거면 모요라 모임 화면과 다를 게 없다)
+	if (!isStandalone && !isDevBypassed) {
+		return (
+			<InstallGate
+				groupId={groupId}
+				appName={appName}
+				themeColor={themeColor}
+				onDevBypass={import.meta.env.DEV ? () => setIsDevBypassed(true) : undefined}
+			/>
+		);
+	}
 
 	const tabs = getAvailableTabs(detail);
 	const active = tabs.includes(tab) ? tab : 'home';
@@ -88,7 +103,6 @@ const GroupAppPage = () => {
 			case 'home':
 				return (
 					<>
-						<InstallBanner groupId={groupId} appName={appName} themeColor={themeColor} />
 						<GroupHero groupId={groupId} detail={detail} variant={GROUP_HERO_VARIANT.COMPACT} />
 						{!viewer.isMember && <VisibilityNotice visibilityType={detail.visibilityType} />}
 						<HomePanel groupId={groupId} detail={detail} />

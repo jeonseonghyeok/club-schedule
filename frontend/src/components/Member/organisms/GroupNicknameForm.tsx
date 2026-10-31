@@ -33,7 +33,7 @@ export const GroupNicknameForm = (props: Props) => {
 	};
 
 	return (
-		<form onSubmit={submit} className="mt-4 flex flex-col gap-1 border-t border-gray-100 pt-3">
+		<form onSubmit={submit} className="flex flex-col gap-1">
 			<label htmlFor={inputId} className="text-sm font-medium text-gray-800">
 				모임 닉네임
 			</label>

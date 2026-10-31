@@ -203,7 +203,7 @@ public class GroupApiController {
         }
     }
 
-    /** 회원의 이 모임 닉네임 변경 이력(최신순) — 본인 또는 모임장·매니저 */
+    /** 회원의 이 모임 닉네임 변경 이력(최신순) — 같은 모임 회원 */
     @GetMapping("/{groupId}/members/{userKey}/nickname-history")
     public ResponseEntity<?> memberNicknameHistory(
             @PathVariable Long groupId,

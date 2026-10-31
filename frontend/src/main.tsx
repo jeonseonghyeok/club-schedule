@@ -13,8 +13,12 @@ import '@/styles.css';
 const IOS_LAUNCH_KEY = 'moyora:launched';
 if (navigator.standalone === true) {
 	try {
-		if (!sessionStorage.getItem(IOS_LAUNCH_KEY)) {
-			sessionStorage.setItem(IOS_LAUNCH_KEY, '1');
+		// 카카오 로그인에서 돌아온 콜백은 그대로 두고, 로그인 뒤 돌아갈 화면도 실행 직후로 보지 않는다 — 시작 화면으로 바꾸면
+		// 인가 코드나 보던 화면이 사라진다(iOS 는 다른 사이트를 다녀오면 홈 화면 앱을 새로 열어 sessionStorage 가 비어 있을 수 있다)
+		const isLoginReturn = window.location.pathname.startsWith('/login/');
+		const isFirstLoad = !sessionStorage.getItem(IOS_LAUNCH_KEY);
+		sessionStorage.setItem(IOS_LAUNCH_KEY, '1');
+		if (isFirstLoad && !isLoginReturn) {
 			const groupApp = /^\/g\/(\d+)\//.exec(window.location.pathname);
 			const startPath = groupApp ? `/g/${groupApp[1]}/` : '/';
 			if (`${window.location.pathname}${window.location.search}` !== startPath) {

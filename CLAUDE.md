@@ -107,7 +107,7 @@ Android 는 `CloseWatcher` 로 기록 없이 뒤로가기를 받아, 링크로 �
 | `/groups/$groupId?tab=home\|schedule\|members\|manage&section=requests\|members\|schedules\|settings` | 모임 — 홈·일정 달력·멤버·관리(요청/회원/일정/설정). ⋯ 메뉴: 참가 이력·내 정보·탈퇴 |
 | `/map?view=groups\|schedules` | 지도 — 모임 활동 지역 / 내 모임 일정 장소. 카카오맵 키(`VITE_KAKAO_JS_KEY`)가 없으면 목록만 |
 | `/settings` | 설정 — 계정 닉네임(같이 바꿀 모임 체크)·모임 닉네임·변경 이력, 우선모임, 앱 설치, 관리자 링크, 로그아웃 |
-| `/g/$groupId/?tab=home\|schedule\|members\|manage\|me` | 모임 전용 앱(모임별 PWA, 시스템 관리자가 켠 모임만) — `GroupAppShell`(그 모임 메뉴만). **주소로 들어온 사람에게만 제공**, **설치해야 쓸 수 있다** — 브라우저로 열면 `InstallGate`(설치 방법·카카오톡 등 인앱 브라우저는 외부 브라우저로 열기, 개발 서버만 우회 버튼)만 보인다 — 모요라 화면에는 표시·링크를 두지 않고, 전용 앱도 모요라로 넘어가는 링크를 두지 않는다(두 앱을 오가면 뒤로가기가 꼬인다). 끝의 `/` 가 설치 범위라 라우터는 `trailingSlash: 'preserve'` |
+| `/g/$groupId/?tab=home\|schedule\|members\|manage\|me` | 모임 전용 앱(모임별 PWA, 시스템 관리자가 켠 모임만) — `GroupAppShell`(그 모임 메뉴만). **주소로 들어온 사람에게만 제공**, **설치해야 쓸 수 있다** — 브라우저로 열면 `InstallGate`(설치 방법·카카오톡 등 인앱 브라우저는 외부 브라우저로 열기, 개발 서버만 우회 버튼)만 보인다 — 모요라 화면에는 표시·링크를 두지 않고, 전용 앱도 모요라로 넘어가는 링크를 두지 않는다(두 앱을 오가면 뒤로가기가 꼬인다). 우선모임(모요라 시작 모임)은 전용 앱에 보이지도, 동작하지도 않는다. 끝의 `/` 가 설치 범위라 라우터는 `trailingSlash: 'preserve'` |
 | `/admin?tab=users\|groups\|groupRequests\|groupJoins` | 관리자 대시보드 (설정에서 진입) |
 | `/login/kakao/login_callback` | 카카오 로그인 콜백(카카오 콘솔 redirect URI) |
 | `/login/test` | 테스트 로그인(개발 전용) |

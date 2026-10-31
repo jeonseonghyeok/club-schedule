@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useCreateKakaoLogin } from '@/modules/stores/server/auth/mutations';
 import { getErrorMessage } from '@/utils';
 import { buildKakaoAuthorizeUrl, getKakaoRedirectUri, getLoginReturnPath } from '@/utils/kakao';
-import { navigateWithReload } from '@/utils/navigation';
+import { rememberLoginStart, returnToLoginStart } from '@/utils/loginHistory';
 
 export interface KakaoCallbackParams {
 	/** 카카오가 돌려준 인가 코드 — 없으면 인가 요청부터 시작한다 */
@@ -34,6 +34,7 @@ export const useKakaoCallback = (params: KakaoCallbackParams): KakaoCallbackStat
 
 		const redirectUri = getKakaoRedirectUri(window.location.origin);
 		if (!code) {
+			rememberLoginStart(getLoginReturnPath(returnTo));
 			window.location.replace(
 				buildKakaoAuthorizeUrl({
 					clientId: import.meta.env.VITE_KAKAO_REST_KEY,
@@ -45,7 +46,7 @@ export const useKakaoCallback = (params: KakaoCallbackParams): KakaoCallbackStat
 		}
 
 		const returnPath = getLoginReturnPath(state);
-		mutate({ code, redirectUri, returnTo: returnPath }, { onSuccess: () => navigateWithReload(returnPath) });
+		mutate({ code, redirectUri, returnTo: returnPath }, { onSuccess: () => returnToLoginStart(returnPath) });
 	}, [code, error, state, returnTo, mutate]);
 
 	if (error) return { status: 'cancelled' };

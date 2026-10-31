@@ -29,6 +29,7 @@ describe('useKakaoCallback', () => {
 		vi.mocked(createKakaoLogin).mockReset();
 		vi.mocked(navigateWithReload).mockReset();
 		replace.mockReset();
+		sessionStorage.clear();
 		vi.stubGlobal('location', { ...window.location, origin: 'https://dev.crewhub.store', replace });
 	});
 
@@ -82,6 +83,38 @@ describe('useKakaoCallback', () => {
 		const { result } = renderHook(() => useKakaoCallback({ code: 'abc' }), { wrapper: createWrapper() });
 
 		await waitFor(() => expect(result.current.status).toBe('error'));
+		expect(navigateWithReload).not.toHaveBeenCalled();
+	});
+});
+
+describe('useKakaoCallback — 로그인 시작 화면으로 돌아가기', () => {
+	const replace = vi.fn();
+	const go = vi.fn();
+
+	beforeEach(() => {
+		vi.mocked(createKakaoLogin).mockReset();
+		vi.mocked(navigateWithReload).mockReset();
+		sessionStorage.clear();
+		vi.stubGlobal('location', { ...window.location, origin: 'https://dev.crewhub.store', replace });
+		vi.spyOn(window.history, 'go').mockImplementation(go);
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
+	});
+
+	it('카카오를 다녀온 기록을 건너 로그인을 누른 화면의 기록으로 되돌아간다', async () => {
+		// 로그인 버튼을 누른 화면(위치 1) → 콜백(위치 2) 에서 카카오로 떠난다
+		vi.spyOn(window.history, 'length', 'get').mockReturnValue(3);
+		renderHook(() => useKakaoCallback({ returnTo: '/g/4/?tab=me' }), { wrapper: createWrapper() });
+
+		// 카카오 화면 2개를 거쳐 콜백(위치 5)으로 돌아왔다
+		vi.spyOn(window.history, 'length', 'get').mockReturnValue(6);
+		vi.mocked(createKakaoLogin).mockResolvedValue(undefined);
+		renderHook(() => useKakaoCallback({ code: 'abc', state: '/g/4/?tab=me' }), { wrapper: createWrapper() });
+
+		await waitFor(() => expect(go).toHaveBeenCalledWith(-4));
 		expect(navigateWithReload).not.toHaveBeenCalled();
 	});
 });

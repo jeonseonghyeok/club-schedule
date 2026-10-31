@@ -1,6 +1,6 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useId } from 'react';
-import { useForm } from 'react-hook-form';
+import { Controller, useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { Button } from '@/components/common/atoms/Button';
 import { ModalType } from '@/constants';
@@ -34,6 +34,16 @@ const buildSchema = (activeMemberCount: number) =>
 		allowSelfNickname: z.boolean(),
 	});
 
+// 모임 닉네임 관리 방식 — 기본은 모임장·매니저가 관리(allow_self_nickname=0)
+const NICKNAME_POLICY_OPTIONS = [
+	{ allowSelf: false, label: '모임장이 관리', help: '모임장·매니저가 회원 정보에서 회원의 모임 닉네임을 정합니다.' },
+	{
+		allowSelf: true,
+		label: '회원이 직접 수정',
+		help: '회원이 자기 모임 닉네임을 바꿀 수 있습니다. 모임장·매니저도 바꿀 수 있습니다.',
+	},
+] as const;
+
 const toFormValues = (settings: GroupSettings): GroupInfoPayload => ({
 	name: settings.name,
 	description: settings.description ?? '',
@@ -58,6 +68,7 @@ export const GroupInfoForm = (props: Props) => {
 	const { mutate: save, isPending } = useUpdateGroupInfo(groupId);
 	const {
 		register,
+		control,
 		handleSubmit,
 		reset,
 		formState: { errors, isDirty },
@@ -142,13 +153,31 @@ export const GroupInfoForm = (props: Props) => {
 					</span>
 				</span>
 			</label>
-			<label className="flex items-start gap-2 text-sm text-gray-800">
-				<input type="checkbox" className="mt-1" {...register('allowSelfNickname')} />
-				<span>
-					회원이 모임 닉네임을 직접 바꿀 수 있음
-					<span className="block text-xs text-gray-500">끄면 리더만 자기 닉네임을 바꿀 수 있습니다.</span>
-				</span>
-			</label>
+			<Controller
+				control={control}
+				name="allowSelfNickname"
+				render={({ field }) => (
+					<fieldset className="flex flex-col gap-2">
+						<legend className="mb-1 text-sm font-medium text-gray-800">모임 닉네임 관리</legend>
+						{NICKNAME_POLICY_OPTIONS.map(option => (
+							<label key={option.label} className="flex items-start gap-2 text-sm text-gray-800">
+								<input
+									type="radio"
+									name={field.name}
+									className="mt-1"
+									checked={field.value === option.allowSelf}
+									onChange={() => field.onChange(option.allowSelf)}
+									onBlur={field.onBlur}
+								/>
+								<span>
+									{option.label}
+									<span className="block text-xs text-gray-500">{option.help}</span>
+								</span>
+							</label>
+						))}
+					</fieldset>
+				)}
+			/>
 			<div className="flex justify-end">
 				<Button type="submit" disabled={isPending || !isDirty}>
 					{isPending ? '저장 중…' : '기본 정보 저장'}

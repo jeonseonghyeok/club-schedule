@@ -1,7 +1,9 @@
 import { useQuery, useSuspenseQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { LoginCard } from '@/components/Auth/organisms/LoginCard';
 import { LogoutButton } from '@/components/Auth/organisms/LogoutButton';
+import { Button } from '@/components/common/atoms/Button';
 import { Icon } from '@/components/common/atoms/Icon';
 import { SectionCard } from '@/components/common/molecules/SectionCard';
 import { AppShell } from '@/components/layout/AppShell';
@@ -9,12 +11,14 @@ import { AccountNicknameForm } from '@/components/Settings/organisms/AccountNick
 import { AppInstallSection } from '@/components/Settings/organisms/AppInstallSection';
 import { FavoriteGroupField } from '@/components/Settings/organisms/FavoriteGroupField';
 import { GroupNicknameList } from '@/components/Settings/organisms/GroupNicknameList';
+import { NicknameHistoryDialog } from '@/components/Settings/organisms/NicknameHistoryDialog';
 import { authQueries } from '@/modules/stores/server/auth/queries';
 import { groupQueries } from '@/modules/stores/server/group/queries';
 
 const SettingsPage = () => {
 	const { data: me } = useSuspenseQuery({ ...authQueries.me() });
 	const { data: groups, isError } = useQuery({ ...groupQueries.myGroups(), enabled: !!me });
+	const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 	if (!me) {
 		return (
 			<AppShell title="설정" isLoggedIn={false}>
@@ -29,10 +33,17 @@ const SettingsPage = () => {
 	return (
 		<AppShell title="설정" isLoggedIn>
 			<SectionCard title="프로필">
-				<AccountNicknameForm nickname={me.nickname} />
+				<AccountNicknameForm nickname={me.nickname} groups={groups ?? []} />
 			</SectionCard>
-			<SectionCard title="모임 닉네임">
-				<GroupNicknameList groups={groups} isError={isError} userKey={me.userKey} accountNickname={me.nickname} />
+			<SectionCard
+				title="모임 닉네임"
+				actions={
+					<Button variant="secondary" onClick={() => setIsHistoryOpen(true)}>
+						변경 이력
+					</Button>
+				}
+			>
+				<GroupNicknameList groups={groups} isError={isError} accountNickname={me.nickname} />
 			</SectionCard>
 			<SectionCard title="모임">
 				<FavoriteGroupField groups={groups ?? []} favoriteGroupId={me.favoriteGroupId} />
@@ -54,6 +65,7 @@ const SettingsPage = () => {
 				<LogoutButton />
 				<p className="text-center text-xs text-gray-400">{me.nickname} 계정으로 로그인됨</p>
 			</div>
+			{isHistoryOpen && <NicknameHistoryDialog onClose={() => setIsHistoryOpen(false)} />}
 		</AppShell>
 	);
 };

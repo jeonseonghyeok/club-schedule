@@ -48,7 +48,8 @@
 - [x] `migration_v10.sql`(모임 대표 활동 지역) — dev 적용 2026-10-28
 - [x] `migration_v11.sql`(모임 전용 앱) — dev 적용 2026-10-29
 - [x] `migration_v12.sql`(전용 앱 홈 화면 이름) — dev 적용 2026-10-30
-- [ ] 운영 DB 구성 시 v12 까지 적용
+- [x] `migration_v13.sql`(닉네임 관리 기본값·모임 닉네임 채움·변경 이력) — dev 적용 2026-10-31. **코드보다 먼저** 적용(새 코드가 `nickname_history` 에 쓴다)
+- [ ] 운영 DB 구성 시 v13 까지 적용
 
 ### 카카오맵 (지도 탭·장소 검색)
 - [ ] 카카오 개발자 콘솔 clubSchedule 앱: 제품 설정 > 카카오맵 활성화(지금은 `/api/places` 가 503 — `disabled OPEN_MAP_AND_LOCAL service`)

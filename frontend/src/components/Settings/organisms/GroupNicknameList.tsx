@@ -7,14 +7,14 @@ import { useModalStore } from '@/modules/stores/client/modal';
 import { useUpdateMyNickname } from '@/modules/stores/server/member/mutations';
 import type { MyGroup } from '@/types/Group';
 import { getGroupName } from '@/utils/group';
-import { NICKNAME_LOCKED_MESSAGE } from '@/utils/member';
+import { canEditOwnNickname, NICKNAME_LOCKED_MESSAGE } from '@/utils/member';
 
 // 백엔드 group_member.nickname VARCHAR(30)
 const NICKNAME_MAX = 30;
 
 interface RowProps {
 	group: MyGroup;
-	/** 모임이 막아둬도 리더는 바꿀 수 있다 */
+	/** 모임이 허용했거나 내가 모임장·매니저 */
 	isEditable: boolean;
 	accountNickname: string | null;
 }
@@ -23,6 +23,12 @@ const GroupNicknameRow = (props: RowProps) => {
 	const { group, isEditable, accountNickname } = props;
 	const inputId = useId();
 	const [nickname, setNickname] = useState(group.myNickname ?? '');
+	// 계정 닉네임과 함께 바뀌면(설정 위쪽) 입력도 새 이름으로 맞춘다
+	const [syncedNickname, setSyncedNickname] = useState(group.myNickname);
+	if (syncedNickname !== group.myNickname) {
+		setSyncedNickname(group.myNickname);
+		setNickname(group.myNickname ?? '');
+	}
 	const openModal = useModalStore(state => state.actions.openModal);
 	const { mutate: save, isPending } = useUpdateMyNickname(group.groupId);
 	const isUnchanged = nickname.trim() === (group.myNickname ?? '');
@@ -66,13 +72,12 @@ const GroupNicknameRow = (props: RowProps) => {
 interface Props {
 	groups: readonly MyGroup[] | undefined;
 	isError: boolean;
-	userKey: number;
 	accountNickname: string | null;
 }
 
-/** 내 모임별 닉네임 — 비워 두면 계정 닉네임이 보인다 */
+/** 내 모임별 닉네임 — 비우고 저장하면 계정 닉네임으로 맞춘다 */
 export const GroupNicknameList = (props: Props) => {
-	const { groups, isError, userKey, accountNickname } = props;
+	const { groups, isError, accountNickname } = props;
 	if (isError) return <EmptyMessage message="모임 목록을 불러오지 못했습니다." />;
 	if (!groups) return <EmptyMessage message="로딩 중..." />;
 	if (groups.length === 0) return <EmptyMessage message="가입한 모임이 없습니다." />;
@@ -83,7 +88,7 @@ export const GroupNicknameList = (props: Props) => {
 				<GroupNicknameRow
 					key={group.groupId}
 					group={group}
-					isEditable={!!group.allowSelfNickname || group.leaderUserKey === userKey}
+					isEditable={canEditOwnNickname({ allowSelfNickname: group.allowSelfNickname, role: group.myRole })}
 					accountNickname={accountNickname}
 				/>
 			))}

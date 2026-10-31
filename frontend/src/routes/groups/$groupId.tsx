@@ -20,7 +20,8 @@ import {
 import { AppShell } from '@/components/layout/AppShell';
 import { MemberInfoDialog } from '@/components/Member/organisms/MemberInfoDialog';
 import { MyAttendanceDialog } from '@/components/Member/organisms/MyAttendanceDialog';
-import { MyNicknameForm } from '@/components/Member/organisms/MyNicknameForm';
+import { GroupNicknameForm } from '@/components/Member/organisms/GroupNicknameForm';
+import { MemberNicknameHistory } from '@/components/Nickname/organisms/MemberNicknameHistory';
 import { ScheduleDialogs } from '@/components/Schedule/organisms/ScheduleDialogs';
 import { ModalType } from '@/constants';
 import { useGoHome } from '@/hooks/useAppBackNavigation';
@@ -34,7 +35,7 @@ import type { GroupDetail } from '@/types/GroupDetail';
 import { VISIBILITY_TYPE } from '@/types/GroupDetail';
 import type { GroupMember } from '@/types/Member';
 import { getGroupName } from '@/utils/group';
-import { NICKNAME_LOCKED_MESSAGE } from '@/utils/member';
+import { canEditOwnNickname, NICKNAME_LOCKED_MESSAGE } from '@/utils/member';
 
 const GROUP_TAB_KEYS = ['home', 'schedule', 'members', 'manage'] as const;
 type GroupTabKey = (typeof GROUP_TAB_KEYS)[number];
@@ -196,9 +197,8 @@ const GroupPage = () => {
 					onWithdraw={confirmWithdraw}
 					onClose={() => setMyInfo(null)}
 				>
-					{/* 모임이 막아둬도 리더는 자기 닉네임을 바꿀 수 있다 */}
-					{viewer.isLeader || detail.group.allowSelfNickname ? (
-						<MyNicknameForm
+					{canEditOwnNickname({ allowSelfNickname: detail.group.allowSelfNickname, role: myInfo.role }) ? (
+						<GroupNicknameForm
 							groupId={groupId}
 							groupNickname={myInfo.groupNickname}
 							onSaved={() => {
@@ -209,6 +209,7 @@ const GroupPage = () => {
 					) : (
 						<p className="mt-4 border-t border-gray-100 pt-3 text-sm text-gray-500">{NICKNAME_LOCKED_MESSAGE}</p>
 					)}
+					<MemberNicknameHistory groupId={groupId} userKey={myInfo.userKey} />
 				</MemberInfoDialog>
 			)}
 		</>

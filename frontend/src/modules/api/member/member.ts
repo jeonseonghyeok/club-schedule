@@ -1,4 +1,5 @@
 import type { GroupMember, GroupRole, MyNickname, PermissionPreset } from '@/types/Member';
+import type { NicknameHistory } from '@/types/Nickname';
 import { memberApi } from '.';
 
 interface MemberTarget {
@@ -39,7 +40,19 @@ export const deleteMyMembership = async (groupId: number): Promise<void> => {
 	await memberApi.delete(`/api/groups/${groupId}/members/me`);
 };
 
-/** 내 모임 닉네임 — 빈 문자열이면 계정 닉네임으로 돌아간다 */
+/** 회원의 모임 닉네임(모임장·매니저) — 빈 문자열이면 그 회원의 계정 닉네임으로 맞춘다 */
+export const updateMemberNickname = async (target: MemberTarget & { nickname: string }): Promise<MyNickname> => {
+	const { data } = await memberApi.patch<MyNickname>(`${memberPath(target)}/nickname`, { nickname: target.nickname });
+	return data;
+};
+
+/** 회원의 이 모임 닉네임 변경 이력(본인 또는 모임장·매니저) */
+export const getMemberNicknameHistory = async (target: MemberTarget): Promise<NicknameHistory[]> => {
+	const { data } = await memberApi.get<NicknameHistory[]>(`${memberPath(target)}/nickname-history`);
+	return data;
+};
+
+/** 내 모임 닉네임 — 빈 문자열이면 지금 계정 닉네임으로 맞춘다 */
 export const updateMyNickname = async (params: { groupId: number; nickname: string }): Promise<MyNickname> => {
 	const { data } = await memberApi.patch<MyNickname>(`/api/groups/${params.groupId}/members/me/nickname`, {
 		nickname: params.nickname,

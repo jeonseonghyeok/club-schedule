@@ -11,7 +11,7 @@
   - Boolean -> TINYINT(1)
   - java.time.LocalDateTime / java.util.Date -> DATETIME
 - 문서에 포함된 CREATE TABLE 문은 제공하신 MariaDB 쿼리를 그대로 사용했습니다. 필요한 경우 제약이나 인덱스를 더 보강할 수 있습니다.
-- 아래 스키마는 [`migration_v2.sql`](migration_v2.sql)(처리자 컬럼 표준화 + `group_schedule_history` 신설), migration_v4(처리자/기록 관련 컬럼 정리), [`migration_v5.sql`](migration_v5.sql)(`user.favorite_group_id` 신설 — 우선모임/즐겨찾기), [`migration_v6.sql`](migration_v6.sql)(`group_join_request`에 `(group_id,user_key)` 조회 인덱스 추가), migration_v7(`group_join_ban`에 `active`/`unbanned_at`/`unbanned_by_user_key` 추가 — 벤 해제 시 행을 삭제하지 않고 이력 보존), migration_v8(`notification`에 `(user_key,created_at)` 조회 인덱스 추가), [`migration_v9.sql`](migration_v9.sql)(`group_schedule.status_reason` 반려·취소 사유, `group_member.nickname` 모임별 닉네임), [`migration_v10.sql`](migration_v10.sql)(`group.region_name`/`latitude`/`longitude` 대표 활동 지역), [`migration_v11.sql`](migration_v11.sql)(`group.app_enabled`/`app_name`/`app_theme_color`, `group_app_icon` — 모임 전용 앱), [`migration_v12.sql`](migration_v12.sql)(`group.app_short_name`) 적용 이후 기준입니다. 코드(`ScheduleAttendanceVo` 등)도 이 컬럼명을 사용합니다. (`migration_v3.sql`은 `schedule_attendance_check_history` 테이블 신설을 위한 것이었으나 실제 DB에 적용된 적이 없고, 이 테이블에 의존하던 기능도 제거되어 더 이상 유효하지 않다. 참고로 `group_join_request.uniq_group_user` UNIQUE 제약도 문서에는 있었지만 실제 DB에는 처음부터 존재한 적이 없었다 — 재가입 시 재신청이 막히는 문제 자체가 없었음을 확인했다.)
+- 아래 스키마는 [`migration_v2.sql`](migration_v2.sql)(처리자 컬럼 표준화 + `group_schedule_history` 신설), migration_v4(처리자/기록 관련 컬럼 정리), [`migration_v5.sql`](migration_v5.sql)(`user.favorite_group_id` 신설 — 우선모임/즐겨찾기), [`migration_v6.sql`](migration_v6.sql)(`group_join_request`에 `(group_id,user_key)` 조회 인덱스 추가), migration_v7(`group_join_ban`에 `active`/`unbanned_at`/`unbanned_by_user_key` 추가 — 벤 해제 시 행을 삭제하지 않고 이력 보존), migration_v8(`notification`에 `(user_key,created_at)` 조회 인덱스 추가), [`migration_v9.sql`](migration_v9.sql)(`group_schedule.status_reason` 반려·취소 사유, `group_member.nickname` 모임별 닉네임), [`migration_v10.sql`](migration_v10.sql)(`group.region_name`/`latitude`/`longitude` 대표 활동 지역), [`migration_v11.sql`](migration_v11.sql)(`group.app_enabled`/`app_name`/`app_theme_color`, `group_app_icon` — 모임 전용 앱), [`migration_v12.sql`](migration_v12.sql)(`group.app_short_name`), [`migration_v13.sql`](migration_v13.sql)(`group.allow_self_nickname` 기본값 0, 모임 닉네임 채움, `nickname_history`) 적용 이후 기준입니다. 코드(`ScheduleAttendanceVo` 등)도 이 컬럼명을 사용합니다. (`migration_v3.sql`은 `schedule_attendance_check_history` 테이블 신설을 위한 것이었으나 실제 DB에 적용된 적이 없고, 이 테이블에 의존하던 기능도 제거되어 더 이상 유효하지 않다. 참고로 `group_join_request.uniq_group_user` UNIQUE 제약도 문서에는 있었지만 실제 DB에는 처음부터 존재한 적이 없었다 — 재가입 시 재신청이 막히는 문제 자체가 없었음을 확인했다.)
 
 ---
 
@@ -60,7 +60,7 @@ CREATE TABLE `group` (
   `leader_user_key` bigint(20) unsigned NOT NULL COMMENT '리더 유저 키',
   `capacity` int(10) unsigned NOT NULL DEFAULT 50 COMMENT '정원 (기본 50명)',
   `auto_approve` tinyint(1) NOT NULL DEFAULT 0 COMMENT '회원 자동 승인 여부 (0: 수동, 1 : 자동)', -- 1이면 가입 신청을 정원 안에서 즉시 승인(GroupJoinRequestService.requestJoin)
-  `allow_self_nickname` tinyint(1) NOT NULL DEFAULT 1 COMMENT '멤버 본인의 별명 직접 수정 허용 여부',
+  `allow_self_nickname` tinyint(1) NOT NULL DEFAULT 0 COMMENT '회원 본인의 모임 닉네임 수정 허용(0=모임장·매니저가 관리) — migration_v13 기본값 0',
   `created_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '생성일시',
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp() COMMENT '수정일시',
   `group_create_request_id` bigint(20) NOT NULL COMMENT '모입그룹 요청 키',
@@ -129,13 +129,28 @@ CREATE TABLE `group_join_request` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 
+-- club_schedule.nickname_history definition (migration_v13)
+
+CREATE TABLE `nickname_history` (
+  `history_id` bigint(20) NOT NULL AUTO_INCREMENT,
+  `user_key` bigint(20) NOT NULL COMMENT '닉네임이 바뀐 사람',
+  `group_id` bigint(20) DEFAULT NULL COMMENT 'NULL=계정 닉네임, 값=그 모임의 닉네임',
+  `old_nickname` varchar(30) DEFAULT NULL,
+  `new_nickname` varchar(30) DEFAULT NULL,
+  `changed_by` bigint(20) NOT NULL COMMENT '바꾼 사람(본인 또는 모임장·매니저)',
+  `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`history_id`),
+  KEY `idx_nickname_history_user` (`user_key`,`created_at`),
+  KEY `idx_nickname_history_group` (`group_id`,`user_key`,`created_at`)
+) COMMENT='닉네임 변경 이력 — migration_v13';
+
 -- club_schedule.group_member definition
 
 CREATE TABLE `group_member` (
   `group_id` bigint(20) unsigned NOT NULL COMMENT '모임그룹 키',
   `user_key` bigint(20) unsigned NOT NULL COMMENT '회원 유저 키',
   `role` enum('LEADER','MANAGER','MEMBER') NOT NULL DEFAULT 'MEMBER' COMMENT '역할 (LEADER > MANAGER > MEMBER 3단계)',
-  `nickname` varchar(30) DEFAULT NULL COMMENT '모임별 닉네임(NULL 이면 user.nickname) — migration_v9',
+  `nickname` varchar(30) DEFAULT NULL COMMENT '모임별 닉네임 — 가입 때 계정 닉네임을 복사(migration_v13 부터 항상 채움, NULL 이면 user.nickname) — migration_v9',
   `status` enum('ACTIVE','WITHDRAWN','KICKED') NOT NULL DEFAULT 'ACTIVE' COMMENT '회원 상태',
   `joined_at` datetime NOT NULL DEFAULT current_timestamp() COMMENT '참여일시',
   `left_at` datetime DEFAULT NULL COMMENT '탈퇴/강퇴 일시',

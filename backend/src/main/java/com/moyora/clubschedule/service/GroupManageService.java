@@ -14,12 +14,14 @@ import com.moyora.clubschedule.mapper.GroupMapper;
 import com.moyora.clubschedule.mapper.GroupMemberMapper;
 import com.moyora.clubschedule.mapper.GroupMemberPermissionMapper;
 import com.moyora.clubschedule.mapper.GroupSchedulePolicyMapper;
+import com.moyora.clubschedule.mapper.NicknameHistoryMapper;
 import com.moyora.clubschedule.mapper.UserMapper;
 import com.moyora.clubschedule.vo.GroupJoinBanVo;
 import com.moyora.clubschedule.vo.GroupMemberVo;
 import com.moyora.clubschedule.vo.GroupRole;
 import com.moyora.clubschedule.vo.GroupSchedulePolicyVo;
 import com.moyora.clubschedule.vo.GroupVo;
+import com.moyora.clubschedule.vo.NicknameHistoryVo;
 import com.moyora.clubschedule.vo.UserVo;
 
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,7 @@ public class GroupManageService {
     private final GroupSchedulePolicyMapper groupSchedulePolicyMapper;
     private final GroupMemberPermissionMapper groupMemberPermissionMapper;
     private final UserMapper userMapper;
+    private final NicknameHistoryMapper nicknameHistoryMapper;
     private final ScheduleAttendanceService scheduleAttendanceService;
 
     /**
@@ -154,25 +157,73 @@ public class GroupManageService {
     public static final int GROUP_NICKNAME_MAX = 30; // group_member.nickname VARCHAR(30)
 
     /**
-     * 모임 닉네임 변경. 비우면(null·공백) 계정 닉네임으로 돌아간다.
-     * 모임이 본인 수정을 막아두면(allow_self_nickname=0) 리더만 바꿀 수 있다.
-     * 다른 활동 회원과 같은 표시 이름은 쓸 수 없다(참가 명단에서 구분되지 않으므로).
+     * 본인이 이 모임 닉네임을 바꿀 수 있는지. 모임 닉네임은 기본적으로 모임장·매니저가 관리하고(allow_self_nickname=0),
+     * 모임이 허용하면 회원 본인도 바꿀 수 있다. 모임장·매니저는 항상 자기 이름을 바꿀 수 있다.
      */
+    public boolean canEditOwnNickname(Long groupId, Long userKey) {
+        if (!isMember(groupId, userKey)) return false;
+        GroupVo group = groupMapper.findById(groupId);
+        return Boolean.TRUE.equals(group.getAllowSelfNickname()) || isManager(groupId, userKey);
+    }
+
+    /** 내 모임 닉네임 변경 — 비우면(null·공백) 지금 계정 닉네임으로 맞춘다 */
     @Transactional
     public String updateMyNickname(Long groupId, Long userKey, String nickname) {
         if (!isMember(groupId, userKey)) throw new IllegalStateException("이 모임의 회원이 아닙니다.");
-        GroupVo group = groupMapper.findById(groupId);
-        if (!Boolean.TRUE.equals(group.getAllowSelfNickname()) && !isLeader(groupId, userKey)) {
-            throw new GroupAccessDeniedException("이 모임은 회원이 닉네임을 바꿀 수 없도록 설정되어 있습니다.");
+        if (!canEditOwnNickname(groupId, userKey)) {
+            throw new GroupAccessDeniedException("이 모임은 모임장이 닉네임을 관리합니다.");
         }
+        return changeNickname(groupId, userKey, nickname, userKey);
+    }
+
+    /** 모임장·매니저가 회원의 모임 닉네임을 바꾼다 — 비우면 그 회원의 계정 닉네임으로 맞춘다 */
+    @Transactional
+    public String updateMemberNickname(Long groupId, Long targetUserKey, String nickname, Long operatorUserKey) {
+        if (!isManager(groupId, operatorUserKey)) {
+            throw new GroupAccessDeniedException("모임장·매니저만 회원 닉네임을 바꿀 수 있습니다.");
+        }
+        if (!isMember(groupId, targetUserKey)) throw new IllegalStateException("이 모임의 회원이 아닙니다.");
+        return changeNickname(groupId, targetUserKey, nickname, operatorUserKey);
+    }
+
+    /** 한 회원의 이 모임 닉네임 이력 — 본인 또는 모임장·매니저만 */
+    public java.util.List<NicknameHistoryVo> getNicknameHistory(Long groupId, Long targetUserKey, Long viewerUserKey) {
+        if (!targetUserKey.equals(viewerUserKey) && !isManager(groupId, viewerUserKey)) {
+            throw new GroupAccessDeniedException("본인 또는 모임장·매니저만 볼 수 있습니다.");
+        }
+        return nicknameHistoryMapper.selectByGroupMember(groupId, targetUserKey);
+    }
+
+    /**
+     * 모임 닉네임을 바꾸고 이력을 남긴다. 다른 활동 회원과 같은 이름은 쓸 수 없다(참가 명단에서 구분되지 않으므로).
+     * 지금과 같은 이름이면 아무것도 하지 않는다.
+     */
+    private String changeNickname(Long groupId, Long targetUserKey, String nickname, Long changedBy) {
         String normalized = (nickname == null || nickname.isBlank()) ? null : nickname.trim();
-        if (normalized != null && normalized.length() > GROUP_NICKNAME_MAX) {
+        if (normalized == null) {
+            UserVo user = userMapper.selectByUserKey(targetUserKey);
+            normalized = user != null ? user.getNickname() : null;
+        }
+        if (normalized == null || normalized.isEmpty()) throw new IllegalArgumentException("닉네임을 입력하세요.");
+        if (normalized.length() > GROUP_NICKNAME_MAX) {
             throw new IllegalArgumentException("닉네임은 " + GROUP_NICKNAME_MAX + "자까지 입력할 수 있습니다.");
         }
-        if (normalized != null && groupMemberMapper.countDisplayNameTaken(groupId, userKey, normalized) > 0) {
+        String current = groupMemberMapper.selectNickname(groupId, targetUserKey);
+        if (normalized.equals(current)) {
+            groupMemberMapper.updateNickname(groupId, targetUserKey, normalized); // NULL(계정 이름 따라감)이었으면 고정
+            return normalized;
+        }
+        if (groupMemberMapper.countDisplayNameTaken(groupId, targetUserKey, normalized) > 0) {
             throw new IllegalStateException("이 모임에서 이미 쓰는 이름입니다.");
         }
-        groupMemberMapper.updateNickname(groupId, userKey, normalized);
+        groupMemberMapper.updateNickname(groupId, targetUserKey, normalized);
+        NicknameHistoryVo history = new NicknameHistoryVo();
+        history.setUserKey(targetUserKey);
+        history.setGroupId(groupId);
+        history.setOldNickname(current);
+        history.setNewNickname(normalized);
+        history.setChangedBy(changedBy);
+        nicknameHistoryMapper.insert(history);
         return normalized;
     }
 

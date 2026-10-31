@@ -27,6 +27,7 @@ public class GroupVo {
 
     // GET /api/groups/me 에서만 채움: 이 모임에서 내 닉네임(group_member.nickname)
     private String myNickname;
+    private String myRole; // 내 모임 목록에서만 — LEADER/MANAGER/MEMBER
 
     // 추가 필드: 스케줄 정책 및 부방장 기본 권한
     private String schedulePolicy; // ALL, LEADERS_ONLY, APPROVAL_REQUIRED

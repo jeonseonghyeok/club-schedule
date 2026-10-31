@@ -34,7 +34,15 @@ export interface KakaoLoginRequest {
 	readonly returnTo: string;
 }
 
-/** PATCH /api/users/me 응답 */
+/** PATCH /api/users/me 요청 — groupIds 의 내 모임 닉네임도 같은 이름으로 바꾼다 */
+export interface AccountNicknameRequest {
+	readonly nickname: string;
+	readonly groupIds: readonly number[];
+}
+
+/** PATCH /api/users/me 응답 — 모임마다 따로 저장해, 바꾸지 못한 모임은 skipped 에 이유와 함께 온다 */
 export interface AccountNickname {
 	readonly nickname: string;
+	readonly updated: readonly { readonly groupId: number; readonly groupNickname: string }[];
+	readonly skipped: readonly { readonly groupId: number; readonly message: string }[];
 }

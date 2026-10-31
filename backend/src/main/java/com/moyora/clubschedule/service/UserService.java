@@ -50,10 +50,6 @@ public class UserService {
         return pagingMapper.countUsersFiltered(q, role, from, to);
     }
 
-    public void updateNickname(Long userKey, String nickname) {
-        userMapper.updateNickname(userKey, nickname);
-    }
-
     public void updateFavoriteGroup(Long userKey, Long groupId) {
         userMapper.updateFavoriteGroup(userKey, groupId);
     }

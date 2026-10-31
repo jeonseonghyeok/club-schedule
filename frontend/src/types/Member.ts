@@ -27,7 +27,7 @@ export interface GroupMember {
 	readonly presets: readonly PermissionPreset[] | null;
 }
 
-/** PATCH /api/groups/{groupId}/members/me/nickname 응답 */
+/** PATCH /api/groups/{groupId}/members/{me|userKey}/nickname 응답 */
 export interface MyNickname {
 	readonly groupNickname: string | null;
 }

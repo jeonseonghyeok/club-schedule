@@ -38,4 +38,8 @@ export const canChangeRole = (member: GroupMember, viewerIsLeader: boolean): boo
 export const canKick = (member: GroupMember): boolean => isActiveMember(member) && member.role === GROUP_ROLE.MEMBER;
 
 /** 모임이 회원의 닉네임 수정을 막아 두었을 때(allow_self_nickname=0) 보여줄 안내 */
-export const NICKNAME_LOCKED_MESSAGE = '이 모임은 리더만 모임 닉네임을 바꿀 수 있어요.';
+export const NICKNAME_LOCKED_MESSAGE = '이 모임은 모임장이 닉네임을 관리해요. 바꾸려면 모임장에게 요청하세요.';
+
+/** 내 모임 닉네임을 직접 바꿀 수 있는지 — 모임이 허용했거나 내가 모임장·매니저(서버 GroupManageService.canEditOwnNickname) */
+export const canEditOwnNickname = (params: { allowSelfNickname: boolean | null; role: GroupRole | null }): boolean =>
+	!!params.allowSelfNickname || params.role === GROUP_ROLE.LEADER || params.role === GROUP_ROLE.MANAGER;

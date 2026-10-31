@@ -183,6 +183,37 @@ public class GroupApiController {
         }
     }
 
+    /** 회원의 모임 닉네임 — 모임장·매니저. Body {nickname}(비우면 그 회원의 계정 닉네임). 응답 {groupNickname} */
+    @PatchMapping("/{groupId}/members/{userKey}/nickname")
+    public ResponseEntity<?> updateMemberNickname(
+            @PathVariable Long groupId,
+            @PathVariable Long userKey,
+            @RequestBody(required = false) Map<String, Object> payload,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long operator = userDetails != null ? userDetails.getUserKey() : null;
+        if (operator == null) return ApiErrors.unauthorized();
+        Object raw = payload != null ? payload.get("nickname") : null;
+        try {
+            String saved = groupManageService.updateMemberNickname(groupId, userKey, raw != null ? raw.toString() : null, operator);
+            Map<String, Object> body = new HashMap<>();
+            body.put("groupNickname", saved);
+            return ResponseEntity.ok(body);
+        } catch (IllegalArgumentException e) {
+            return ApiErrors.badRequest(e.getMessage());
+        }
+    }
+
+    /** 회원의 이 모임 닉네임 변경 이력(최신순) — 본인 또는 모임장·매니저 */
+    @GetMapping("/{groupId}/members/{userKey}/nickname-history")
+    public ResponseEntity<?> memberNicknameHistory(
+            @PathVariable Long groupId,
+            @PathVariable Long userKey,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long viewer = userDetails != null ? userDetails.getUserKey() : null;
+        if (viewer == null) return ApiErrors.unauthorized();
+        return ResponseEntity.ok(groupManageService.getNicknameHistory(groupId, userKey, viewer));
+    }
+
     /** 본인 탈퇴 — 리더는 409(먼저 리더 승계) */
     @DeleteMapping("/{groupId}/members/me")
     public ResponseEntity<?> withdraw(

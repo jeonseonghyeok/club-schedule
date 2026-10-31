@@ -1,5 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
-import { getMembers } from '@/modules/api/member/member';
+import { getMemberNicknameHistory, getMembers } from '@/modules/api/member/member';
 
 export const memberQueries = {
 	all: () => ['members'],
@@ -7,5 +7,10 @@ export const memberQueries = {
 		queryOptions({
 			queryKey: [...memberQueries.all(), groupId],
 			queryFn: () => getMembers(groupId),
+		}),
+	nicknameHistory: (groupId: number, userKey: number) =>
+		queryOptions({
+			queryKey: [...memberQueries.all(), groupId, 'nicknameHistory', userKey],
+			queryFn: () => getMemberNicknameHistory({ groupId, userKey }),
 		}),
 };

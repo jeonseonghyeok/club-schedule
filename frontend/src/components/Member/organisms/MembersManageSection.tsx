@@ -4,7 +4,11 @@ import { Button } from '@/components/common/atoms/Button';
 import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
 import { SectionCard } from '@/components/common/molecules/SectionCard';
 import { ReasonDialog } from '@/components/common/organisms/ReasonDialog';
+import { GroupNicknameForm } from '@/components/Member/organisms/GroupNicknameForm';
 import { MemberInfoDialog } from '@/components/Member/organisms/MemberInfoDialog';
+import { MemberNicknameHistory } from '@/components/Nickname/organisms/MemberNicknameHistory';
+import { ModalType } from '@/constants';
+import { useModalStore } from '@/modules/stores/client/modal';
 import { useBanMember, useUnbanMember } from '@/modules/stores/server/member/mutations';
 import { memberQueries } from '@/modules/stores/server/member/queries';
 import { GROUP_ROLE, MEMBER_STATUS } from '@/types/Member';
@@ -114,6 +118,7 @@ export const MembersManageSection = (props: Props) => {
 	const { data: members, isError } = useQuery({ ...memberQueries.list(groupId) });
 	const { mutate: ban, isPending: isBanning } = useBanMember(groupId);
 	const { mutate: unban, isPending: isUnbanning } = useUnbanMember(groupId);
+	const openModal = useModalStore(state => state.actions.openModal);
 
 	const renderList = () => {
 		if (isError) return <EmptyMessage message="회원 목록을 불러오지 못했습니다." />;
@@ -195,7 +200,21 @@ export const MembersManageSection = (props: Props) => {
 						setBanTarget({ kind: 'kick', member });
 					}}
 					onClose={() => setSelected(null)}
-				/>
+				>
+					{/* 모임 닉네임은 모임장·매니저가 관리한다(모임 설정과 무관하게 항상 바꿀 수 있다) */}
+					{isActiveMember(selected) && (
+						<GroupNicknameForm
+							groupId={groupId}
+							userKey={selected.userKey}
+							groupNickname={selected.groupNickname ?? selected.displayName}
+							onSaved={() => {
+								setSelected(null);
+								openModal({ type: ModalType.ALERT, message: '회원 닉네임이 저장되었습니다.' });
+							}}
+						/>
+					)}
+					<MemberNicknameHistory groupId={groupId} userKey={selected.userKey} />
+				</MemberInfoDialog>
 			)}
 			{banTarget && (
 				<ReasonDialog

@@ -5,6 +5,7 @@ import {
 	deleteMyMembership,
 	updateMemberBan,
 	updateMemberPermissions,
+	updateMemberNickname,
 	updateMemberRole,
 	updateMyNickname,
 } from '@/modules/api/member/member';
@@ -12,6 +13,7 @@ import { useModalStore } from '@/modules/stores/client/modal';
 import { attendanceQueries } from '@/modules/stores/server/attendance/queries';
 import { authQueries } from '@/modules/stores/server/auth/queries';
 import { groupQueries } from '@/modules/stores/server/group/queries';
+import { userQueries } from '@/modules/stores/server/user/queries';
 import { GROUP_ROLE, MEMBER_STATUS } from '@/types/Member';
 import type { GroupMember, GroupRole, PermissionPreset } from '@/types/Member';
 import { getErrorMessage } from '@/utils';
@@ -116,7 +118,27 @@ export const useWithdrawGroup = (groupId: number) => {
 	});
 };
 
-/** 내 모임 닉네임 — 회원 목록과 참가 명단에 보이는 이름이 바뀌므로 다시 받는다 */
+/** 회원의 모임 닉네임(모임장·매니저) — 회원 목록은 바로 고치고, 참가 명단·이력은 다시 받는다 */
+export const useUpdateMemberNickname = (groupId: number) => {
+	const queryClient = useQueryClient();
+	const updateMemberCache = useUpdateMemberCache(groupId);
+	const alertError = useAlertError();
+
+	return useMutation({
+		mutationFn: (params: { userKey: number; nickname: string }) => updateMemberNickname({ groupId, ...params }),
+		onSuccess: ({ groupNickname }, { userKey }) => {
+			updateMemberCache(userKey, member => ({ ...member, groupNickname, displayName: groupNickname }));
+			void queryClient.invalidateQueries({ queryKey: memberQueries.nicknameHistory(groupId, userKey).queryKey });
+			void queryClient.invalidateQueries({ queryKey: attendanceQueries.ofGroup(groupId) });
+			// 매니저가 자기 이름을 바꿨을 수도 있다
+			void queryClient.invalidateQueries({ queryKey: groupQueries.myGroups().queryKey });
+			void queryClient.invalidateQueries({ queryKey: userQueries.all() });
+		},
+		onError: error => alertError(error.response?.data, '닉네임 저장에 실패했습니다.'),
+	});
+};
+
+/** 내 모임 닉네임 — 회원 목록(이력 포함)과 참가 명단에 보이는 이름이 바뀌므로 다시 받는다 */
 export const useUpdateMyNickname = (groupId: number) => {
 	const queryClient = useQueryClient();
 	const alertError = useAlertError();
@@ -129,6 +151,7 @@ export const useUpdateMyNickname = (groupId: number) => {
 			);
 			void queryClient.invalidateQueries({ queryKey: memberQueries.list(groupId).queryKey });
 			void queryClient.invalidateQueries({ queryKey: attendanceQueries.ofGroup(groupId) });
+			void queryClient.invalidateQueries({ queryKey: userQueries.all() });
 		},
 		onError: error => alertError(error.response?.data, '닉네임 저장에 실패했습니다.'),
 	});

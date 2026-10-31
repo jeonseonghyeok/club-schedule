@@ -13,7 +13,7 @@ export const AlertModal = (props: Props) => {
 
 	return (
 		<Dialog descriptionId={messageId} onClose={onClose}>
-			<p id={messageId} className="text-gray-900">
+			<p id={messageId} className="whitespace-pre-line text-gray-900">
 				{message}
 			</p>
 			<div className="mt-6 flex justify-end">

@@ -89,7 +89,7 @@ com.moyora.clubschedule
 두 도메인은 완전히 별개이며 혼동 주의.
 
 ### 닉네임
-- 계정 닉네임(`user.nickname`)은 계정당 하나. 모임 닉네임(`group_member.nickname`)은 가입 때 계정 닉네임을 복사해 모임마다 따로 둔다 — 계정 이름을 바꿔도 모임 이름은 그대로이고, 설정 화면에서 같이 바꿀 모임을 체크한다(`PATCH /api/users/me` 의 `groupIds`).
+- 닉네임은 계정·모임 모두 최대 10자(`GroupManageService.NICKNAME_MAX`, 프론트 `NICKNAME_MAX_LENGTH`). 계정 닉네임(`user.nickname`)은 계정당 하나. 모임 닉네임(`group_member.nickname`)은 가입 때 계정 닉네임을 복사해 모임마다 따로 둔다 — 계정 이름을 바꿔도 모임 이름은 그대로이고, 설정 화면에서 같이 바꿀 모임을 체크한다(`PATCH /api/users/me` 의 `groupIds`).
 - 모임 설정 `allow_self_nickname`: 0(기본)=모임장·매니저가 관리(회원 정보에서 수정), 1=회원도 직접 수정. 모임장·매니저는 항상 자기·회원 이름을 바꿀 수 있다.
 - 모든 변경은 `nickname_history`(group_id NULL=계정)에 남는다 — 모임 이력은 같은 모임 회원 누구나(멤버 탭 회원 정보), 계정 이력은 본인(설정 > 변경 이력)이 본다. `NicknameService`·`GroupManageService`.
 

@@ -154,7 +154,8 @@ public class GroupManageService {
         return groupMemberMapper.selectMembersByGroup(groupId);
     }
 
-    public static final int GROUP_NICKNAME_MAX = 30; // group_member.nickname VARCHAR(30)
+    /** 계정·모임 닉네임 최대 길이(화면에서 이름이 잘리지 않게). 컬럼(VARCHAR(30))보다 짧게 둔다 */
+    public static final int NICKNAME_MAX = 10;
 
     /**
      * 본인이 이 모임 닉네임을 바꿀 수 있는지. 모임 닉네임은 기본적으로 모임장·매니저가 관리하고(allow_self_nickname=0),
@@ -202,11 +203,14 @@ public class GroupManageService {
         String normalized = (nickname == null || nickname.isBlank()) ? null : nickname.trim();
         if (normalized == null) {
             UserVo user = userMapper.selectByUserKey(targetUserKey);
-            normalized = user != null ? user.getNickname() : null;
+            // 예전에 정한 긴 계정 닉네임은 모임 이름 길이에 맞춰 자른다
+            normalized = user != null && user.getNickname() != null
+                    ? user.getNickname().substring(0, Math.min(user.getNickname().length(), NICKNAME_MAX))
+                    : null;
         }
         if (normalized == null || normalized.isEmpty()) throw new IllegalArgumentException("닉네임을 입력하세요.");
-        if (normalized.length() > GROUP_NICKNAME_MAX) {
-            throw new IllegalArgumentException("닉네임은 " + GROUP_NICKNAME_MAX + "자까지 입력할 수 있습니다.");
+        if (normalized.length() > NICKNAME_MAX) {
+            throw new IllegalArgumentException("닉네임은 " + NICKNAME_MAX + "자까지 입력할 수 있습니다.");
         }
         String current = groupMemberMapper.selectNickname(groupId, targetUserKey);
         if (normalized.equals(current)) {

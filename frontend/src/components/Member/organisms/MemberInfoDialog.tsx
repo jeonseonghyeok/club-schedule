@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Button } from '@/components/common/atoms/Button';
 import { EmptyMessage } from '@/components/common/atoms/EmptyMessage';
 import { Dialog } from '@/components/common/organisms/Dialog';
 import { ReasonDialog } from '@/components/common/organisms/ReasonDialog';
 import { NicknameChangeDialog } from '@/components/Member/organisms/NicknameChangeDialog';
 import { RoleChangeDialog } from '@/components/Member/organisms/RoleChangeDialog';
-import { MemberNicknameHistory } from '@/components/Nickname/organisms/MemberNicknameHistory';
+import { MemberNicknameHistoryPanel } from '@/components/Nickname/organisms/MemberNicknameHistory';
 import { useBanMember } from '@/modules/stores/server/member/mutations';
 import { memberQueries } from '@/modules/stores/server/member/queries';
 import type { GroupViewer } from '@/types/GroupDetail';
@@ -23,6 +23,9 @@ import {
 } from '@/utils/member';
 
 const formatDate = (value: string | null): string => (value ? new Date(value).toLocaleDateString('ko-KR') : '-');
+
+// 정보 줄 오른쪽에 붙는 작은 버튼
+const ROW_BUTTON_CLASS = 'min-h-8 shrink-0 px-2.5 py-1 text-xs';
 
 /** 회원 정보에서 여는 다음 대화상자 */
 const MEMBER_ACTION = { ROLE: 'role', NICKNAME: 'nickname', KICK: 'kick' } as const;
@@ -71,6 +74,8 @@ interface Props {
 export const MemberInfoDialog = (props: Props) => {
 	const { groupId, userKey, viewer, allowSelfNickname, onWithdraw, onClose } = props;
 	const [action, setAction] = useState<MemberAction | null>(null);
+	const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+	const historyId = useId();
 	// 목록 캐시에서 읽어 직책·닉네임을 바꾸면 바로 반영된다
 	const { data: members, isError } = useQuery({ ...memberQueries.list(groupId) });
 	const { mutate: ban, isPending: isBanning } = useBanMember(groupId);
@@ -82,18 +87,49 @@ export const MemberInfoDialog = (props: Props) => {
 		if (!member) return <EmptyMessage message="회원을 찾을 수 없습니다." />;
 		const isActive = isActiveMember(member);
 		const actions = getMemberActions({ member, viewer, allowSelfNickname });
-		const hasActions = actions.canEditRole || actions.canEditNickname || actions.canKick;
 
 		return (
 			<>
 				<dl className="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-2 text-sm">
 					<dt className="font-semibold text-gray-500">닉네임</dt>
-					<dd>{getMemberName(member)}</dd>
+					<dd className="flex min-w-0 items-center gap-1.5">
+						<span className="min-w-0 flex-1 truncate">{getMemberName(member)}</span>
+						{actions.canEditNickname && (
+							<Button
+								variant="secondary"
+								className={ROW_BUTTON_CLASS}
+								onClick={() => setAction(MEMBER_ACTION.NICKNAME)}
+							>
+								닉네임 변경
+							</Button>
+						)}
+						<Button
+							variant="secondary"
+							aria-label="닉네임 변경 이력"
+							aria-expanded={isHistoryOpen}
+							aria-controls={historyId}
+							className={ROW_BUTTON_CLASS}
+							onClick={() => setIsHistoryOpen(prev => !prev)}
+						>
+							변경 이력
+						</Button>
+					</dd>
 					{/* 정지(탈퇴/추방)된 회원은 더 이상 직책이 없으므로 퇴장일을 대신 보여준다 */}
 					{isActive && (
 						<>
 							<dt className="font-semibold text-gray-500">직책</dt>
-							<dd>{ROLE_LABEL[member.role]}</dd>
+							<dd className="flex min-w-0 items-center gap-1.5">
+								<span className="min-w-0 flex-1 truncate">{ROLE_LABEL[member.role]}</span>
+								{actions.canEditRole && (
+									<Button
+										variant="secondary"
+										className={ROW_BUTTON_CLASS}
+										onClick={() => setAction(MEMBER_ACTION.ROLE)}
+									>
+										직책 변경
+									</Button>
+								)}
+							</dd>
 						</>
 					)}
 					<dt className="font-semibold text-gray-500">가입일</dt>
@@ -110,19 +146,13 @@ export const MemberInfoDialog = (props: Props) => {
 				{isActive && member.userKey === viewer.userKey && !actions.canEditNickname && (
 					<p className="mt-3 text-xs text-gray-500">{NICKNAME_LOCKED_MESSAGE}</p>
 				)}
-				<MemberNicknameHistory groupId={groupId} userKey={member.userKey} />
-				{(hasActions || onWithdraw) && (
+				{isHistoryOpen && (
+					<section aria-label="닉네임 변경 이력" className="mt-3 border-t border-gray-100 pt-2">
+						<MemberNicknameHistoryPanel id={historyId} groupId={groupId} userKey={member.userKey} />
+					</section>
+				)}
+				{(actions.canKick || onWithdraw) && (
 					<div className="mt-4 flex flex-wrap gap-2 border-t border-gray-100 pt-3">
-						{actions.canEditRole && (
-							<Button variant="secondary" onClick={() => setAction(MEMBER_ACTION.ROLE)}>
-								직책 변경
-							</Button>
-						)}
-						{actions.canEditNickname && (
-							<Button variant="secondary" onClick={() => setAction(MEMBER_ACTION.NICKNAME)}>
-								닉네임 변경
-							</Button>
-						)}
 						{actions.canKick && (
 							<Button variant="secondary" className="text-red-800" onClick={() => setAction(MEMBER_ACTION.KICK)}>
 								내보내기

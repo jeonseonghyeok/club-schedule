@@ -2,9 +2,7 @@ import { useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Button } from '@/components/common/atoms/Button';
 import { useUpdateMemberNickname, useUpdateMyNickname } from '@/modules/stores/server/member/mutations';
-
-// 백엔드 group_member.nickname VARCHAR(30)
-const NICKNAME_MAX = 30;
+import { NICKNAME_MAX_LENGTH } from '@/utils/member';
 
 interface Props {
 	groupId: number;
@@ -42,7 +40,7 @@ export const GroupNicknameForm = (props: Props) => {
 					id={inputId}
 					type="text"
 					value={nickname}
-					maxLength={NICKNAME_MAX}
+					maxLength={NICKNAME_MAX_LENGTH}
 					aria-describedby={helpId}
 					onChange={event => setNickname(event.target.value)}
 					className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-base focus-visible:outline-2 focus-visible:outline-brand-600 sm:text-sm"
@@ -52,7 +50,7 @@ export const GroupNicknameForm = (props: Props) => {
 				</Button>
 			</div>
 			<p id={helpId} className="text-xs text-gray-500">
-				이 모임에서만 보이는 이름입니다. 비우고 저장하면 계정 닉네임으로 맞춥니다.
+				이 모임에서만 보이는 이름입니다(최대 {NICKNAME_MAX_LENGTH}자). 비우고 저장하면 계정 닉네임으로 맞춥니다.
 			</p>
 		</form>
 	);

@@ -14,6 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.moyora.clubschedule.exception.ApiErrors;
 import com.moyora.clubschedule.security.CustomUserDetails;
+import com.moyora.clubschedule.service.GroupManageService;
 import com.moyora.clubschedule.service.NicknameService;
 
 import lombok.RequiredArgsConstructor;
@@ -22,12 +23,10 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class UserController {
 
-    private static final int NICKNAME_MAX = 30;
-
     private final NicknameService nicknameService;
 
     /**
-     * 계정 닉네임 변경 — Body {nickname(1~30자), groupIds?: 같은 이름으로 바꿀 내 모임}.
+     * 계정 닉네임 변경 — Body {nickname(1~10자), groupIds?: 같은 이름으로 바꿀 내 모임}.
      * 모임 닉네임은 모임마다 따로라 계정 이름만 바꾸면 모임에서 보이는 이름은 그대로다.
      * 응답 {nickname, updated:[{groupId, groupNickname}], skipped:[{groupId, message}]}
      */
@@ -38,8 +37,8 @@ public class UserController {
         if (userDetails == null) return ApiErrors.unauthorized();
         Object raw = payload != null ? payload.get("nickname") : null;
         String nickname = raw != null ? raw.toString().trim() : "";
-        if (nickname.isEmpty() || nickname.length() > NICKNAME_MAX) {
-            return ApiErrors.badRequest("닉네임은 1~30자로 입력하세요.");
+        if (nickname.isEmpty() || nickname.length() > GroupManageService.NICKNAME_MAX) {
+            return ApiErrors.badRequest("닉네임은 1~" + GroupManageService.NICKNAME_MAX + "자로 입력하세요.");
         }
         List<Long> groupIds = new ArrayList<>();
         if (payload != null && payload.get("groupIds") instanceof List<?> ids) {

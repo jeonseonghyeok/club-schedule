@@ -16,7 +16,10 @@ const getViewerRoleLabel = (viewer: GroupViewer): string | null => {
 interface Props {
 	groupId: number;
 	detail: GroupDetail;
-	/** full: 머리 글자·이름 포함 / compact: 모임 전용 앱(상단 바에 이름이 이미 있다) — 역할·지역·정원과 버튼만 */
+	/**
+	 * full: 머리 글자·이름 포함 / compact: 모임 전용 앱(상단 바에 이름이 이미 있다) — 역할·지역·정원과 가입 버튼만.
+	 * 우선모임은 모요라가 어느 모임으로 시작할지 정하는 설정이라 전용 앱에서는 보이지 않는다.
+	 */
 	variant?: GroupHeroVariant;
 }
 
@@ -65,7 +68,7 @@ export const GroupHero = (props: Props) => {
 					정원 {group.capacity ?? 0}명
 				</p>
 			</div>
-			{viewer.isMember && <FavoriteToggle groupId={groupId} viewer={viewer} />}
+			{viewer.isMember && !isCompact && <FavoriteToggle groupId={groupId} viewer={viewer} />}
 			{!viewer.isMember && viewer.userKey !== null && <JoinAction groupId={groupId} userKey={viewer.userKey} />}
 			{viewer.userKey === null && (
 				<Button onClick={() => promptLogin('로그인하면 이 모임에 가입 신청할 수 있어요.')}>가입하기</Button>

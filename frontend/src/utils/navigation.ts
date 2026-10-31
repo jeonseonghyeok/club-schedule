@@ -12,9 +12,10 @@ export const getSafeReturnPath = (returnTo: string | undefined): string => {
 };
 
 /**
- * 문서 전체를 다시 불러오며 이동한다. 로그인 직후처럼 앱 상태(인증·쿼리 캐시)를
+ * 문서 전체를 다시 불러오며 이동한다. 로그인·로그아웃 직후처럼 앱 상태(인증·쿼리 캐시)를
  * 처음부터 다시 시작해야 할 때 쓴다 — 평소 화면 이동은 라우터 Link·navigate 를 쓴다.
+ * 지금 기록을 바꿔 쓴다(replace): 로그인 콜백·카카오 화면이 뒤로가기 기록에 남으면 뒤로가기가 로그인으로 되돌아간다.
  */
 export const navigateWithReload = (path: string): void => {
-	window.location.assign(path);
+	window.location.replace(path);
 };
